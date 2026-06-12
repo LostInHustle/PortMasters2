@@ -560,6 +560,52 @@ a { color: var(--ocean-700); }
 .worker-row .w-state .busy { color: #b45309; font-weight: 700; }
 .worker-row .w-state .idle { color: #059669; font-weight: 700; }
 
+/* ---- 牙行密语（可折叠面板） ---- */
+.whisper-panel {
+  background: linear-gradient(135deg, rgba(254, 243, 199, .6), rgba(255, 251, 235, .85));
+  border: 1px solid rgba(245, 158, 11, .45);
+  border-radius: var(--radius-md);
+  margin: 0 0 16px;
+  box-shadow: 0 4px 14px rgba(245, 158, 11, .12);
+  overflow: hidden;
+}
+.whisper-panel summary {
+  cursor: pointer;
+  user-select: none;
+  list-style: none;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  padding: 13px 16px;
+  font-size: 14px;
+  font-weight: 800;
+  color: #92400e;
+  transition: background .15s ease;
+}
+.whisper-panel summary:hover { background: rgba(245, 158, 11, .10); }
+.whisper-panel summary::-webkit-details-marker { display: none; }
+.whisper-panel summary::after {
+  content: '▾';
+  margin-left: auto;
+  font-size: 14px;
+  color: #b45309;
+  transition: transform .2s ease;
+}
+.whisper-panel:not([open]) summary::after { transform: rotate(-90deg); }
+.whisper-body { padding: 4px 16px 14px; }
+.whisper-clue {
+  background: rgba(255,255,255,.92);
+  border: 1px solid rgba(245, 158, 11, .3);
+  border-radius: var(--radius-sm);
+  padding: 8px 12px;
+  margin: 6px 0;
+  font-size: 12.5px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
 /* ---- 互市 ---- */
 .trade-section {
   background: linear-gradient(135deg, rgba(254, 243, 199, .55), rgba(255, 251, 235, .8));
@@ -1052,8 +1098,8 @@ const RECIPE_MATS = {
 /* 回合内 8 个阶段的元信息（识别优于记忆：阶段名 + 目标 + 操作提示一直可见） */
 const PHASE_FLOW = [
   { key: 0,             icon: "⚓", name: "启航",  brief: "新回合开始，双方确认后抽取福缘。" },
-  { key: 5,             icon: "🧭", name: "福缘",  brief: "各自选择一项仅本回合生效的增益。结合本回合计划挑选：要采购多就选折扣，要生产多就选匠人灵感。" },
-  { key: 1,             icon: "🛒", name: "采购",  brief: "用金币购入原料或成品。在商品的特产港口采购单价更低；注意为工资和维护费留足现金。" },
+  { key: 5,             icon: "🧭", name: "福缘",  brief: "航海家的罗盘从福缘池中为你随机抽出4张（双方抽到的组合不同），选择一项仅本回合生效的增益。要采购多就选折扣，要生产多就选匠人灵感。" },
+  { key: 1,             icon: "🛒", name: "采购",  brief: "用金币购入原料或成品。在商品的特产港口采购单价更低；可在「牙行密语」面板花金币打探未来订单需求；注意为工资和维护费留足现金。" },
   { key: "trade",       icon: "🤝", name: "互市",  brief: "与伙伴自由交易：发布「我出售 × 换取 ×」的订单，对方接受即成交。双方都点「准备就绪」后进入下一阶段。" },
   { key: "worker_mgmt", icon: "👥", name: "工匠",  brief: "雇佣工匠并分配生产任务。分配任务时立即消耗材料，产出在结算阶段入库。" },
   { key: 2,             icon: "📦", name: "贸易",  brief: "用库存满足港口订单赚取金币。成品订单需缴纳约5%增值税；每单还需支付运费。" },
@@ -1406,14 +1452,34 @@ function appendChatMessage(from, message, isSent) {
 
 /* ============================================================
    渲染入口
+   按需重绘：只有与各面板相关的数据真正变化时才重建对应 DOM。
+   全量 innerHTML 重建会清空滚动位置并打断进行中的点击（mousedown
+   与 mouseup 落在不同 DOM 节点上时 click 不触发）——这正是此前
+   「按钮点不动 / 页面跳回顶部」的根因，因此严禁无差别重绘。
    ============================================================ */
-function renderAll() {
+let _lastMyJson = '';
+let _lastPartnerJson = '';
+
+function renderAll(force = false) {
   if (!serverState) return;
-  renderStatus();
-  renderPartner();
-  renderPhase();
-  renderControls();
-  renderLog();
+  const myJson = JSON.stringify([
+    serverState.yourGame, serverState.tradeOrders, serverState.tradeReady,
+    serverState.phaseReadyCount, serverState.waitingForOther, serverState.youReady
+  ]);
+  const partnerJson = JSON.stringify([serverState.otherGame, serverState.partnerName, partnerOnline]);
+  const myChanged = force || myJson !== _lastMyJson;
+  const partnerChanged = force || partnerJson !== _lastPartnerJson;
+  _lastMyJson = myJson;
+  _lastPartnerJson = partnerJson;
+
+  if (myChanged) {
+    renderStatus();
+    renderControls();
+    renderLog();
+  }
+  if (partnerChanged) renderPartner();
+  /* 观战模式下，舞台展示的是伙伴的数据，需随伙伴状态刷新 */
+  if (myChanged || (partnerChanged && _spectating)) renderPhase();
 }
 
 /* ---------- 共用：商队状态卡片（自己与伙伴使用同一套组件，便于对照） ---------- */
@@ -1565,7 +1631,7 @@ function renderPartner() {
       <div class="avatar">🧑‍✈️</div>
       <div class="who">
         <div class="nm">${escapeHtml(name)}</div>
-        <div class="role">伙伴商队 · ${og.slot ? '玩家' + og.slot : ''}${og.gameOver ? ' · 已结束' : ''}</div>
+        <div class="role">伙伴商队 · ${og.slot ? '玩家' + og.slot : ''}${og.bankrupt ? ' · 💥已破产' : (og.gameOver ? ' · 已结束' : '')}</div>
       </div>
       <span class="dot ${partnerOnline ? 'on' : 'off'}" title="${partnerOnline ? '在线' : '离线'}"></span>
       ${partnerOnline ? '' : '<span class="chip amber" style="margin-left:4px">离线</span>'}
@@ -1639,9 +1705,11 @@ function renderPhase() {
   const p = document.getElementById('phase-panel');
   const g = serverState.yourGame;
   if (!g) return;
-  if (g.phase !== 'bankruptcy') _spectating = false;
+  /* 防御：破产玩家永远停留在破产/观战页，即使服务器下发了其他阶段值 */
+  const phase = g.bankrupt ? 'bankruptcy' : g.phase;
+  if (phase !== 'bankruptcy') _spectating = false;
   let inner = '';
-  switch (g.phase) {
+  switch (phase) {
     case 0: inner = welcomeHTML(); break;
     case 5: inner = boonDraftHTML(); break;
     case 1: inner = purchaseHTML(); break;
@@ -1657,8 +1725,10 @@ function renderPhase() {
 
   /* 互市表单在重渲染时保留用户已填写的内容（用户自由与控制） */
   const formState = captureTradeForm();
-  p.innerHTML = `<div class="phase-view">${stepperHTML(g.phase)}${inner}</div>`;
+  const scrollPos = p.scrollTop;
+  p.innerHTML = `<div class="phase-view">${stepperHTML(phase)}${inner}</div>`;
   restoreTradeForm(formState);
+  p.scrollTop = scrollPos;   // 重绘后保持滚动位置，避免页面跳回顶部
 }
 
 /* ---------- 各阶段视图 ---------- */
@@ -1699,16 +1769,23 @@ function dismissPmBanner() {
 }
 
 function boonDraftHTML() {
+  const g = serverState.yourGame;
+  /* 航海家的罗盘：服务器为每位玩家独立随机抽取4张，双方看到的组合不同 */
+  const pool = (g.boonChoices && g.boonChoices.length) ? g.boonChoices : BOONS;
+  const locked = !!serverState.youReady;
   return `
-    ${phaseBriefHTML(5)}
+    ${phaseBriefHTML(5, '<span class="chip">🧭 罗盘随机：双方各自抽到不同的4张</span>')}
     <div class="center-block">
       <div class="card-grid">
-        ${BOONS.map(b => `
+        ${pool.map(b => `
           <div class="boon-card">
             <div class="boon-icon">${b.icon}</div>
-            <div class="boon-name">${b.name}</div>
-            <div class="boon-desc">${b.desc}</div>
-            <button class="btn btn-gold btn-lg" onclick="sendAction('selectBoon', {boonId: '${b.id}'})" title="锁定后本回合不可更换">🔒 锁定福缘</button>
+            <div class="boon-name">${escapeHtml(b.name)}</div>
+            <div class="boon-desc">${escapeHtml(b.desc)}</div>
+            <button class="btn ${locked ? 'btn-grey' : 'btn-gold'} btn-lg" ${locked ? 'disabled' : ''}
+              onclick="sendAction('selectBoon', {boonId: '${b.id}'})" title="${locked ? '本回合福缘已锁定' : '锁定后本回合不可更换'}">
+              ${locked ? '⏳ 已锁定' : '🔒 锁定福缘'}
+            </button>
           </div>
         `).join('')}
       </div>
@@ -1726,6 +1803,7 @@ function purchaseHTML() {
 
   return `
     ${phaseBriefHTML(1, discountChips.join(''))}
+    ${brokerWhisperHTML(g)}
     <div class="card-grid">
       ${cards.map(card => {
         const purchased = g.purchasedCards.includes(card.id);
@@ -1758,32 +1836,47 @@ function purchaseHTML() {
         `;
       }).join('')}
     </div>
-    ${rumorBoardHTML(g)}
     <div style="text-align:center; margin-top:22px">
       <button class="btn btn-lg" onclick="sendAction('ready_for_next_phase')" title="确认后等待对方，双方都确认即进入互市">✅ 完成采购，进入互市<span class="btn-sub">双方确认后同步推进</span></button>
     </div>
   `;
 }
 
-function rumorBoardHTML(g) {
+/* 牙行密语面板的折叠状态跨重绘保留 */
+let _whisperOpen = true;
+
+function brokerWhisperHTML(g) {
   const revealed = g.revealedIntel || [];
   const remaining = g.intelRemaining || 0;
   const canBuy = remaining > 0 && g.money >= g.intelCost;
+  const hasNetwork = (g.equippedModules || []).some(m => m.id === 'brokers_network');
   return `
-    <div class="section-box" style="max-width:640px;margin:18px auto">
-      <h3 style="margin-bottom:6px">🗣️ 牙行密语板</h3>
-      <div class="section-hint">花费金币打探下一阶段（贸易交易）的货物需求，提前备好对应货物即可稳赚保底订单。</div>
-      <div style="margin:10px 0">
-        <button class="btn btn-gold" ${canBuy ? '' : 'disabled'} onclick="sendAction('purchaseIntel')"
-          title="${remaining > 0 ? '花费金币购买一条密语' : '本回合密语已打探完毕'}">
-          🔮 购买密语 (${g.intelCost}💰)${remaining > 0 ? ` · 剩余 ${remaining} 条` : ' · 已无更多'}
-        </button>
+    <details class="whisper-panel" ${_whisperOpen ? 'open' : ''} ontoggle="_whisperOpen = this.open">
+      <summary>
+        🗣️ 牙行密语
+        <span class="chip amber">🔮 花 ${g.intelCost} 金币打探未来需求</span>
+        ${revealed.length ? `<span class="chip green">📜 已获 ${revealed.length} 条线索</span>` : ''}
+        ${hasNetwork ? '<span class="chip green">🕵️ 牙行网络已生效</span>' : ''}
+      </summary>
+      <div class="whisper-body">
+        <div class="section-hint">
+          花费 <strong>${g.intelCost} 金币</strong>向牙行打探<strong>贸易阶段（未来订单）</strong>的货物需求——每条密语都会在贸易阶段兑现为一张对应货品与港口的订单，提前备货即可稳赚。
+          ${hasNetwork
+            ? `当前已装备 <strong>🕵️ 牙行网络</strong>：每次仅需 ${g.intelCost} 金币，且一次获得 <strong>2 条</strong>线索。`
+            : '提示：在船坞安装 <strong>🕵️ 牙行网络</strong> 模块后，每次仅需 2 金币且一次获得 2 条线索。'}
+        </div>
+        <div style="margin:10px 0">
+          <button class="btn btn-gold" ${canBuy ? '' : 'disabled'} onclick="sendAction('purchaseIntel')"
+            title="${remaining > 0 ? (canBuy ? '花费' + g.intelCost + '金币购买密语' : '现金不足') : '本回合密语已打探完毕'}">
+            🔮 购买密语 (${g.intelCost}💰)${remaining > 0 ? ` · 剩余 ${remaining} 条` : ' · 已无更多'}
+          </button>
+        </div>
+        ${revealed.length ? `
+          <div style="font-weight:700;color:var(--ink-soft);margin-bottom:4px">📜 已打探的消息：</div>
+          ${revealed.map(i => `<div class="whisper-clue">🗣️ '${escapeHtml(i.port)} 求购 ${escapeHtml(i.item)}${ICONS[i.item] || ''}'</div>`).join('')}
+        ` : `<div class="muted" style="padding:6px 0">✨ 尚未打探到任何消息...花费金币聆听牙行的密语吧。</div>`}
       </div>
-      ${revealed.length ? `
-        <div style="font-weight:700;color:var(--ink-soft);margin-bottom:6px">📜 已打探消息：</div>
-        ${revealed.map(i => `<div class="stat-row" style="font-size:13px">🗣️ '${escapeHtml(i.port)} 求购 ${escapeHtml(i.item)}'</div>`).join('')}
-      ` : `<div class="muted" style="padding:10px 0;text-align:center">✨ 尚未打探到任何消息...花费金币聆听牙行的密语吧。</div>`}
-    </div>
+    </details>
   `;
 }
 
@@ -2011,7 +2104,10 @@ function ordersHTML() {
           <div class="card">
             <div class="card-header">
               <span>📍 ${o.demandPort}</span>
-              <span class="card-tag ${o.isProductOrder ? 'product' : ''}">${o.isProductOrder ? '成品需求' : '原料需求'}</span>
+              <span style="display:flex;gap:4px">
+                ${o.fromIntel ? '<span class="card-tag" style="background:rgba(245,158,11,.2);color:#92400e" title="这张订单由你购买的牙行密语兑现而来">🗣️ 密语应验</span>' : ''}
+                <span class="card-tag ${o.isProductOrder ? 'product' : ''}">${o.isProductOrder ? '成品需求' : '原料需求'}</span>
+              </span>
             </div>
             <div class="card-body">
               ${o.resources.map(r => {
@@ -2091,20 +2187,25 @@ function shipyardHTML() {
         <div class="stat-row" style="font-size:13px"><span>模块槽位</span><strong>${slots} / ${g.shipLevel}</strong></div>
         <div style="margin-top:6px">${modulesHTML(g)}</div>
       </div>
+      ${draft.length ? moduleDraftHTML(g, draft, slotsFull) : ''}
       <div style="text-align:center;display:flex;gap:12px;justify-content:center;flex-wrap:wrap">
         ${canUpgrade ? `
           <button class="btn btn-lg" onclick="sendAction('upgradeShip')" ${g.money < upgCost ? 'disabled' : ''}
             title="升级后每单运费永久再减5金币，并增加1个模块槽位">
             ⚓ 升级商船至 Lv.${g.shipLevel + 1}（${upgCost}💰）<span class="btn-sub">运费/单再 −5 金币 · +1 模块槽</span>
           </button>` : '<span class="chip green">⚓ 旗舰已满级 Lv.3</span>'}
-        ${g.shipLevel > 0 && !draft.length ? `
-          <button class="btn btn-gold btn-lg" onclick="sendAction('draftModules')"
-            title="${slotsFull ? '槽位已满，抽取后可替换现有模块' : '抽取3个模块，选择一个安装到空置槽位'}">
-            🔧 ${slotsFull ? '抽取并替换模块' : '抽取并安装模块'}
+        ${!draft.length ? `
+          <button class="btn ${g.shipLevel > 0 ? 'btn-gold' : 'btn-grey'} btn-lg" ${g.shipLevel > 0 ? '' : 'disabled'}
+            onclick="sendAction('draftModules')"
+            title="${g.shipLevel > 0
+              ? (slotsFull ? '槽位已满，抽取后可替换现有模块' : '抽取3个模块，选择一个安装到空置槽位')
+              : '商船升至 Lv.1 后解锁模块槽位，方可抽取船舶模块'}">
+            ${g.shipLevel > 0
+              ? `🔧 ${slotsFull ? '抽取并替换模块' : '抽取并安装模块'}`
+              : '🔒 抽取并安装模块<span class="btn-sub">需先升级商船解锁槽位</span>'}
           </button>` : ''}
         <button class="btn btn-success btn-lg" onclick="sendAction('ready_for_next_phase')" title="双方确认后开始下一航程">⏭️ 结束本航程<span class="btn-sub">双方确认后开启下一程</span></button>
       </div>
-      ${draft.length ? moduleDraftHTML(g, draft, slotsFull) : ''}
     </div>
   `;
 }
@@ -2163,7 +2264,11 @@ function bankruptcyHTML() {
       return `
         <div class="center-block">
           <div class="hero-title" style="-webkit-text-fill-color:initial;background:none;color:#e11d48">💥 船队破产 · 观战模式</div>
-          <p style="color:var(--ink-soft);margin:8px 0;text-align:center">正在观察 <strong>${escapeHtml(name)}</strong> 的商队状态（只读），等待对方结束本局后即可重新起航。</p>
+          <p style="color:var(--ink-soft);margin:8px 0;text-align:center">
+            正在实时观察 <strong>${escapeHtml(name)}</strong> 的商队（只读）——
+            对方当前处于<strong>「${phaseName(og.phase)}」</strong>阶段（第 ${og.currentRound} / ${og.maxRounds} 程）。
+            等待对方结束本局后即可一同重新起航。
+          </p>
           ${crewSectionsHTML(og)}
           <div class="status-section">
             <h3>📜 对方近期动态</h3>
@@ -2182,7 +2287,7 @@ function bankruptcyHTML() {
   return `
     <div class="center-block" style="text-align:center">
       <div style="font-size:80px">💥</div>
-      <div class="hero-title" style="-webkit-text-fill-color:initial;background:none;color:#e11d48">船队破产！</div>
+      <div class="hero-title" style="-webkit-text-fill-color:initial;background:none;color:#e11d48">💥 船队破产</div>
       <p style="color:var(--ink-soft);margin:8px 0">现金无法覆盖工资或维护费，商队被迫清算。</p>
       <div class="section-box" style="max-width:420px;margin:14px auto">
         <div class="stat-row" style="font-size:14px"><span>最终现金</span><strong>${g.money} 金币</strong></div>
@@ -2231,9 +2336,13 @@ function renderControls() {
   const g = serverState && serverState.yourGame;
   const c = document.getElementById('control-panel');
   if (!g || g.gameOver) {
+    const isBankrupt = g && g.bankrupt;
+    const partnerPlaying = serverState.otherGame && !serverState.otherGame.gameOver;
     c.innerHTML = `
-      <span class="sync-chip">🏁 本局已结束</span>
+      <span class="sync-chip">${isBankrupt ? '💥 船队破产' : '🏁 本局已结束'}</span>
+      ${partnerPlaying ? '<span class="control-hint">💡 伙伴仍在航行中，可进入观战模式实时围观</span>' : ''}
       <div class="control-spacer"></div>
+      ${isBankrupt && partnerPlaying ? `<button class="btn btn-ghost" onclick="toggleSpectate(true)">👀 观战伙伴</button>` : ''}
       <button class="btn btn-danger" onclick="confirmRestart()">🔄 重新起航</button>
       <button class="btn btn-ghost" onclick="showManual()">📖 手册</button>`;
     return;
@@ -2340,7 +2449,7 @@ const MANUAL_CONTENT = {
     <table>
       <tr><th>阶段</th><th>你要做什么</th><th>推进条件</th></tr>
       <tr><td>⚓ 启航</td><td>确认开始本回合</td><td>双方点击「扬帆起航」</td></tr>
-      <tr><td>🧭 福缘</td><td>从 8 张福缘卡中选 1 张，仅本回合生效</td><td>双方各自锁定福缘</td></tr>
+      <tr><td>🧭 福缘</td><td>从随机抽出的 4 张福缘卡中选 1 张（双方组合不同），仅本回合生效</td><td>双方各自锁定福缘</td></tr>
       <tr><td>🛒 采购</td><td>从 5 张进货卡中购买原料/成品（每张限购一次）</td><td>双方点击「完成采购」</td></tr>
       <tr><td>🤝 互市</td><td>与伙伴自由交易货物与金币</td><td>双方点击「准备就绪」</td></tr>
       <tr><td>👥 工匠</td><td>雇佣/解雇工匠，分配生产任务（立即耗料）</td><td>双方点击「完成工匠管理」</td></tr>
@@ -2410,7 +2519,7 @@ const MANUAL_CONTENT = {
     </ul>
   `,
   boons: `
-    <h4>🍀 福缘图鉴（每回合开始时八选一，仅当回合生效）</h4>
+    <h4>🍀 福缘图鉴（每回合「航海家的罗盘」从下表随机抽 4 张供你选 1 张；双方抽到的组合各不相同，仅当回合生效）</h4>
     <table>
       <tr><th>福缘</th><th>效果</th><th>适合时机</th></tr>
       <tr><td>🌬️ 丝路顺风</td><td>丝绸及成品运费减半</td><td>本回合要交付大量成品订单</td></tr>
@@ -2443,7 +2552,7 @@ const MANUAL_CONTENT = {
       <li><strong>点了按钮没反应 / 一直在等待？</strong>——大概率在等对方确认。看底部「双方就绪 n/2」，并用 💬 聊天催一下伙伴。</li>
       <li><strong>材料明明够却无法分配生产？</strong>——可能所有工匠都已有任务；每名工匠每回合仅能接一个任务。</li>
       <li><strong>为什么突然破产了？</strong>——结算阶段现金不足以支付工资或维护费。扩编工匠前，先看左侧「⚠️ 本回合应付款项」。</li>
-      <li><strong>破产后还能玩吗？</strong>——本局出局，但不会阻塞对方；等伙伴结束后点「重新起航」即可同开新局。</li>
+      <li><strong>破产后还能玩吗？</strong>——本局出局，但可点「👀 观战伙伴」实时围观对方航行，也不会阻塞对方；等伙伴结束后点「重新起航」即可同开新局。</li>
       <li><strong>对方掉线怎么办？</strong>——会话保留在服务器，对方重新登录即恢复；期间无法聊天和互市成交。</li>
       <li><strong>声望（信誉值）是什么？</strong>——每笔订单「报酬 − 运费」的累计，是最终评级唯一依据，不会被消费扣减。</li>
     </ul>

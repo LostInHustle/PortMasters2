@@ -132,7 +132,7 @@ class PlayerGame:
         self.phase2DemandTags = []
         self.revealedIntel = []
         self.intelCost = 5
-        self.intelOrderUsed = False
+        self.boonChoices = []
         self.equippedModules = []
         self.draftChoices = []
         self.lastLogs = []
@@ -232,13 +232,17 @@ class PlayerGame:
         return {"demandPort": port, "resources": [{"type": product, "required": req}], "reward": base_price * req, "totalItems": req, "isProductOrder": True}
 
     def gen_mixed_order(self):
-        if self.revealedIntel and not self.intelOrderUsed:
-            intel = choice(self.revealedIntel)
-            self.intelOrderUsed = True
+        # 每条已购密语精确兑现为一张订单：货品与港口都与密语一致
+        intel = next((i for i in self.revealedIntel if not i.get("used")), None)
+        if intel:
+            intel["used"] = True
             if intel["item"] in RESOURCES:
-                return self.gen_raw_order(intel["item"])
-            if intel["item"] in PRODUCTS:
-                return self.gen_product_order(intel["item"])
+                order = self.gen_raw_order(intel["item"])
+            else:
+                order = self.gen_product_order(intel["item"])
+            order["demandPort"] = intel["port"]
+            order["fromIntel"] = True
+            return order
         return self.gen_raw_order() if random.random() < 0.5 else self.gen_product_order()
 
     def gen_resource_card(self):
@@ -388,19 +392,18 @@ class PlayerGame:
         if self.money < self.intelCost:
             self.log(f"❌ 需要{self.intelCost}金币才能购买消息")
             return False
+        # 每次购买只收一次费用；装备「牙行网络」时一次揭示2条线索
         count = 2 if self.has_module("brokers_network") else 1
-        bought = False
+        self.money -= self.intelCost
         for _ in range(count):
-            if not self.phase2DemandTags or self.money < self.intelCost:
+            if not self.phase2DemandTags:
                 break
             item = choice(self.phase2DemandTags)
             self.phase2DemandTags.remove(item)
             port = choice(PORTS)
-            self.revealedIntel.append({"item": item, "port": port})
-            self.money -= self.intelCost
+            self.revealedIntel.append({"item": item, "port": port, "used": False})
             self.log(f"🗣️ 牙行密语：'来自{port}的消息，对{item}的需求很大！'")
-            bought = True
-        return bought
+        return True
 
     def hire_worker(self, wtype):
         wage = self.get_hire_cost(wtype)
@@ -508,7 +511,7 @@ class PlayerGame:
         self.modifierFlags = {}
         self.phase2DemandTags = []
         self.revealedIntel = []
-        self.intelOrderUsed = False
+        self.boonChoices = []
         self.roundRevenue = 0
         self.roundCosts = 0
         self.maintenanceCosts = 0
@@ -550,7 +553,9 @@ class PlayerGame:
             "intelCost": self.intelCost,
             "revealedIntel": self.revealedIntel,
             "intelRemaining": len(self.phase2DemandTags),
+            "boonChoices": self.boonChoices,
             "gameOver": self.gameOver,
+            "bankrupt": self.bankrupt,
             "fixedCost": self.fixedCost,
             "maintenancePenalty": self.maintenancePenalty,
             "workerWages": self.workerWages,
@@ -641,8 +646,10 @@ class SharedSession:
         return self.games[0].phase
 
     def _set_phase(self, phase):
+        # 终局状态（破产/完赛）的玩家停留在各自的终局页面，不再跟随会话阶段推进
         for g in self.games:
-            g.phase = phase
+            if not g.gameOver:
+                g.phase = phase
 
     def gate_complete(self):
         # 已破产/已结束的玩家视为自动准备，避免阻塞对方
@@ -661,22 +668,22 @@ class SharedSession:
         phase = self._active_phase()
         if phase == 0:
             self._set_phase(5)
+            # 每位玩家从福缘池中独立随机抽取4张，互不可见、互不相同
+            for g in self.games:
+                if not g.gameOver:
+                    g.boonChoices = random.sample(BOONS, 4)
         elif phase == 5:
             self._set_phase(1)
             for g in self.games:
+                if g.gameOver:
+                    continue
                 g.resourceCards = []
                 for i in range(5):
                     c = g.gen_resource_card()
                     c["id"] = i
                     g.resourceCards.append(c)
-                g.phase2DemandTags = []
-                all_items = RESOURCES + PRODUCTS
-                for _ in range(5):
-                    t = choice(all_items)
-                    if t not in g.phase2DemandTags:
-                        g.phase2DemandTags.append(t)
+                g.phase2DemandTags = random.sample(RESOURCES + PRODUCTS, 5)
                 g.revealedIntel = []
-                g.intelOrderUsed = False
         elif phase == 1:
             self._set_phase("trade")
             self.trade_ready = [False, False]
@@ -684,6 +691,8 @@ class SharedSession:
         elif phase == "worker_mgmt":
             self._set_phase(2)
             for g in self.games:
+                if g.gameOver:
+                    continue
                 g.customerCards = []
                 for i in range(5):
                     o = g.gen_mixed_order()
@@ -701,7 +710,7 @@ class SharedSession:
                     g.phase = "bankruptcy"
         elif phase == 3:
             for g in self.games:
-                if not g.bankrupt:
+                if not g.gameOver:
                     g.phase = 4
         elif phase == 4:
             for g in self.games:
@@ -823,6 +832,7 @@ class SharedSession:
                 "yourGame": game.to_dict(),
                 "otherGame": other.to_dict(),
                 "waitingForOther": self.waiting_message(slot),
+                "youReady": slot in self.ready,
                 "yourSlot": slot + 1,
                 "partnerName": self.players[1 - slot],
                 "partnerOnline": self.players[1 - slot] in ONLINE
@@ -945,6 +955,10 @@ async def handle_game_action(username, data):
     phase = game.phase
     changed = False
 
+    # 终局玩家（破产/完赛）只允许观战相关的只读操作与重开
+    if game.gameOver and action not in ("join_game", "restart"):
+        return
+
     if action == "join_game":
         changed = True
     elif action == "startBoon":
@@ -955,7 +969,9 @@ async def handle_game_action(username, data):
                 sess.advance()
     elif action == "selectBoon":
         if phase == 5 and slot not in sess.ready:
-            boon = next((b for b in BOONS if b["id"] == data.get("boonId")), None)
+            # 只能从本回合发给该玩家的4张福缘中选择
+            pool = game.boonChoices or BOONS
+            boon = next((b for b in pool if b["id"] == data.get("boonId")), None)
             if boon:
                 game.apply_boon(boon)
                 sess.ready.add(slot)
