@@ -1639,6 +1639,7 @@ function renderPhase() {
   const p = document.getElementById('phase-panel');
   const g = serverState.yourGame;
   if (!g) return;
+  if (g.phase !== 'bankruptcy') _spectating = false;
   let inner = '';
   switch (g.phase) {
     case 0: inner = welcomeHTML(); break;
@@ -1757,8 +1758,31 @@ function purchaseHTML() {
         `;
       }).join('')}
     </div>
+    ${rumorBoardHTML(g)}
     <div style="text-align:center; margin-top:22px">
       <button class="btn btn-lg" onclick="sendAction('ready_for_next_phase')" title="确认后等待对方，双方都确认即进入互市">✅ 完成采购，进入互市<span class="btn-sub">双方确认后同步推进</span></button>
+    </div>
+  `;
+}
+
+function rumorBoardHTML(g) {
+  const revealed = g.revealedIntel || [];
+  const remaining = g.intelRemaining || 0;
+  const canBuy = remaining > 0 && g.money >= g.intelCost;
+  return `
+    <div class="section-box" style="max-width:640px;margin:18px auto">
+      <h3 style="margin-bottom:6px">🗣️ 牙行密语板</h3>
+      <div class="section-hint">花费金币打探下一阶段（贸易交易）的货物需求，提前备好对应货物即可稳赚保底订单。</div>
+      <div style="margin:10px 0">
+        <button class="btn btn-gold" ${canBuy ? '' : 'disabled'} onclick="sendAction('purchaseIntel')"
+          title="${remaining > 0 ? '花费金币购买一条密语' : '本回合密语已打探完毕'}">
+          🔮 购买密语 (${g.intelCost}💰)${remaining > 0 ? ` · 剩余 ${remaining} 条` : ' · 已无更多'}
+        </button>
+      </div>
+      ${revealed.length ? `
+        <div style="font-weight:700;color:var(--ink-soft);margin-bottom:6px">📜 已打探消息：</div>
+        ${revealed.map(i => `<div class="stat-row" style="font-size:13px">🗣️ '${escapeHtml(i.port)} 求购 ${escapeHtml(i.item)}'</div>`).join('')}
+      ` : `<div class="muted" style="padding:10px 0;text-align:center">✨ 尚未打探到任何消息...花费金币聆听牙行的密语吧。</div>`}
     </div>
   `;
 }
@@ -2054,6 +2078,9 @@ function shipyardHTML() {
   const g = serverState.yourGame;
   const canUpgrade = g.shipLevel < 3;
   const upgCost = canUpgrade ? (g.shipUpgradeCost ? g.shipUpgradeCost[g.shipLevel] : [15, 25, 40][g.shipLevel]) + (g.shipUpgradePenalty || 0) : 0;
+  const slots = (g.equippedModules || []).length;
+  const slotsFull = g.shipLevel > 0 && slots >= g.shipLevel;
+  const draft = g.draftChoices || [];
   return `
     ${phaseBriefHTML(4)}
     <div class="center-block">
@@ -2061,7 +2088,7 @@ function shipyardHTML() {
         <h3>🚢 旗舰档案</h3>
         <div class="stat-row" style="font-size:13px"><span>当前等级</span><strong>Lv.${g.shipLevel} / 3</strong></div>
         <div class="stat-row" style="font-size:13px"><span class="tip" data-tip="每单运费 = max(5, 件数×2 − 此减免)">运费永久减免</span><strong>−${g.shipLevel * 5} 金币/单</strong></div>
-        <div class="stat-row" style="font-size:13px"><span>模块槽位</span><strong>${(g.equippedModules || []).length} / ${g.shipLevel}</strong></div>
+        <div class="stat-row" style="font-size:13px"><span>模块槽位</span><strong>${slots} / ${g.shipLevel}</strong></div>
         <div style="margin-top:6px">${modulesHTML(g)}</div>
       </div>
       <div style="text-align:center;display:flex;gap:12px;justify-content:center;flex-wrap:wrap">
@@ -2070,14 +2097,88 @@ function shipyardHTML() {
             title="升级后每单运费永久再减5金币，并增加1个模块槽位">
             ⚓ 升级商船至 Lv.${g.shipLevel + 1}（${upgCost}💰）<span class="btn-sub">运费/单再 −5 金币 · +1 模块槽</span>
           </button>` : '<span class="chip green">⚓ 旗舰已满级 Lv.3</span>'}
+        ${g.shipLevel > 0 && !draft.length ? `
+          <button class="btn btn-gold btn-lg" onclick="sendAction('draftModules')"
+            title="${slotsFull ? '槽位已满，抽取后可替换现有模块' : '抽取3个模块，选择一个安装到空置槽位'}">
+            🔧 ${slotsFull ? '抽取并替换模块' : '抽取并安装模块'}
+          </button>` : ''}
         <button class="btn btn-success btn-lg" onclick="sendAction('ready_for_next_phase')" title="双方确认后开始下一航程">⏭️ 结束本航程<span class="btn-sub">双方确认后开启下一程</span></button>
+      </div>
+      ${draft.length ? moduleDraftHTML(g, draft, slotsFull) : ''}
+    </div>
+  `;
+}
+
+function moduleDraftHTML(g, draft, slotsFull) {
+  return `
+    <div class="section-box" style="max-width:780px;margin:18px auto">
+      <h3>🔧 模块抽取</h3>
+      <div class="section-hint">${slotsFull ? '模块槽位已满，选择一个新模块后需指定要替换的现有模块。' : '选择一个模块安装到空置槽位。'}</div>
+      <div class="card-grid">
+        ${draft.map((m, i) => `
+          <div class="card">
+            <div class="card-header"><span>${m.icon} ${escapeHtml(m.name)}</span></div>
+            <div class="card-body" style="font-size:12.5px">${escapeHtml(m.desc)}</div>
+            <div class="card-footer">
+              ${slotsFull ? `
+                <div style="display:flex;flex-direction:column;gap:6px">
+                  ${(g.equippedModules || []).map((old, j) => `
+                    <button class="btn btn-danger" style="width:100%;font-size:11.5px"
+                      onclick="sendAction('equipModule', {choiceIndex:${i}, swapIndex:${j}})">
+                      🔁 替换 ${old.icon} ${escapeHtml(old.name)}
+                    </button>
+                  `).join('')}
+                </div>
+              ` : `
+                <button class="btn btn-success" style="width:100%" onclick="sendAction('equipModule', {choiceIndex:${i}})">✅ 安装</button>
+              `}
+            </div>
+          </div>
+        `).join('')}
+      </div>
+      <div style="text-align:center;margin-top:10px">
+        <button class="btn btn-ghost" onclick="sendAction('cancelModuleDraft')">❌ 放弃本次抽取</button>
       </div>
     </div>
   `;
 }
 
+let _spectating = false;
+
+function toggleSpectate(on) {
+  _spectating = on;
+  renderPhase();
+}
+
 function bankruptcyHTML() {
   const g = serverState.yourGame;
+  const og = serverState.otherGame;
+  const name = serverState.partnerName || chatPartner || '伙伴';
+
+  if (_spectating) {
+    if (!og) {
+      _spectating = false;
+    } else {
+      const recentLogs = (og.logs || []).slice(-6);
+      return `
+        <div class="center-block">
+          <div class="hero-title" style="-webkit-text-fill-color:initial;background:none;color:#e11d48">💥 船队破产 · 观战模式</div>
+          <p style="color:var(--ink-soft);margin:8px 0;text-align:center">正在观察 <strong>${escapeHtml(name)}</strong> 的商队状态（只读），等待对方结束本局后即可重新起航。</p>
+          ${crewSectionsHTML(og)}
+          <div class="status-section">
+            <h3>📜 对方近期动态</h3>
+            ${recentLogs.length
+              ? recentLogs.map(m => `<div class="stat-row" style="font-size:11px;color:var(--ink-soft)">${escapeHtml(m)}</div>`).join('')
+              : '<span class="muted">暂无动态</span>'}
+          </div>
+          <div style="text-align:center;margin-top:12px">
+            <button class="btn btn-lg" onclick="toggleSpectate(false)">⬅️ 返回破产结算页</button>
+          </div>
+        </div>
+      `;
+    }
+  }
+
   return `
     <div class="center-block" style="text-align:center">
       <div style="font-size:80px">💥</div>
@@ -2088,7 +2189,11 @@ function bankruptcyHTML() {
         <div class="stat-row" style="font-size:14px"><span>最终声望</span><strong>${g.score}</strong></div>
       </div>
       ${pm1HintHTML('破产并不可怕——多半是工资与维护费规划失衡。')}
-      <button class="btn btn-lg" onclick="confirmRestart()" title="需等待对方也结束本局，双方进度将一同重置">🔄 重新起航</button>
+      <p style="color:var(--ink-soft);margin:8px 0">本局已结束，需等待 <strong>${escapeHtml(name)}</strong> 完成或结束比赛后才能重新起航。</p>
+      <div style="display:flex;justify-content:center;gap:10px;flex-wrap:wrap">
+        <button class="btn btn-lg" onclick="confirmRestart()" title="需等待对方也结束本局，双方进度将一同重置">🔄 重新起航</button>
+        ${og ? `<button class="btn btn-lg btn-ghost" onclick="toggleSpectate(true)">👀 进入观战模式</button>` : ''}
+      </div>
     </div>
   `;
 }

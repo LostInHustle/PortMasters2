@@ -64,6 +64,17 @@ BOONS = [
     {"id": "master_apprentice", "name": "学徒传承", "icon": "🎓", "desc": "本回合雇佣工资减半。", "modifiers": {"hire_discount": 0.5}}
 ]
 
+MODULES = [
+    {"id": "smugglers_hold", "name": "走私暗舱", "icon": "🏴‍☠️", "desc": "采购成本-15%。所得税+20%。"},
+    {"id": "bulk_hauler", "name": "散货索具", "icon": "🏗️", "desc": "每件货物运费-1。船坞升级费用+15金币。"},
+    {"id": "artisans_workshop", "name": "工匠工坊", "icon": "🛠️", "desc": "工人产量+1。工资+20%。"},
+    {"id": "tax_evasion", "name": "避税账本", "icon": "📒", "desc": "所得税按增值税后利润计。15%概率在订单完成时罚款20金币(稽查)。"},
+    {"id": "silk_monopoly", "name": "丝路垂断", "icon": "🐍", "desc": "丝绸运费为0。丝绸产品订单收入+20%。"},
+    {"id": "brokers_network", "name": "牙行网络", "icon": "🕵️", "desc": "每次花费2金币。每次购买密语显示2条线索。"},
+    {"id": "salvage_crane", "name": "打捞起重机", "icon": "♻️", "desc": "30%概率在订单完成时退还运费。"},
+    {"id": "overdrive_engine", "name": "超载引擎", "icon": "⚡", "desc": "运费-5金币。维护费+10金币。"}
+]
+
 INVITE_COOLDOWN = 60          # 邀请冷却 / 超时时间（秒）
 CHAT_HISTORY_LIMIT = 200      # 每个会话保留的聊天记录条数
 
@@ -116,12 +127,14 @@ class PlayerGame:
         self.purchaseCount = 0
         self.orderCount = 0
         self.gameOver = False
+        self.bankrupt = False
         self.modifierFlags = {}
         self.phase2DemandTags = []
         self.revealedIntel = []
         self.intelCost = 5
         self.intelOrderUsed = False
         self.equippedModules = []
+        self.draftChoices = []
         self.lastLogs = []
         # 注入 slot 信息（由 SharedSession 设置）
         self.slot = None
@@ -333,6 +346,62 @@ class PlayerGame:
         self.log(f"📦 订单完成，净利润{reward - transport}金币")
         return True
 
+    # ---------- 船坞模块 ----------
+    def start_module_draft(self):
+        if self.shipLevel == 0:
+            self.log("❌ 旗舰尚无模块槽位，请先升级船坞")
+            return False
+        available = [m for m in MODULES if not self.has_module(m["id"])]
+        pool = available if len(available) >= 3 else MODULES
+        copy = pool[:]
+        random.shuffle(copy)
+        self.draftChoices = copy[:3]
+        return True
+
+    def equip_module(self, mod, swap_idx=None):
+        if swap_idx is not None:
+            if swap_idx < 0 or swap_idx >= len(self.equippedModules):
+                return False
+            old = self.equippedModules[swap_idx]
+            if old["id"] == "bulk_hauler": self.shipUpgradePenalty -= 15
+            if old["id"] == "overdrive_engine": self.maintenancePenalty -= 10
+            if old["id"] == "brokers_network": self.intelCost = 5
+            self.equippedModules[swap_idx] = mod
+            self.log(f"🔄 将 {old['name']} 替换为 {mod['name']}！")
+        else:
+            if len(self.equippedModules) < self.shipLevel:
+                self.equippedModules.append(mod)
+                self.log(f"✅ 安装了 {mod['name']}！")
+            else:
+                self.log("❌ 没有空置槽位，必须替换现有模块")
+                return False
+        if mod["id"] == "bulk_hauler": self.shipUpgradePenalty += 15
+        if mod["id"] == "overdrive_engine": self.maintenancePenalty += 10
+        if mod["id"] == "brokers_network": self.intelCost = 2
+        self.draftChoices = []
+        return True
+
+    def purchase_intel(self):
+        if not self.phase2DemandTags:
+            self.log("🔮 牙行已无更多密语...")
+            return False
+        if self.money < self.intelCost:
+            self.log(f"❌ 需要{self.intelCost}金币才能购买消息")
+            return False
+        count = 2 if self.has_module("brokers_network") else 1
+        bought = False
+        for _ in range(count):
+            if not self.phase2DemandTags or self.money < self.intelCost:
+                break
+            item = choice(self.phase2DemandTags)
+            self.phase2DemandTags.remove(item)
+            port = choice(PORTS)
+            self.revealedIntel.append({"item": item, "port": port})
+            self.money -= self.intelCost
+            self.log(f"🗣️ 牙行密语：'来自{port}的消息，对{item}的需求很大！'")
+            bought = True
+        return bought
+
     def hire_worker(self, wtype):
         wage = self.get_hire_cost(wtype)
         if self.money < wage:
@@ -466,6 +535,7 @@ class PlayerGame:
             "maxRounds": self.maxRounds,
             "shipLevel": self.shipLevel,
             "equippedModules": self.equippedModules,
+            "draftChoices": self.draftChoices,
             "phase": self.phase,
             "resourceCards": self.resourceCards,
             "customerCards": self.customerCards,
@@ -479,6 +549,7 @@ class PlayerGame:
             "modifierFlags": self.modifierFlags,
             "intelCost": self.intelCost,
             "revealedIntel": self.revealedIntel,
+            "intelRemaining": len(self.phase2DemandTags),
             "gameOver": self.gameOver,
             "fixedCost": self.fixedCost,
             "maintenancePenalty": self.maintenancePenalty,
@@ -598,6 +669,14 @@ class SharedSession:
                     c = g.gen_resource_card()
                     c["id"] = i
                     g.resourceCards.append(c)
+                g.phase2DemandTags = []
+                all_items = RESOURCES + PRODUCTS
+                for _ in range(5):
+                    t = choice(all_items)
+                    if t not in g.phase2DemandTags:
+                        g.phase2DemandTags.append(t)
+                g.revealedIntel = []
+                g.intelOrderUsed = False
         elif phase == 1:
             self._set_phase("trade")
             self.trade_ready = [False, False]
@@ -618,13 +697,19 @@ class SharedSession:
                 g.process_production()
                 if not g.pay_wages():
                     g.gameOver = True
+                    g.bankrupt = True
+                    g.phase = "bankruptcy"
         elif phase == 3:
-            self._set_phase(4)
+            for g in self.games:
+                if not g.bankrupt:
+                    g.phase = 4
         elif phase == 4:
             for g in self.games:
                 if not g.gameOver:
                     g.end_round()
-                g.phase = "endgame" if g.gameOver else 0
+                    g.phase = "endgame" if g.gameOver else 0
+                elif g.bankrupt:
+                    g.phase = "bankruptcy"
         self.ready.clear()
 
     def complete_trade_gate(self):
@@ -711,7 +796,10 @@ class SharedSession:
         return True
 
     def reject_trade(self, order_id):
-        self.trade_orders = [o for o in self.trade_orders if o["id"] != order_id]
+        order = next((o for o in self.trade_orders if o["id"] == order_id), None)
+        if order:
+            self.trade_orders.remove(order)
+        return order
 
     # ---------- 聊天 ----------
     def add_chat(self, sender, message):
@@ -886,6 +974,10 @@ async def handle_game_action(username, data):
             if card and card["id"] not in game.purchasedCards:
                 game.purchase_card(card)
             changed = True
+    elif action == "purchaseIntel":
+        if phase == 1:
+            game.purchase_intel()
+            changed = True
     elif action == "setTradeReady":
         if phase == "trade":
             sess.trade_ready[slot] = True
@@ -904,7 +996,16 @@ async def handle_game_action(username, data):
             changed = True
     elif action == "rejectTrade":
         if phase == "trade":
-            sess.reject_trade(data.get("orderId"))
+            order = sess.reject_trade(data.get("orderId"))
+            if order:
+                seller = sess.players[order["sellerSlot"]]
+                if seller != username:
+                    sell_txt = "、".join(f"{i['type']}×{i['quantity']}" for i in order["sell"])
+                    buy_txt = "、".join(f"{i['type']}×{i['quantity']}" for i in order["buy"])
+                    await send_to_user(seller, {
+                        "type": "system_message",
+                        "message": f"❌ 对方拒绝了你的互市提案（出 {sell_txt} ⇄ 换 {buy_txt}）"
+                    })
             changed = True
     elif action == "hireWorker":
         if phase == "worker_mgmt" and data.get("workerType") in WAGES:
@@ -928,6 +1029,8 @@ async def handle_game_action(username, data):
         if phase == 3 and slot not in sess.ready:
             if not game.pay_maintenance():
                 game.gameOver = True
+                game.bankrupt = True
+                game.phase = "bankruptcy"
             sess.ready.add(slot)
             changed = True
             if sess.gate_complete():
@@ -938,6 +1041,24 @@ async def handle_game_action(username, data):
             if game.money >= cost:
                 game.money -= cost
                 game.shipLevel += 1
+            changed = True
+    elif action == "draftModules":
+        if phase == 4:
+            game.start_module_draft()
+            changed = True
+    elif action == "equipModule":
+        if phase == 4:
+            idx = data.get("choiceIndex")
+            if isinstance(idx, int) and 0 <= idx < len(game.draftChoices):
+                mod = game.draftChoices[idx]
+                swap_idx = data.get("swapIndex")
+                if not (isinstance(swap_idx, int) and 0 <= swap_idx < len(game.equippedModules)):
+                    swap_idx = None
+                game.equip_module(mod, swap_idx)
+            changed = True
+    elif action == "cancelModuleDraft":
+        if phase == 4:
+            game.draftChoices = []
             changed = True
     elif action == "restart":
         # 仅当对方也已结束（结算完毕或破产）时才允许重置整个会话，保证双方同步
