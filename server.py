@@ -10,17 +10,18 @@ PortMasters 多人联机服务器 v4（账号版）
   通过“继续 (n / 2)”机制同步推进
 - 互市阶段需双方都点击“准备就绪”才同步进入工匠管理
 - 聊天系统：会话双方在线时可互发消息，离线时禁止发送
-- HTTP : 8081, WebSocket : 8080
+- 网页与 WebSocket 共用同一端口 8080（便于单条 ngrok 隧道穿透并支持 wss）
 """
 
 import asyncio
 import json
 import math
 import random
-import threading
-import http.server
-import socketserver
+import http
+import mimetypes
 import websockets
+from websockets.datastructures import Headers
+from websockets.http11 import Response
 import os
 import time
 import hashlib
@@ -1025,28 +1026,39 @@ async def handler(websocket):
                     SESSIONS.pop(username, None)
                     SESSIONS.pop(partner, None)
 
-# -------------------- HTTP 静态文件服务器 --------------------
-class StaticHandler(http.server.SimpleHTTPRequestHandler):
-    def do_GET(self):
-        if self.path == '/' or self.path == '':
-            self.path = '/PortMasters_online.html'
-        if self.path == '/favicon.ico':
-            self.send_response(204)
-            self.end_headers()
-            return
-        return super().do_GET()
+# -------------------- HTTP 静态文件服务（与 WebSocket 共用同一端口） --------------------
+# 说明：将静态文件服务并入 WebSocket 端口，便于通过单条 ngrok 隧道（如 ngrok http 8080）
+# 同时穿透网页与 WebSocket，并自动适配 https/wss，避免浏览器混合内容限制。
+WEB_ROOT = os.path.dirname(os.path.abspath(__file__))
 
-def start_http_server():
-    os.chdir(os.path.dirname(os.path.abspath(__file__)))
-    httpd = socketserver.TCPServer(("", 8081), StaticHandler)
-    print(f"✅ HTTP 服务器启动在 http://0.0.0.0:8081")
-    httpd.serve_forever()
+async def process_request(connection, request):
+    # WebSocket 升级请求放行，交由 handler 处理
+    if request.headers.get("Upgrade", "").lower() == "websocket":
+        return None
+
+    path = request.path.split("?", 1)[0]
+    if path in ("/", ""):
+        path = "/PortMasters_online.html"
+    if path == "/favicon.ico":
+        return connection.respond(http.HTTPStatus.NO_CONTENT, "")
+
+    file_path = os.path.normpath(os.path.join(WEB_ROOT, path.lstrip("/")))
+    if not (file_path == WEB_ROOT or file_path.startswith(WEB_ROOT + os.sep)) or not os.path.isfile(file_path):
+        return connection.respond(http.HTTPStatus.NOT_FOUND, "Not Found")
+
+    content_type, _ = mimetypes.guess_type(file_path)
+    with open(file_path, "rb") as f:
+        body = f.read()
+    return Response(
+        http.HTTPStatus.OK, "OK",
+        Headers({"Content-Type": content_type or "application/octet-stream",
+                 "Content-Length": str(len(body))}),
+        body
+    )
 
 async def main():
-    http_thread = threading.Thread(target=start_http_server, daemon=True)
-    http_thread.start()
-    async with websockets.serve(handler, "0.0.0.0", 8080):
-        print(f"✅ WebSocket 服务器启动在 ws://0.0.0.0:8080")
+    async with websockets.serve(handler, "0.0.0.0", 8080, process_request=process_request):
+        print(f"✅ 服务器启动：网页 http://0.0.0.0:8080 ，WebSocket ws://0.0.0.0:8080")
         await asyncio.Future()
 
 if __name__ == "__main__":
