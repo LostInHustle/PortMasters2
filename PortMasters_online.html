@@ -1,0 +1,2443 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PortMasters 2 · 海上丝绸之路（双人联机版）</title>
+<style>
+/* ============================================================
+   PortMasters 2 — Design System
+   明亮自然 · 海洋玻璃质感 · 平滑渐变 · 近未来（~2030）审美
+   层级体系（由低到高）：背景装饰 < 聊天窗 < 全屏覆盖层 < 对话框 < 通知
+   ============================================================ */
+:root {
+  --z-chat: 900;
+  --z-overlay: 1000;
+  --z-modal: 2000;
+  --z-toast: 3000;
+
+  /* 海上丝路色板 */
+  --ocean-950: #082f49;
+  --ocean-900: #0c4a6e;
+  --ocean-700: #0369a1;
+  --ocean-500: #0ea5e9;
+  --ocean-300: #7dd3fc;
+  --ocean-100: #e0f2fe;
+  --teal-500: #14b8a6;
+  --teal-300: #5eead4;
+  --gold-500: #f59e0b;
+  --gold-300: #fcd34d;
+  --sand-100: #fef3c7;
+  --coral-500: #f43f5e;
+  --ink: #0f172a;
+  --ink-soft: #475569;
+  --ink-faint: #94a3b8;
+
+  --glass: rgba(255, 255, 255, 0.72);
+  --glass-strong: rgba(255, 255, 255, 0.88);
+  --glass-border: rgba(255, 255, 255, 0.65);
+
+  --radius-lg: 20px;
+  --radius-md: 14px;
+  --radius-sm: 10px;
+
+  --shadow-soft: 0 8px 30px rgba(3, 72, 118, 0.10);
+  --shadow-float: 0 16px 44px rgba(3, 72, 118, 0.16);
+
+  --grad-primary: linear-gradient(135deg, #38bdf8, #0284c7);
+  --grad-success: linear-gradient(135deg, #34d399, #0d9488);
+  --grad-warning: linear-gradient(135deg, #fbbf24, #f97316);
+  --grad-danger:  linear-gradient(135deg, #fb7185, #e11d48);
+  --grad-gold:    linear-gradient(135deg, #fde68a, #f59e0b);
+  --grad-grey:    linear-gradient(135deg, #cbd5e1, #94a3b8);
+  --grad-deep:    linear-gradient(120deg, #075985, #0369a1 55%, #0d9488);
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+html { scroll-behavior: smooth; }
+
+body {
+  font-family: "PingFang SC", "Noto Sans SC", "Microsoft YaHei", -apple-system, "Segoe UI", sans-serif;
+  background:
+    linear-gradient(180deg, #f0f9ff 0%, #e0f2fe 38%, #ccfbf1 100%) fixed;
+  color: var(--ink);
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+
+/* ---- 背景流光（缓慢漂浮的自然光斑） ---- */
+.bg-orb {
+  position: fixed;
+  border-radius: 50%;
+  filter: blur(90px);
+  z-index: -1;
+  pointer-events: none;
+  animation: drift 26s ease-in-out infinite alternate;
+}
+.orb-1 { width: 520px; height: 520px; background: rgba(125, 211, 252, .55); top: -140px; left: -120px; }
+.orb-2 { width: 460px; height: 460px; background: rgba(94, 234, 212, .50); bottom: -160px; right: -100px; animation-delay: -8s; }
+.orb-3 { width: 380px; height: 380px; background: rgba(253, 230, 138, .40); top: 38%; left: 58%; animation-delay: -16s; }
+@keyframes drift {
+  from { transform: translate3d(0, 0, 0) scale(1); }
+  to   { transform: translate3d(48px, -36px, 0) scale(1.12); }
+}
+
+a { color: var(--ocean-700); }
+
+::selection { background: rgba(56, 189, 248, .30); }
+
+/* ---- 主布局：左我方 / 中舞台 / 右伙伴 ---- */
+#app {
+  max-width: 1720px;
+  margin: 0 auto;
+  padding: 14px;
+  display: grid;
+  grid-template-columns: 300px minmax(0, 1fr) 300px;
+  grid-template-rows: auto 1fr auto auto;
+  grid-template-areas:
+    "header  header  header"
+    "me      main    partner"
+    "actions actions actions"
+    "log     log     log";
+  gap: 12px;
+  min-height: 100vh;
+}
+
+.panel {
+  background: var(--glass);
+  backdrop-filter: blur(18px) saturate(1.35);
+  -webkit-backdrop-filter: blur(18px) saturate(1.35);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-soft);
+}
+
+/* ---- 顶栏 ---- */
+.header {
+  grid-area: header;
+  background: var(--grad-deep);
+  color: #fff;
+  padding: 14px 22px;
+  border-radius: var(--radius-lg);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+  box-shadow: var(--shadow-float);
+  position: relative;
+  overflow: hidden;
+}
+.header::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(1100px 130px at 18% -40%, rgba(255,255,255,.22), transparent 60%);
+  pointer-events: none;
+}
+.brand { display: flex; align-items: center; gap: 14px; }
+.brand .logo { font-size: 32px; filter: drop-shadow(0 2px 6px rgba(0,0,0,.25)); }
+.brand h1 {
+  font-size: 22px;
+  letter-spacing: .5px;
+  background: linear-gradient(120deg, #fff, #fde68a 70%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+.brand .gen-badge {
+  display: inline-block;
+  vertical-align: 3px;
+  margin-left: 8px;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 1px;
+  color: #451a03;
+  background: var(--grad-gold);
+  border-radius: 999px;
+  padding: 2px 9px;
+  -webkit-text-fill-color: #451a03;
+  box-shadow: 0 2px 6px rgba(245, 158, 11, .4);
+}
+.brand .subtitle { color: rgba(224, 242, 254, .9); font-size: 12px; margin-top: 3px; }
+.header-actions { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; z-index: 1; }
+.header-actions .me-chip {
+  background: rgba(255,255,255,.16);
+  border: 1px solid rgba(255,255,255,.25);
+  border-radius: 999px;
+  padding: 5px 14px;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+/* ---- 侧栏（双方商队状态） ---- */
+.side-panel {
+  padding: 14px;
+  overflow-y: auto;
+  max-height: calc(100vh - 250px);
+}
+#status-panel { grid-area: me; }
+#partner-panel { grid-area: partner; }
+
+.crew-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding-bottom: 10px;
+  margin-bottom: 10px;
+  border-bottom: 1px solid rgba(14, 165, 233, .18);
+}
+.crew-head .avatar {
+  width: 38px; height: 38px;
+  border-radius: 12px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 20px;
+  background: var(--grad-primary);
+  box-shadow: 0 4px 10px rgba(2, 132, 199, .3);
+}
+.crew-head.partner .avatar { background: var(--grad-success); box-shadow: 0 4px 10px rgba(13, 148, 136, .3); }
+.crew-head .who { flex: 1; min-width: 0; }
+.crew-head .who .nm { font-size: 14px; font-weight: 800; color: var(--ocean-900); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.crew-head .who .role { font-size: 10.5px; color: var(--ink-faint); }
+.dot { width: 9px; height: 9px; border-radius: 50%; display: inline-block; flex: none; }
+.dot.on  { background: #10b981; box-shadow: 0 0 0 4px rgba(16, 185, 129, .18); }
+.dot.off { background: #94a3b8; box-shadow: 0 0 0 4px rgba(148, 163, 184, .15); }
+
+.status-section {
+  background: var(--glass-strong);
+  border: 1px solid rgba(14, 165, 233, .14);
+  border-radius: var(--radius-md);
+  padding: 11px 12px;
+  margin-bottom: 10px;
+}
+.status-section h3 {
+  color: var(--ocean-700);
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: .5px;
+  margin-bottom: 7px;
+  display: flex; align-items: center; gap: 5px;
+}
+.stat-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 3px 0;
+  font-size: 12px;
+  color: var(--ink-soft);
+}
+.stat-value { font-weight: 700; color: var(--ocean-700); }
+.stat-money { font-weight: 800; color: #059669; font-size: 14px; }
+.stat-score { font-weight: 800; color: #b45309; }
+
+.inv-item { display: flex; align-items: center; padding: 2.5px 0; font-size: 11.5px; }
+.inv-item .icon { margin-right: 5px; }
+.inv-item .name { flex: 1; font-weight: 600; }
+.inv-item .count { font-weight: 800; min-width: 30px; text-align: right; font-variant-numeric: tabular-nums; }
+.inv-section-title {
+  color: var(--ink-faint);
+  font-weight: 700;
+  font-size: 10px;
+  letter-spacing: 2px;
+  padding: 5px 0 3px;
+  margin-top: 4px;
+}
+
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: linear-gradient(135deg, rgba(56, 189, 248, .13), rgba(20, 184, 166, .13));
+  border: 1px solid rgba(14, 165, 233, .25);
+  color: var(--ocean-700);
+  border-radius: 999px;
+  padding: 3px 10px;
+  font-size: 11px;
+  font-weight: 700;
+  margin: 2px 2px 2px 0;
+}
+.chip.amber {
+  background: linear-gradient(135deg, rgba(253, 230, 138, .35), rgba(251, 191, 36, .2));
+  border-color: rgba(245, 158, 11, .4);
+  color: #92400e;
+}
+.chip.green {
+  background: linear-gradient(135deg, rgba(52, 211, 153, .18), rgba(13, 148, 136, .14));
+  border-color: rgba(16, 185, 129, .35);
+  color: #047857;
+}
+.muted { color: var(--ink-faint); font-size: 11px; }
+
+/* ---- 工具提示（识别优于记忆：把解释带到眼前） ---- */
+.tip { position: relative; cursor: help; border-bottom: 1px dashed rgba(100, 116, 139, .55); }
+.tip::after {
+  content: attr(data-tip);
+  position: absolute;
+  left: 50%;
+  bottom: calc(100% + 9px);
+  transform: translateX(-50%) translateY(4px);
+  background: rgba(15, 23, 42, .94);
+  color: #f0f9ff;
+  font-size: 11px;
+  font-weight: 500;
+  line-height: 1.55;
+  border-radius: 10px;
+  padding: 8px 11px;
+  width: max-content;
+  max-width: 250px;
+  white-space: normal;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity .18s ease, transform .18s ease;
+  z-index: 60;
+  box-shadow: 0 8px 24px rgba(0,0,0,.25);
+}
+.tip:hover::after { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+/* ---- 中央舞台 ---- */
+.phase-panel {
+  grid-area: main;
+  padding: 18px 20px;
+  overflow-y: auto;
+  max-height: calc(100vh - 250px);
+  position: relative;
+}
+.phase-view { animation: fadeUp .35s ease; }
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(10px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* ---- 阶段进度（流程一目了然） ---- */
+.stepper {
+  display: flex;
+  align-items: flex-start;
+  margin: 2px 0 16px;
+  overflow-x: auto;
+  padding: 4px 0 2px;
+}
+.step { flex: 1; min-width: 60px; display: flex; flex-direction: column; align-items: center; text-align: center; position: relative; }
+.step::before {
+  content: '';
+  position: absolute;
+  top: 16px; left: -50%;
+  width: 100%; height: 3px;
+  background: rgba(148, 163, 184, .3);
+  z-index: 0;
+  border-radius: 2px;
+}
+.step:first-child::before { display: none; }
+.step.done::before { background: linear-gradient(90deg, #34d399, #10b981); }
+.step.current::before { background: linear-gradient(90deg, #10b981, #38bdf8); }
+.step .bubble {
+  width: 33px; height: 33px;
+  border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  background: #e2e8f0;
+  color: #94a3b8;
+  z-index: 1;
+  font-size: 14px;
+  border: 2px solid #fff;
+  box-shadow: 0 2px 6px rgba(0,0,0,.08);
+  transition: all .25s ease;
+}
+.step.done .bubble { background: var(--grad-success); color: #fff; }
+.step.current .bubble {
+  background: var(--grad-primary);
+  color: #fff;
+  box-shadow: 0 0 0 6px rgba(56, 189, 248, .18);
+  animation: pulse 2.2s ease-in-out infinite;
+}
+@keyframes pulse {
+  0%, 100% { box-shadow: 0 0 0 5px rgba(56, 189, 248, .20); }
+  50%      { box-shadow: 0 0 0 9px rgba(56, 189, 248, .08); }
+}
+.step .lbl { font-size: 11px; margin-top: 6px; color: var(--ink-faint); font-weight: 700; }
+.step.current .lbl { color: var(--ocean-700); }
+.step.done .lbl { color: #0f766e; }
+
+/* ---- 阶段说明卡（这一步是什么 / 该做什么） ---- */
+.phase-brief {
+  display: flex;
+  gap: 14px;
+  align-items: flex-start;
+  background: linear-gradient(135deg, rgba(56, 189, 248, .10), rgba(20, 184, 166, .10));
+  border: 1px solid rgba(14, 165, 233, .22);
+  border-radius: var(--radius-md);
+  padding: 14px 18px;
+  margin-bottom: 16px;
+  flex-wrap: wrap;
+}
+.phase-brief .pb-icon { font-size: 32px; line-height: 1; filter: drop-shadow(0 2px 4px rgba(2,132,199,.25)); }
+.phase-brief .pb-text { flex: 1; min-width: 200px; }
+.phase-brief h2 { font-size: 18px; color: var(--ocean-900); margin-bottom: 3px; }
+.phase-brief p { font-size: 12.5px; color: var(--ink-soft); line-height: 1.65; }
+.phase-brief .pb-sync { display: flex; flex-direction: column; align-items: flex-end; gap: 4px; }
+
+/* ---- 按钮 ---- */
+.btn {
+  --btn-bg: var(--grad-primary);
+  --btn-shadow: rgba(2, 132, 199, .28);
+  background: var(--btn-bg);
+  color: #fff;
+  border: none;
+  border-radius: 12px;
+  padding: 9px 17px;
+  font-family: inherit;
+  font-weight: 700;
+  font-size: 13px;
+  cursor: pointer;
+  user-select: none;
+  box-shadow: 0 3px 10px var(--btn-shadow), inset 0 1px 0 rgba(255,255,255,.28);
+  transition: transform .16s ease, box-shadow .16s ease, filter .16s ease;
+}
+.btn:hover:not(:disabled) { transform: translateY(-2px); box-shadow: 0 8px 20px var(--btn-shadow), inset 0 1px 0 rgba(255,255,255,.28); filter: saturate(1.12); }
+.btn:active:not(:disabled) { transform: translateY(0) scale(.97); }
+.btn:focus-visible { outline: 3px solid rgba(14, 165, 233, .45); outline-offset: 2px; }
+.btn:disabled { background: var(--grad-grey); cursor: not-allowed; box-shadow: none; opacity: .75; }
+.btn-success { --btn-bg: var(--grad-success); --btn-shadow: rgba(13, 148, 136, .3); }
+.btn-warning { --btn-bg: var(--grad-warning); --btn-shadow: rgba(249, 115, 22, .3); }
+.btn-danger  { --btn-bg: var(--grad-danger);  --btn-shadow: rgba(225, 29, 72, .3); }
+.btn-gold    { --btn-bg: var(--grad-gold);    --btn-shadow: rgba(245, 158, 11, .35); color: #451a03; }
+.btn-grey    { --btn-bg: var(--grad-grey);    --btn-shadow: rgba(100, 116, 139, .25); }
+.btn-ghost {
+  --btn-bg: rgba(255,255,255,.14);
+  background: rgba(255,255,255,.14);
+  border: 1px solid rgba(255,255,255,.32);
+  box-shadow: none;
+}
+.btn-lg { padding: 12px 26px; font-size: 14px; border-radius: 14px; }
+.btn-xl { padding: 15px 34px; font-size: 16px; border-radius: 16px; }
+.btn-sub { display: block; font-size: 10px; font-weight: 500; opacity: .85; margin-top: 2px; }
+
+/* ---- 卡牌 ---- */
+.card-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 14px;
+  padding: 4px 0;
+}
+.card {
+  background: var(--glass-strong);
+  border: 1px solid rgba(14, 165, 233, .18);
+  border-radius: var(--radius-md);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  box-shadow: var(--shadow-soft);
+  transition: transform .2s ease, box-shadow .2s ease;
+}
+.card:hover { transform: translateY(-3px); box-shadow: var(--shadow-float); }
+.card-header {
+  background: linear-gradient(135deg, rgba(56, 189, 248, .14), rgba(20, 184, 166, .12));
+  padding: 10px 14px;
+  border-bottom: 1px solid rgba(14, 165, 233, .15);
+  font-weight: 800;
+  font-size: 13.5px;
+  color: var(--ocean-900);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+}
+.card-tag {
+  font-size: 10px;
+  font-weight: 800;
+  border-radius: 999px;
+  padding: 2px 9px;
+  background: rgba(14, 165, 233, .14);
+  color: var(--ocean-700);
+  white-space: nowrap;
+}
+.card-tag.product { background: rgba(245, 158, 11, .16); color: #92400e; }
+.card-body { padding: 12px 14px; flex: 1; }
+.card-footer { padding: 10px 14px; border-top: 1px solid rgba(148, 163, 184, .18); }
+.card-total {
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px dashed rgba(148, 163, 184, .35);
+  font-size: 13px;
+  font-weight: 800;
+  color: var(--ocean-900);
+  display: flex;
+  justify-content: space-between;
+}
+
+.resource-row { display: flex; align-items: center; padding: 4px 0; font-size: 12.5px; }
+.resource-row .icon { font-size: 16px; margin-right: 7px; }
+.resource-row .name { font-weight: 700; min-width: 64px; }
+.resource-row .qty { margin: 0 6px; color: var(--ink-soft); }
+.resource-row .price { color: var(--ink-faint); margin-left: auto; font-size: 11.5px; }
+.resource-row .inv-status { margin-left: 8px; font-size: 11px; font-weight: 700; }
+
+/* ---- 标题 ---- */
+.hero-title {
+  font-size: 30px;
+  font-weight: 900;
+  text-align: center;
+  margin: 18px 0 8px;
+  background: linear-gradient(120deg, #075985, #0ea5e9 50%, #0d9488);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+.subtitle-text { font-size: 14px; color: var(--ink-soft); text-align: center; margin-bottom: 18px; }
+.center-block { max-width: 960px; margin: 0 auto; padding: 10px 6px; }
+
+/* ---- PortMasters 2 / 前作提示 ---- */
+.pm-banner {
+  background: linear-gradient(135deg, #fffbeb, #fef3c7);
+  border: 1px solid rgba(245, 158, 11, .45);
+  border-radius: var(--radius-md);
+  padding: 13px 16px;
+  font-size: 12.5px;
+  line-height: 1.7;
+  color: #78350f;
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+  margin: 14px 0;
+  box-shadow: 0 4px 14px rgba(245, 158, 11, .12);
+}
+.pm-banner .pm-icon { font-size: 24px; line-height: 1.2; }
+.pm-banner strong { color: #92400e; }
+.pm-banner a { color: #b45309; font-weight: 800; text-decoration-thickness: 2px; }
+.pm-banner .pm-close {
+  margin-left: auto;
+  background: none; border: none;
+  color: #b45309; font-size: 16px;
+  cursor: pointer; padding: 0 2px;
+  flex: none;
+}
+
+/* ---- 通用区块 ---- */
+.section-box {
+  background: var(--glass-strong);
+  border: 1px solid rgba(14, 165, 233, .16);
+  border-radius: var(--radius-md);
+  padding: 16px 18px;
+  margin: 14px 0;
+  box-shadow: var(--shadow-soft);
+}
+.section-box h3 { color: var(--ocean-900); font-size: 15px; margin-bottom: 8px; display: flex; align-items: center; gap: 6px; }
+.section-hint { font-size: 11.5px; color: var(--ink-faint); margin-bottom: 10px; line-height: 1.6; }
+
+.separator { height: 1px; background: linear-gradient(90deg, transparent, rgba(14, 165, 233, .4), transparent); margin: 16px 0; border: none; }
+
+.profit-positive { color: #059669; font-weight: 800; }
+.profit-negative { color: #e11d48; font-weight: 800; }
+
+/* ---- 福缘卡 ---- */
+.boon-card {
+  background: var(--glass-strong);
+  border: 1px solid rgba(14, 165, 233, .2);
+  border-radius: var(--radius-md);
+  padding: 18px 14px;
+  text-align: center;
+  transition: transform .2s ease, box-shadow .2s ease, border-color .2s ease;
+  box-shadow: var(--shadow-soft);
+}
+.boon-card:hover { transform: translateY(-5px); box-shadow: var(--shadow-float); border-color: rgba(245, 158, 11, .5); }
+.boon-icon { font-size: 44px; margin: 6px 0; filter: drop-shadow(0 4px 8px rgba(2,132,199,.2)); }
+.boon-name { font-size: 15px; font-weight: 800; color: var(--ocean-900); margin: 6px 0; }
+.boon-desc { font-size: 12px; color: var(--ink-soft); margin: 8px 0 12px; min-height: 48px; line-height: 1.6; }
+
+/* ---- 工匠 ---- */
+.worker-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: rgba(255,255,255,.85);
+  padding: 8px 12px;
+  margin: 5px 0;
+  border-radius: var(--radius-sm);
+  border: 1px solid rgba(148, 163, 184, .25);
+  font-size: 12px;
+  gap: 8px;
+}
+.worker-row .w-state { color: var(--ink-soft); }
+.worker-row .w-state .busy { color: #b45309; font-weight: 700; }
+.worker-row .w-state .idle { color: #059669; font-weight: 700; }
+
+/* ---- 互市 ---- */
+.trade-section {
+  background: linear-gradient(135deg, rgba(254, 243, 199, .55), rgba(255, 251, 235, .8));
+  border: 1px solid rgba(245, 158, 11, .35);
+  border-radius: var(--radius-md);
+  padding: 16px 18px;
+  margin: 14px 0;
+}
+.trade-section h3 { color: #92400e; font-size: 14px; margin-bottom: 4px; }
+.trade-order {
+  background: rgba(255,255,255,.92);
+  border: 1px solid rgba(245, 158, 11, .3);
+  border-radius: var(--radius-sm);
+  padding: 12px 14px;
+  margin: 8px 0;
+  font-size: 12.5px;
+  line-height: 1.7;
+}
+.trade-order .actions { margin-top: 8px; display: flex; gap: 8px; }
+.trade-create { font-size: 12.5px; line-height: 2.1; }
+.trade-create select, .trade-create input {
+  padding: 6px 9px;
+  margin: 2px 4px;
+  border: 1px solid rgba(14, 165, 233, .35);
+  border-radius: 9px;
+  background: #fff;
+  font-family: inherit;
+  font-size: 12px;
+}
+.trade-create select:focus, .trade-create input:focus { outline: 2px solid rgba(14, 165, 233, .4); }
+
+/* ---- 底部操作栏 ---- */
+.control-panel {
+  grid-area: actions;
+  background: var(--grad-deep);
+  padding: 10px 16px;
+  border-radius: var(--radius-lg);
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  box-shadow: var(--shadow-float);
+}
+.sync-chip {
+  background: rgba(255,255,255,.15);
+  border: 1px solid rgba(255,255,255,.25);
+  color: #fde68a;
+  border-radius: 999px;
+  padding: 6px 15px;
+  font-size: 12px;
+  font-weight: 800;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.control-spacer { flex: 1; }
+.control-hint { color: rgba(224, 242, 254, .8); font-size: 11.5px; }
+
+/* ---- 日志 ---- */
+.log-panel {
+  grid-area: log;
+  padding: 10px 14px;
+  height: 132px;
+  overflow-y: auto;
+  font-size: 11.5px;
+}
+.log-panel .log-title {
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 1px;
+  color: var(--ink-faint);
+  margin-bottom: 4px;
+  position: sticky;
+  top: -4px;
+  background: rgba(255,255,255,.85);
+  backdrop-filter: blur(8px);
+  padding: 3px 0;
+}
+.log-entry { padding: 3px 6px; border-bottom: 1px dotted rgba(148, 163, 184, .3); color: var(--ink-soft); }
+.log-entry:last-child { border-bottom: none; }
+
+/* ---- 对话框 ---- */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(8, 47, 73, 0.5);
+  backdrop-filter: blur(6px);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: var(--z-modal);
+  padding: 20px;
+  animation: fadeIn .2s ease;
+}
+@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+.modal {
+  background: var(--glass-strong);
+  backdrop-filter: blur(22px) saturate(1.4);
+  border: 1px solid rgba(255,255,255,.7);
+  border-radius: 24px;
+  padding: 26px 28px;
+  max-width: 620px;
+  width: 100%;
+  max-height: 90vh;
+  overflow-y: auto;
+  box-shadow: 0 24px 70px rgba(8, 47, 73, .35);
+  animation: fadeUp .28s ease;
+  position: relative;
+}
+.modal.modal-wide { max-width: 780px; }
+.modal h2 { color: var(--ocean-900); margin-bottom: 14px; text-align: center; font-size: 20px; }
+.modal .modal-x {
+  position: absolute;
+  top: 14px; right: 16px;
+  background: rgba(148, 163, 184, .15);
+  border: none;
+  width: 30px; height: 30px;
+  border-radius: 50%;
+  font-size: 15px;
+  color: var(--ink-soft);
+  cursor: pointer;
+  transition: background .15s ease;
+}
+.modal .modal-x:hover { background: rgba(148, 163, 184, .3); }
+
+/* ---- 手册 ---- */
+.manual-tabs { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 14px; justify-content: center; }
+.mtab {
+  border: none;
+  background: rgba(148, 163, 184, .18);
+  color: var(--ink-soft);
+  border-radius: 999px;
+  padding: 7px 15px;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  font-family: inherit;
+  transition: all .15s ease;
+}
+.mtab:hover { background: rgba(56, 189, 248, .2); }
+.mtab.active { background: var(--grad-primary); color: #fff; box-shadow: 0 3px 10px rgba(2,132,199,.3); }
+.manual-body { font-size: 13px; color: #334155; line-height: 1.85; max-height: 50vh; overflow-y: auto; padding: 2px 8px 2px 2px; }
+.manual-body h4 { color: var(--ocean-900); margin: 14px 0 6px; font-size: 14.5px; }
+.manual-body h4:first-child { margin-top: 0; }
+.manual-body ul, .manual-body ol { padding-left: 22px; margin: 4px 0 10px; }
+.manual-body li { margin: 3px 0; }
+.manual-body table { width: 100%; border-collapse: collapse; font-size: 12px; margin: 8px 0 12px; background: #fff; border-radius: 8px; overflow: hidden; }
+.manual-body th, .manual-body td { border: 1px solid rgba(148, 163, 184, .35); padding: 6px 9px; text-align: left; }
+.manual-body th { background: rgba(224, 242, 254, .8); color: var(--ocean-900); }
+.kbd { background: #0f172a; color: #fff; border-radius: 6px; padding: 1px 8px; font-size: 11px; font-weight: 700; }
+
+/* ---- 登录 / 大厅 ---- */
+#login-overlay, #lobby-overlay {
+  position: fixed; inset: 0;
+  background:
+    radial-gradient(900px 500px at 15% 10%, rgba(125, 211, 252, .4), transparent 65%),
+    radial-gradient(800px 500px at 85% 90%, rgba(94, 234, 212, .4), transparent 65%),
+    linear-gradient(180deg, #e0f2fe, #ccfbf1);
+  display: flex; justify-content: center; align-items: center;
+  z-index: var(--z-overlay);
+  padding: 18px;
+}
+.login-box, .lobby-box {
+  background: var(--glass-strong);
+  backdrop-filter: blur(24px) saturate(1.4);
+  border: 1px solid rgba(255,255,255,.75);
+  border-radius: 26px;
+  padding: 34px 32px;
+  text-align: center;
+  max-width: 460px;
+  width: 100%;
+  box-shadow: 0 24px 70px rgba(8, 47, 73, .22);
+  animation: fadeUp .4s ease;
+}
+.login-brand .logo { font-size: 50px; filter: drop-shadow(0 6px 14px rgba(2,132,199,.3)); }
+.login-brand h2 {
+  font-size: 26px; font-weight: 900; margin: 8px 0 2px;
+  background: linear-gradient(120deg, #075985, #0ea5e9 50%, #0d9488);
+  -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent;
+}
+.login-brand .tagline { font-size: 12.5px; color: var(--ink-soft); margin-bottom: 16px; }
+.login-box input {
+  width: 100%;
+  padding: 12px 15px;
+  margin: 7px 0;
+  border: 1px solid rgba(14, 165, 233, .35);
+  border-radius: 13px;
+  font-size: 14px;
+  font-family: inherit;
+  background: rgba(255,255,255,.9);
+  transition: border-color .15s ease, box-shadow .15s ease;
+}
+.login-box input:focus { outline: none; border-color: var(--ocean-500); box-shadow: 0 0 0 4px rgba(14, 165, 233, .15); }
+.login-box .btn { width: 100%; margin: 6px 0; }
+.pm-note {
+  margin-top: 16px;
+  font-size: 11.5px;
+  color: #92400e;
+  background: linear-gradient(135deg, #fffbeb, #fef3c7);
+  border: 1px solid rgba(245, 158, 11, .4);
+  border-radius: 13px;
+  padding: 10px 13px;
+  line-height: 1.7;
+  text-align: left;
+}
+.pm-note a { color: #b45309; font-weight: 800; }
+
+.lobby-box { max-width: 680px; max-height: 84vh; overflow-y: auto; text-align: left; }
+.lobby-box h2 { text-align: center; color: var(--ocean-900); }
+.lobby-sub { text-align: center; font-size: 12.5px; color: var(--ink-soft); margin: 6px 0 4px; line-height: 1.7; }
+.online-user-item {
+  background: rgba(255,255,255,.9);
+  border: 1px solid rgba(14, 165, 233, .2);
+  border-radius: var(--radius-md);
+  padding: 12px 16px;
+  margin: 8px 0;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  transition: transform .15s ease, box-shadow .15s ease;
+}
+.online-user-item:hover { transform: translateY(-2px); box-shadow: var(--shadow-soft); }
+.online-user-item .u-name { font-weight: 700; color: var(--ocean-900); display: flex; align-items: center; gap: 8px; }
+
+/* ---- 聊天 ---- */
+#chat-window {
+  position: fixed;
+  bottom: 22px;
+  right: 22px;
+  width: 350px;
+  height: 480px;
+  background: var(--glass-strong);
+  backdrop-filter: blur(20px) saturate(1.4);
+  border: 1px solid rgba(255,255,255,.7);
+  border-radius: 20px;
+  display: none;
+  flex-direction: column;
+  z-index: var(--z-chat);
+  box-shadow: 0 18px 50px rgba(8, 47, 73, .28);
+  overflow: hidden;
+}
+#chat-header {
+  background: var(--grad-deep);
+  color: white;
+  padding: 12px 16px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 13px;
+  font-weight: 700;
+}
+#chat-messages { flex: 1; overflow-y: auto; padding: 12px; }
+.chat-bubble {
+  margin: 7px 0;
+  padding: 8px 13px;
+  border-radius: 15px;
+  max-width: 80%;
+  word-wrap: break-word;
+  font-size: 12.5px;
+  line-height: 1.55;
+  animation: fadeUp .2s ease;
+}
+.chat-bubble.sent {
+  background: var(--grad-primary);
+  color: white;
+  margin-left: auto;
+  border-bottom-right-radius: 5px;
+  box-shadow: 0 3px 8px rgba(2,132,199,.25);
+}
+.chat-bubble.received {
+  background: rgba(255,255,255,.95);
+  border: 1px solid rgba(148, 163, 184, .3);
+  border-bottom-left-radius: 5px;
+}
+#chat-input-area { padding: 10px 12px; border-top: 1px solid rgba(148, 163, 184, .25); display: flex; gap: 8px; }
+#chat-input {
+  flex: 1;
+  padding: 9px 13px;
+  border: 1px solid rgba(14, 165, 233, .35);
+  border-radius: 999px;
+  font-family: inherit;
+  font-size: 12.5px;
+  background: rgba(255,255,255,.9);
+}
+#chat-input:focus { outline: none; border-color: var(--ocean-500); box-shadow: 0 0 0 3px rgba(14, 165, 233, .15); }
+
+/* ---- 通知 ---- */
+.notification {
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  background: rgba(15, 23, 42, .92);
+  backdrop-filter: blur(10px);
+  color: #f0fdfa;
+  padding: 13px 20px 13px 16px;
+  border-radius: 14px;
+  border-left: 4px solid #10b981;
+  z-index: var(--z-toast);
+  animation: slideIn .3s cubic-bezier(.2,.8,.3,1.1);
+  box-shadow: 0 12px 32px rgba(0,0,0,.3);
+  font-size: 13px;
+  max-width: 360px;
+  line-height: 1.55;
+}
+.notification.error { border-left-color: #fb7185; }
+@keyframes slideIn {
+  from { transform: translateX(420px); opacity: 0; }
+  to   { transform: translateX(0); opacity: 1; }
+}
+
+/* ---- 响应式 ---- */
+@media (max-width: 1280px) {
+  #app { grid-template-columns: 260px minmax(0, 1fr) 260px; }
+}
+@media (max-width: 1024px) {
+  #app {
+    grid-template-columns: 1fr;
+    grid-template-areas:
+      "header"
+      "main"
+      "me"
+      "partner"
+      "actions"
+      "log";
+  }
+  .side-panel { max-height: 340px; }
+  .phase-panel { max-height: none; }
+}
+</style>
+</head>
+<body>
+
+<div class="bg-orb orb-1" aria-hidden="true"></div>
+<div class="bg-orb orb-2" aria-hidden="true"></div>
+<div class="bg-orb orb-3" aria-hidden="true"></div>
+
+<div id="app" style="display:none;">
+  <div class="header">
+    <div class="brand">
+      <span class="logo">⚓</span>
+      <div>
+        <h1>PortMasters<span class="gen-badge">2</span></h1>
+        <div class="subtitle">海上丝绸之路 · 双人联机贸易战略 — 采购 · 互市 · 生产 · 远航</div>
+      </div>
+    </div>
+    <div class="header-actions">
+      <span class="me-chip" id="current-user"></span>
+      <button class="btn btn-ghost" onclick="showManual()" title="打开游戏手册（快捷键 F1）">📖 手册</button>
+      <button class="btn btn-ghost" onclick="toggleChat()" title="与伙伴聊天">💬 聊天</button>
+      <button class="btn btn-ghost" onclick="logout()" title="退出登录并返回登录页">🚪 退出</button>
+    </div>
+  </div>
+
+  <div class="panel side-panel" id="status-panel"></div>
+  <div class="panel phase-panel" id="phase-panel"></div>
+  <div class="panel side-panel" id="partner-panel"></div>
+
+  <div class="control-panel" id="control-panel"></div>
+  <div class="panel log-panel" id="log-panel"></div>
+</div>
+
+<div id="login-overlay">
+  <div class="login-box">
+    <div class="login-brand">
+      <div class="logo">⚓</div>
+      <h2>PortMasters 2</h2>
+      <div class="tagline">海上丝绸之路 · 双人联机贸易战略</div>
+    </div>
+    <div id="login-form">
+      <input type="text" id="login-username" placeholder="用户名" autocomplete="username">
+      <input type="password" id="login-password" placeholder="密码" autocomplete="current-password">
+      <button class="btn btn-success btn-lg" onclick="login()">⛵ 登录起航</button>
+      <button class="btn btn-lg" onclick="showRegister()">📝 注册新账号</button>
+    </div>
+    <div id="register-form" style="display:none;">
+      <input type="text" id="reg-username" placeholder="用户名（3-20 字符）">
+      <input type="password" id="reg-password" placeholder="密码（至少 6 位）">
+      <input type="password" id="reg-password2" placeholder="确认密码">
+      <button class="btn btn-success btn-lg" onclick="register()">✅ 注册</button>
+      <button class="btn btn-lg" onclick="showLogin()">← 返回登录</button>
+    </div>
+    <div class="pm-note">
+      💡 <strong>本作为 PortMasters 2</strong>，引入了税务、工资、双人同步互市等更复杂的机制，<strong>上手门槛较高</strong>。
+      如果是初次接触本系列，建议先体验上一代
+      <a href="https://lostinhustle.github.io/PortMasters/PortMasters_Web_Edition/PortMasters_MandarinEdition_v1.4.0" target="_blank" rel="noopener">PortMasters 1（中文版）→</a>
+      熟悉基础玩法。
+    </div>
+  </div>
+</div>
+
+<div id="lobby-overlay" style="display:none;">
+  <div class="lobby-box">
+    <h2>🏠 游戏大厅</h2>
+    <p class="lobby-sub">
+      欢迎，<strong id="lobby-username"></strong>！邀请一名在线玩家即可开始<strong>双人共享航程</strong>：<br>
+      双方将始终处于同一回合、同一阶段，并可在互市阶段自由交易、全程互见彼此经营状况。
+    </p>
+    <div class="separator"></div>
+    <h3 style="color:var(--ocean-900);margin:12px 0;font-size:15px">🧑‍✈️ 在线玩家</h3>
+    <div id="online-users-list"></div>
+    <div class="pm-banner" style="margin-top:18px">
+      <span class="pm-icon">🧭</span>
+      <span>
+        <strong>新船长须知：</strong>PortMasters 2 的经济系统（增值税 / 所得税 / 工资 / 维护费）比一代更复杂。
+        开局后可随时按 <span class="kbd">F1</span> 查看完整手册；若感到吃力，可先游玩
+        <a href="https://lostinhustle.github.io/PortMasters/PortMasters_Web_Edition/PortMasters_MandarinEdition_v1.4.0" target="_blank" rel="noopener">PortMasters 1 →</a>
+      </span>
+    </div>
+  </div>
+</div>
+
+<div id="chat-window">
+  <div id="chat-header">
+    <span>💬 与 <span id="chat-partner"></span> 的船桥通话</span>
+    <button onclick="toggleChat()" style="background:none;border:none;color:white;font-size:20px;cursor:pointer" title="关闭聊天窗口（Esc）">×</button>
+  </div>
+  <div id="chat-messages"></div>
+  <div id="chat-input-area">
+    <input type="text" id="chat-input" placeholder="输入消息..." onkeypress="if(event.key==='Enter')sendChat()">
+    <button class="btn btn-success" onclick="sendChat()" id="chat-send-btn">发送</button>
+  </div>
+</div>
+
+<div id="modal-root"></div>
+
+<script>
+/* ============================================================
+   常量与静态数据
+   ============================================================ */
+const PM1_URL = 'https://lostinhustle.github.io/PortMasters/PortMasters_Web_Edition/PortMasters_MandarinEdition_v1.4.0';
+
+const ICONS = {
+  "麻布": "🧶", "丝绸": "👘", "茶叶": "🍵",
+  "麻衣": "👔", "布衣": "👕", "绫罗绸缎": "👗", "香囊": "🌸", "金币": "💰"
+};
+const COLORS = {
+  "麻布": "#8B7355", "丝绸": "#DC143C", "茶叶": "#228B22",
+  "麻衣": "#D2691E", "布衣": "#4169E1", "绫罗绸缎": "#8B008B", "香囊": "#FF1493"
+};
+const RESOURCES = ["麻布", "丝绸", "茶叶"];
+const PRODUCTS = ["麻衣", "布衣", "绫罗绸缎", "香囊"];
+const WAGES = { weaver: 8, master: 12, sachet_maker: 20 };
+
+const ITEM_TIPS = {
+  "麻布": "基础原料。可由织女制成麻衣（×2）或布衣（×2，另需丝绸×1）",
+  "丝绸": "高级原料。用于布衣、绫罗绸缎（×3）、香囊（×1）",
+  "茶叶": "香囊原料（×2）。也可直接完成原料订单出售",
+  "麻衣": "成品 · 基准产值 15。由织女 / 大师制作（麻布×2）",
+  "布衣": "成品 · 基准产值 35。由织女 / 大师制作（麻布×2 + 丝绸×1）",
+  "绫罗绸缎": "高级成品 · 基准产值 60。仅纺织大师可制作（丝绸×3）",
+  "香囊": "顶级成品 · 基准产值 80。仅香囊师可制作（丝绸×1 + 茶叶×2）"
+};
+
+const BOONS = [
+  { id: "silk_wind", name: "丝路顺风", icon: "🌬️", desc: "本回合丝绸及成品运费减半。" },
+  { id: "favorable_tides", name: "顺风顺水", icon: "🌊", desc: "本回合基础运费减4金币。" },
+  { id: "merchant_charm", name: "商贾魅力", icon: "✨", desc: "本回合采购85折优惠。" },
+  { id: "artisan_inspiration", name: "匠人灵感", icon: "🔨", desc: "本回合所有工人多生产1件。" },
+  { id: "emergency_loan", name: "紧急钱庄", icon: "💰", desc: "立即获得40金币。" },
+  { id: "tax_shelter", name: "免税令", icon: "📜", desc: "本回合所得税率降至5%。" },
+  { id: "hemp_monopoly", name: "麻布专营", icon: "🧶", desc: "麻布采购单价降低2金币。" },
+  { id: "master_apprentice", name: "学徒传承", icon: "🎓", desc: "本回合雇佣工资减半。" }
+];
+
+/* 服务器把所选福缘以 modifierFlags 形式下发；这里反查出名称用于展示增益 */
+const FLAG_LABELS = {
+  transport_silk_discount: { icon: "🌬️", name: "丝路顺风", desc: "本回合丝绸及成品运费减半" },
+  transport_flat_discount: { icon: "🌊", name: "顺风顺水", desc: "本回合基础运费减4金币" },
+  purchase_discount:       { icon: "✨", name: "商贾魅力", desc: "本回合采购85折优惠" },
+  worker_bonus_production: { icon: "🔨", name: "匠人灵感", desc: "本回合所有工人多生产1件" },
+  instant_gold:            { icon: "💰", name: "紧急钱庄", desc: "已立即获得40金币" },
+  income_tax_override:     { icon: "📜", name: "免税令", desc: "本回合所得税率降至5%" },
+  hemp_price_reduction:    { icon: "🧶", name: "麻布专营", desc: "麻布采购单价降低2金币" },
+  hire_discount:           { icon: "🎓", name: "学徒传承", desc: "本回合雇佣工资减半" }
+};
+
+const WORKER_TYPES = [
+  { key: "weaver", icon: "👩‍🔧", name: "织女", listKey: "weavers", can: ["麻衣", "布衣"], tip: "工资8金币/回合，可制作麻衣、布衣" },
+  { key: "master", icon: "👩‍🎨", name: "纺织大师", listKey: "masterWeavers", can: ["麻衣", "布衣", "绫罗绸缎"], tip: "工资12金币/回合，额外可制作绫罗绸缎" },
+  { key: "sachet_maker", icon: "🌸", name: "香囊师", listKey: "sachetMakers", can: ["香囊"], tip: "工资20金币/回合，唯一可制作香囊的工匠" }
+];
+
+const RECIPE_MATS = {
+  "麻衣":     [["麻布", 2]],
+  "布衣":     [["麻布", 2], ["丝绸", 1]],
+  "绫罗绸缎": [["丝绸", 3]],
+  "香囊":     [["丝绸", 1], ["茶叶", 2]]
+};
+
+/* 回合内 8 个阶段的元信息（识别优于记忆：阶段名 + 目标 + 操作提示一直可见） */
+const PHASE_FLOW = [
+  { key: 0,             icon: "⚓", name: "启航",  brief: "新回合开始，双方确认后抽取福缘。" },
+  { key: 5,             icon: "🧭", name: "福缘",  brief: "各自选择一项仅本回合生效的增益。结合本回合计划挑选：要采购多就选折扣，要生产多就选匠人灵感。" },
+  { key: 1,             icon: "🛒", name: "采购",  brief: "用金币购入原料或成品。在商品的特产港口采购单价更低；注意为工资和维护费留足现金。" },
+  { key: "trade",       icon: "🤝", name: "互市",  brief: "与伙伴自由交易：发布「我出售 × 换取 ×」的订单，对方接受即成交。双方都点「准备就绪」后进入下一阶段。" },
+  { key: "worker_mgmt", icon: "👥", name: "工匠",  brief: "雇佣工匠并分配生产任务。分配任务时立即消耗材料，产出在结算阶段入库。" },
+  { key: 2,             icon: "📦", name: "贸易",  brief: "用库存满足港口订单赚取金币。成品订单需缴纳约5%增值税；每单还需支付运费。" },
+  { key: 3,             icon: "🔧", name: "结算",  brief: "工匠产出入库、自动支付工资，然后支付维护费。现金不足以支付即破产，务必提前规划！" },
+  { key: 4,             icon: "🚢", name: "船坞",  brief: "可花费金币升级商船：每级永久减运费5金币并增加1个模块槽位。" }
+];
+const PHASE_INDEX = {};
+PHASE_FLOW.forEach((p, i) => { PHASE_INDEX[p.key] = i; });
+
+function phaseName(key) {
+  if (key === "endgame") return "航程结束";
+  if (key === "bankruptcy") return "破产清算";
+  const meta = PHASE_FLOW[PHASE_INDEX[key]];
+  return meta ? meta.name : "准备中";
+}
+
+/* ============================================================
+   全局状态
+   ============================================================ */
+let ws = null;
+let serverState = null;
+let currentUser = null;
+let chatPartner = null;
+let partnerOnline = false;
+let pendingInviteFrom = null;
+let lastInviteTo = null;
+let onlineUsers = [];
+let inviteStatus = {};
+
+/* ============================================================
+   通知 / 登录注册
+   ============================================================ */
+function showNotification(message, isError = false) {
+  const notif = document.createElement('div');
+  notif.className = 'notification' + (isError ? ' error' : '');
+  notif.textContent = message;
+  document.body.appendChild(notif);
+  setTimeout(() => notif.remove(), 3500);
+}
+
+function showRegister() {
+  document.getElementById('login-form').style.display = 'none';
+  document.getElementById('register-form').style.display = 'block';
+}
+
+function showLogin() {
+  document.getElementById('login-form').style.display = 'block';
+  document.getElementById('register-form').style.display = 'none';
+}
+
+function register() {
+  const username = document.getElementById('reg-username').value.trim();
+  const password = document.getElementById('reg-password').value;
+  const password2 = document.getElementById('reg-password2').value;
+
+  if (password !== password2) {
+    showNotification('两次密码不一致', true);
+    return;
+  }
+
+  ws = new WebSocket(`ws://${location.hostname}:8080`);
+  ws.onopen = () => {
+    ws.send(JSON.stringify({ action: "register", username, password }));
+  };
+  ws.onmessage = (e) => {
+    const msg = JSON.parse(e.data);
+    if (msg.type === 'register_result') {
+      if (msg.success) {
+        showNotification(msg.message);
+        showLogin();
+      } else {
+        showNotification(msg.message, true);
+      }
+      ws.close();
+    }
+  };
+}
+
+function login() {
+  const username = document.getElementById('login-username').value.trim();
+  const password = document.getElementById('login-password').value;
+
+  if (!username || !password) {
+    showNotification('请输入用户名和密码', true);
+    return;
+  }
+
+  ws = new WebSocket(`ws://${location.hostname}:8080`);
+  ws.onopen = () => {
+    ws.send(JSON.stringify({ action: "login", username, password }));
+  };
+  ws.onmessage = (e) => {
+    const msg = JSON.parse(e.data);
+    if (msg.type === 'login_result') {
+      if (msg.success) {
+        currentUser = msg.username;
+        document.getElementById('login-overlay').style.display = 'none';
+        document.getElementById('lobby-overlay').style.display = 'flex';
+        document.getElementById('lobby-username').textContent = currentUser;
+        setupWebSocketHandlers();
+        ws.send(JSON.stringify({ action: "get_online_users" }));
+      } else {
+        showNotification(msg.message, true);
+        ws.close();
+      }
+    }
+  };
+}
+
+function logout() {
+  if (!confirm('确定要退出登录吗？游戏进度已保存在服务器，重新登录可继续。')) return;
+  if (ws) ws.close();
+  location.reload();
+}
+
+/* ============================================================
+   WebSocket 消息处理（协议与服务器保持一致）
+   ============================================================ */
+function setupWebSocketHandlers() {
+  ws.onmessage = (e) => {
+    const msg = JSON.parse(e.data);
+
+    if (msg.type === 'online_users' || msg.type === 'online_users_update') {
+      onlineUsers = msg.users;
+      renderOnlineUsers();
+    }
+
+    else if (msg.type === 'invite_received') {
+      showInviteModal(msg.from);
+    }
+
+    else if (msg.type === 'invite_cancelled') {
+      if (pendingInviteFrom === msg.from) {
+        pendingInviteFrom = null;
+        closeModal();
+        showNotification(`${msg.from} 的邀请已失效`, true);
+      }
+    }
+
+    else if (msg.type === 'invite_accepted') {
+      chatPartner = msg.partner;
+      partnerOnline = true;
+      delete inviteStatus[msg.partner];
+      enterGameView();
+      ws.send(JSON.stringify({ action: "join_game" }));
+      showNotification(`已加入游戏，伙伴: ${chatPartner}`);
+      maybeShowOnboarding();
+    }
+
+    else if (msg.type === 'session_resumed') {
+      chatPartner = msg.partner;
+      partnerOnline = !!msg.partnerOnline;
+      enterGameView();
+      showNotification(`已恢复游戏会话，伙伴: ${chatPartner}`);
+      maybeShowOnboarding();
+    }
+
+    else if (msg.type === 'partner_status') {
+      if (msg.username === chatPartner) {
+        partnerOnline = msg.online;
+        updateChatSendState();
+        renderPartner();
+        showNotification(msg.online ? `${msg.username} 已重新上线` : `${msg.username} 已离线`, !msg.online);
+      }
+    }
+
+    else if (msg.type === 'invite_rejected') {
+      showNotification(`${msg.from} 拒绝了你的邀请`, true);
+      delete inviteStatus[msg.from];
+      renderOnlineUsers();
+    }
+
+    else if (msg.type === 'invite_timeout') {
+      showNotification(`发送给 ${msg.to} 的邀请已超时`, true);
+      delete inviteStatus[msg.to];
+      renderOnlineUsers();
+    }
+
+    else if (msg.type === 'invite_result') {
+      if (msg.success) {
+        showNotification(msg.message);
+      } else {
+        showNotification(msg.message, true);
+        if (lastInviteTo) {
+          delete inviteStatus[lastInviteTo];
+          lastInviteTo = null;
+          renderOnlineUsers();
+        }
+      }
+    }
+
+    else if (msg.type === 'chat_message') {
+      if (msg.from === chatPartner) {
+        appendChatMessage(msg.from, msg.message, false);
+        if (document.getElementById('chat-window').style.display !== 'flex') {
+          showNotification(`💬 ${msg.from}: ${msg.message}`);
+        }
+      }
+    }
+
+    else if (msg.type === 'chat_history') {
+      const messagesDiv = document.getElementById('chat-messages');
+      messagesDiv.innerHTML = '';
+      msg.history.forEach(m => {
+        appendChatMessage(m.from, m.message, m.from === currentUser);
+      });
+    }
+
+    else if (msg.type === 'state') {
+      serverState = msg.data;
+      if (serverState.yourGame) serverState.yourGame.slot = serverState.yourSlot;
+      if (chatPartner && typeof serverState.partnerOnline === 'boolean') {
+        partnerOnline = serverState.partnerOnline;
+        updateChatSendState();
+      }
+      renderAll();
+    }
+
+    else if (msg.type === 'system_message') {
+      showNotification(msg.message);
+    }
+  };
+
+  ws.onclose = () => {
+    if (currentUser) {
+      showNotification('连接断开，请刷新页面', true);
+    }
+  };
+}
+
+function enterGameView() {
+  document.getElementById('lobby-overlay').style.display = 'none';
+  document.getElementById('app').style.display = 'grid';
+  document.getElementById('current-user').textContent = `🧑‍✈️ ${currentUser}`;
+  updateChatSendState();
+}
+
+/* ============================================================
+   大厅 / 邀请
+   ============================================================ */
+function renderOnlineUsers() {
+  const list = document.getElementById('online-users-list');
+  if (!list) return;
+  if (onlineUsers.length === 0) {
+    list.innerHTML = '<p style="color:#94a3b8;text-align:center;padding:24px;font-size:13px">🌊 暂无其他在线玩家。让朋友打开本页面注册登录，即可向其发出航程邀请。</p>';
+    return;
+  }
+
+  list.innerHTML = onlineUsers.map((user, idx) => {
+    const status = inviteStatus[user] || 'idle';
+    let buttonHtml = '';
+    if (status === 'idle') {
+      buttonHtml = `<button class="btn btn-success" data-user-idx="${idx}" title="邀请该玩家加入双人航程（每分钟限一次，60秒内有效）">📨 邀请同航</button>`;
+    } else if (status === 'pending') {
+      buttonHtml = `<button class="btn btn-grey" disabled>⏳ 等待回应...</button>`;
+    }
+    return `
+      <div class="online-user-item">
+        <span class="u-name"><span class="dot on"></span>${escapeHtml(user)}</span>
+        ${buttonHtml}
+      </div>
+    `;
+  }).join('');
+
+  list.querySelectorAll('button[data-user-idx]').forEach(btn => {
+    btn.onclick = () => sendInvite(onlineUsers[parseInt(btn.dataset.userIdx, 10)]);
+  });
+}
+
+function sendInvite(to) {
+  inviteStatus[to] = 'pending';
+  lastInviteTo = to;
+  ws.send(JSON.stringify({ action: "send_invite", to }));
+  renderOnlineUsers();
+
+  setTimeout(() => {
+    if (inviteStatus[to] === 'pending') {
+      delete inviteStatus[to];
+      renderOnlineUsers();
+    }
+  }, 60000);
+}
+
+function showInviteModal(from) {
+  pendingInviteFrom = from;
+  showModal(`
+    <h2>📨 航程邀请</h2>
+    <p style="text-align:center;font-size:14px;line-height:1.8">
+      <strong>${escapeHtml(from)}</strong> 邀请你共启一段海上丝路航程。<br>
+      <span class="muted">接受后双方将进入共享会话：同回合同阶段同步推进，全程可互市交易、互见状态。</span>
+    </p>
+    <div style="text-align:center;margin-top:18px;display:flex;gap:10px;justify-content:center">
+      <button class="btn btn-success btn-lg" onclick="respondInvite(true)">✅ 接受邀请</button>
+      <button class="btn btn-danger btn-lg" onclick="respondInvite(false)">❌ 婉拒</button>
+    </div>
+  `);
+}
+
+function respondInvite(accept) {
+  if (!pendingInviteFrom) return;
+  ws.send(JSON.stringify({ action: "respond_invite", from: pendingInviteFrom, accept }));
+  pendingInviteFrom = null;
+  closeModal();
+}
+
+/* ============================================================
+   聊天
+   ============================================================ */
+function updateChatSendState() {
+  const btn = document.getElementById('chat-send-btn');
+  const input = document.getElementById('chat-input');
+  const enabled = !!chatPartner && partnerOnline;
+  btn.disabled = !enabled;
+  input.disabled = !enabled;
+  input.placeholder = enabled ? '输入消息...' : '对方离线，无法发送';
+}
+
+function toggleChat() {
+  const chatWindow = document.getElementById('chat-window');
+  if (chatWindow.style.display !== 'flex') {
+    chatWindow.style.display = 'flex';
+    document.getElementById('chat-partner').textContent = chatPartner || '无';
+    updateChatSendState();
+    if (chatPartner) {
+      ws.send(JSON.stringify({ action: "get_chat_history", with: chatPartner }));
+    }
+  } else {
+    chatWindow.style.display = 'none';
+  }
+}
+
+function sendChat() {
+  const input = document.getElementById('chat-input');
+  const message = input.value.trim();
+  if (!message || !chatPartner || !partnerOnline) return;
+
+  ws.send(JSON.stringify({ action: "send_chat", to: chatPartner, message }));
+  appendChatMessage(currentUser, message, true);
+  input.value = '';
+}
+
+function appendChatMessage(from, message, isSent) {
+  const messagesDiv = document.getElementById('chat-messages');
+  const bubble = document.createElement('div');
+  bubble.className = 'chat-bubble ' + (isSent ? 'sent' : 'received');
+  bubble.textContent = message;
+  messagesDiv.appendChild(bubble);
+  messagesDiv.scrollTop = messagesDiv.scrollHeight;
+}
+
+/* ============================================================
+   渲染入口
+   ============================================================ */
+function renderAll() {
+  if (!serverState) return;
+  renderStatus();
+  renderPartner();
+  renderPhase();
+  renderControls();
+  renderLog();
+}
+
+/* ---------- 共用：商队状态卡片（自己与伙伴使用同一套组件，便于对照） ---------- */
+function buffChipsHTML(g) {
+  const flags = g.modifierFlags || {};
+  const chips = Object.keys(flags)
+    .map(k => FLAG_LABELS[k])
+    .filter(Boolean)
+    .map(b => `<span class="chip tip" data-tip="${b.desc}">${b.icon} ${b.name}</span>`);
+  return chips.length ? chips.join('') : '<span class="muted">本回合暂无增益</span>';
+}
+
+function modulesHTML(g) {
+  if (!g.equippedModules || !g.equippedModules.length) return '<span class="muted">尚未安装模块</span>';
+  return g.equippedModules.map(m =>
+    `<span class="chip tip" data-tip="${escapeHtml(m.desc || '')}">${m.icon || '🔌'} ${escapeHtml(m.name)}</span>`
+  ).join('');
+}
+
+function invListHTML(g) {
+  const row = r => `
+    <div class="inv-item">
+      <span class="icon">${ICONS[r]}</span>
+      <span class="name tip" data-tip="${ITEM_TIPS[r]}" style="color:${COLORS[r]}">${r}</span>
+      <span class="count" style="color:${COLORS[r]}">${g.inventory[r] || 0}</span>
+    </div>`;
+  return `
+    <div class="inv-section-title">原 材 料</div>
+    ${RESOURCES.map(row).join('')}
+    <div class="inv-section-title">成 品</div>
+    ${PRODUCTS.map(row).join('')}
+  `;
+}
+
+function workerTeamHTML(g) {
+  const lines = WORKER_TYPES.map(wt => {
+    const list = g[wt.listKey] || [];
+    if (!list.length) return '';
+    const busy = list.filter(w => w.task).length;
+    const skilled = list.filter(w => w.isSkilled).length;
+    const detail = [];
+    if (busy) detail.push(`${busy} 生产中`);
+    if (skilled) detail.push(`${skilled} 熟练⭐`);
+    return `
+      <div class="inv-item">
+        <span class="icon">${wt.icon}</span>
+        <span class="name tip" data-tip="${wt.tip}">${wt.name}</span>
+        <span class="muted" style="margin-right:6px">${detail.join(' · ')}</span>
+        <span class="count">×${list.length}</span>
+      </div>`;
+  }).filter(Boolean);
+  return lines.length ? lines.join('') : '<span class="muted">尚未雇佣工匠</span>';
+}
+
+function crewSectionsHTML(g) {
+  return `
+    <div class="status-section">
+      <h3>📊 航海概况</h3>
+      <div class="stat-row"><span class="tip" data-tip="全程共8个航程（回合），结束后按声望评级">🌊 航程进度</span><span class="stat-value">第 ${g.currentRound} / ${g.maxRounds} 程</span></div>
+      <div class="stat-row"><span class="tip" data-tip="当前现金存款。工资、维护费、税款都从这里扣除，归零即破产">💰 现金存款</span><span class="stat-money">${g.money} 金币</span></div>
+      <div class="stat-row"><span class="tip" data-tip="声望（信誉值）= 每笔完成订单的净利润累计。决定最终评级，越高越好">🏆 声望（信誉）</span><span class="stat-score">${g.score}</span></div>
+      <div class="stat-row"><span class="tip" data-tip="当前所处阶段，双方始终同步">🧭 当前阶段</span><span class="stat-value">${phaseName(g.phase)}</span></div>
+    </div>
+    <div class="status-section">
+      <h3>🪄 本回合增益</h3>
+      ${buffChipsHTML(g)}
+    </div>
+    <div class="status-section">
+      <h3>🚢 旗舰状态</h3>
+      <div class="stat-row"><span class="tip" data-tip="每升1级，每单运费永久减5金币，并解锁1个模块槽位">商船等级</span><span class="stat-value">Lv.${g.shipLevel}</span></div>
+      <div class="stat-row"><span class="tip" data-tip="运费 = max(5, 货物件数×2 − 船级×5 − 福缘减免)">运费减免</span><span class="stat-value">−${g.shipLevel * 5} 金币/单</span></div>
+      <div class="stat-row"><span>模块槽位</span><span class="stat-value">${(g.equippedModules || []).length} / ${g.shipLevel}</span></div>
+      <div style="margin-top:4px">${modulesHTML(g)}</div>
+    </div>
+    <div class="status-section">
+      <h3>📦 船舱货物</h3>
+      ${invListHTML(g)}
+    </div>
+    <div class="status-section">
+      <h3>👥 工匠团队</h3>
+      ${workerTeamHTML(g)}
+    </div>
+  `;
+}
+
+/* ---------- 我方面板 ---------- */
+function renderStatus() {
+  const g = serverState.yourGame;
+  if (!g) return;
+  const p = document.getElementById('status-panel');
+
+  let html = `
+    <div class="crew-head">
+      <div class="avatar">🧑‍✈️</div>
+      <div class="who">
+        <div class="nm">${escapeHtml(currentUser || '我')}</div>
+        <div class="role">我的商队 · ${g.slot ? '玩家' + g.slot : ''}</div>
+      </div>
+      <span class="dot on" title="在线"></span>
+    </div>
+    ${crewSectionsHTML(g)}
+  `;
+
+  if (![0, 5, 'endgame', 'bankruptcy'].includes(g.phase) && !g.gameOver) {
+    const ww = g.weavers.length * WAGES.weaver;
+    const mw = g.masterWeavers.length * WAGES.master;
+    const sw = g.sachetMakers.length * WAGES.sachet_maker;
+    const pendWages = ww + mw + sw;
+    const pendMaint = g.fixedCost + (g.maintenancePenalty || 0);
+    const pendTotal = pendWages + pendMaint;
+    const safe = g.money >= pendTotal;
+    html += `
+    <div class="status-section" style="border-color:${safe ? 'rgba(14,165,233,.14)' : 'rgba(225,29,72,.5)'}">
+      <h3>⚠️ 本回合应付款项</h3>
+      <div class="stat-row"><span class="tip" data-tip="每回合结算阶段必须支付的固定运营成本，付不起即破产">🔧 维护费</span><span class="stat-value">${pendMaint} 金币</span></div>
+      <div class="stat-row"><span class="tip" data-tip="结算阶段自动支付的全部工匠工资，付不起即破产">👥 工资合计</span><span class="stat-value">${pendWages} 金币</span></div>
+      <div class="stat-row" style="border-top:1px solid rgba(148,163,184,.3);margin-top:4px;padding-top:5px">
+        <span><strong>💸 合计应付</strong></span>
+        <span style="font-weight:800;color:${safe ? '#059669' : '#e11d48'}">${pendTotal} 金币</span>
+      </div>
+      ${!safe ? '<div style="background:var(--grad-danger);color:white;border-radius:9px;padding:5px 9px;font-size:10.5px;margin-top:6px;text-align:center;font-weight:700">🚨 现金不足以支付本回合结算费用，请尽快回笼资金！</div>' : ''}
+    </div>`;
+  }
+  p.innerHTML = html;
+}
+
+/* ---------- 伙伴面板（彼此状态完全互见） ---------- */
+function renderPartner() {
+  const p = document.getElementById('partner-panel');
+  if (!p) return;
+  const og = serverState && serverState.otherGame;
+  const name = (serverState && serverState.partnerName) || chatPartner || '伙伴';
+
+  if (!og) {
+    p.innerHTML = `
+      <div class="crew-head partner">
+        <div class="avatar">🧑‍✈️</div>
+        <div class="who"><div class="nm">等待伙伴...</div><div class="role">伙伴商队</div></div>
+        <span class="dot off"></span>
+      </div>
+      <p class="muted" style="padding:8px 2px;line-height:1.8">进入共享会话后，这里会实时展示伙伴的声望、存款、货物、工匠与增益，方便协商互市。</p>
+    `;
+    return;
+  }
+
+  const recentLogs = (og.logs || []).slice(-4);
+  p.innerHTML = `
+    <div class="crew-head partner">
+      <div class="avatar">🧑‍✈️</div>
+      <div class="who">
+        <div class="nm">${escapeHtml(name)}</div>
+        <div class="role">伙伴商队 · ${og.slot ? '玩家' + og.slot : ''}${og.gameOver ? ' · 已结束' : ''}</div>
+      </div>
+      <span class="dot ${partnerOnline ? 'on' : 'off'}" title="${partnerOnline ? '在线' : '离线'}"></span>
+      ${partnerOnline ? '' : '<span class="chip amber" style="margin-left:4px">离线</span>'}
+    </div>
+    ${crewSectionsHTML(og)}
+    <div class="status-section">
+      <h3>📜 对方近期动态</h3>
+      ${recentLogs.length
+        ? recentLogs.map(m => `<div class="stat-row" style="font-size:11px;color:var(--ink-soft)">${escapeHtml(m)}</div>`).join('')
+        : '<span class="muted">暂无动态</span>'}
+    </div>
+    <div class="status-section" style="background:linear-gradient(135deg,rgba(56,189,248,.08),rgba(20,184,166,.08))">
+      <span class="muted">💡 看准对方缺什么、富余什么，在<strong>互市阶段</strong>发起互利交易，或随时点右上角 💬 沟通。</span>
+    </div>
+  `;
+}
+
+/* ---------- 阶段舞台 ---------- */
+function stepperHTML(currentKey) {
+  const curIdx = (currentKey === 'endgame' || currentKey === 'bankruptcy')
+    ? PHASE_FLOW.length
+    : (PHASE_INDEX[currentKey] !== undefined ? PHASE_INDEX[currentKey] : -1);
+  return `
+    <div class="stepper" title="本回合流程：双方同步经过这8个阶段">
+      ${PHASE_FLOW.map((s, i) => {
+        const cls = i < curIdx ? 'done' : (i === curIdx ? 'current' : '');
+        const inner = i < curIdx ? '✓' : s.icon;
+        return `
+          <div class="step ${cls}">
+            <div class="bubble">${inner}</div>
+            <div class="lbl">${s.name}</div>
+          </div>`;
+      }).join('')}
+    </div>`;
+}
+
+function phaseBriefHTML(key, extraChips = '') {
+  const meta = PHASE_FLOW[PHASE_INDEX[key]];
+  if (!meta) return '';
+  const readyCount = serverState.phaseReadyCount || 0;
+  const waiting = serverState.waitingForOther;
+  return `
+    <div class="phase-brief">
+      <div class="pb-icon">${meta.icon}</div>
+      <div class="pb-text">
+        <h2>${meta.name}阶段 · 第 ${serverState.yourGame.currentRound} 程</h2>
+        <p>${meta.brief}</p>
+      </div>
+      <div class="pb-sync">
+        <span class="chip ${readyCount >= 2 ? 'green' : ''}" title="双方都确认后才进入下一阶段">🔄 双方就绪 ${readyCount} / 2</span>
+        ${waiting ? `<span class="chip amber">⏳ ${escapeHtml(waiting)}</span>` : ''}
+        ${extraChips}
+      </div>
+    </div>`;
+}
+
+function pm1HintHTML(context) {
+  return `
+    <div class="pm-banner">
+      <span class="pm-icon">🧭</span>
+      <span>
+        ${context}
+        本作 <strong>PortMasters 2</strong> 上手门槛较高；可以先游玩上一代
+        <a href="${PM1_URL}" target="_blank" rel="noopener">PortMasters 1（中文版）→</a>
+        熟悉采购、生产与贸易的基本节奏，再回来挑战。
+      </span>
+    </div>`;
+}
+
+function renderPhase() {
+  const p = document.getElementById('phase-panel');
+  const g = serverState.yourGame;
+  if (!g) return;
+  let inner = '';
+  switch (g.phase) {
+    case 0: inner = welcomeHTML(); break;
+    case 5: inner = boonDraftHTML(); break;
+    case 1: inner = purchaseHTML(); break;
+    case 'trade': inner = tradePhaseHTML(); break;
+    case 'worker_mgmt': inner = workerMgmtHTML(); break;
+    case 2: inner = ordersHTML(); break;
+    case 3: inner = maintenanceHTML(); break;
+    case 4: inner = shipyardHTML(); break;
+    case 'bankruptcy': inner = bankruptcyHTML(); break;
+    case 'endgame': inner = endgameHTML(); break;
+    default: inner = '<div class="center-block"><div class="hero-title">⚓ 准备中...</div></div>';
+  }
+
+  /* 互市表单在重渲染时保留用户已填写的内容（用户自由与控制） */
+  const formState = captureTradeForm();
+  p.innerHTML = `<div class="phase-view">${stepperHTML(g.phase)}${inner}</div>`;
+  restoreTradeForm(formState);
+}
+
+/* ---------- 各阶段视图 ---------- */
+function welcomeHTML() {
+  const dismissed = localStorage.getItem('pm2_banner_dismissed') === '1';
+  return `
+    <div class="center-block">
+      <div class="hero-title">⚓ PortMasters 2 🚢</div>
+      <div class="subtitle-text">海上丝绸之路 · 八大航程 · 与伙伴同船竞航，成为海上霸主！</div>
+      ${!dismissed ? `
+      <div class="pm-banner">
+        <span class="pm-icon">📣</span>
+        <span>
+          <strong>欢迎来到 PortMasters 2！</strong>本作引入增值税、所得税、工匠工资、双人同步互市等深度机制，<strong>上手门槛高于一代</strong>。
+          建议先按 <span class="kbd">F1</span> 阅读手册；若感到吃力，可先体验
+          <a href="${PM1_URL}" target="_blank" rel="noopener">PortMasters 1（中文版）→</a>
+        </span>
+        <button class="pm-close" onclick="dismissPmBanner()" title="不再显示此提示">×</button>
+      </div>` : ''}
+      <div class="section-box" style="text-align:left">
+        <h3>🗺️ 本回合你将经历</h3>
+        <div class="section-hint">
+          ${PHASE_FLOW.map(s => `${s.icon} <strong>${s.name}</strong>`).join(' → ')}
+          <br>每个阶段都需<strong>双方确认</strong>后同步推进；互市阶段可与伙伴自由交易货物与金币。
+        </div>
+      </div>
+      <div style="text-align:center; margin: 22px 0">
+        <button class="btn btn-success btn-xl" onclick="sendAction('startBoon')" title="双方都点击后进入福缘抽取">🚢 扬帆起航<span class="btn-sub">双方确认后开始本回合</span></button>
+        <br><button class="btn btn-lg" onclick="showManual()" style="margin-top:12px">📖 游戏手册与新手指引</button>
+      </div>
+    </div>
+  `;
+}
+
+function dismissPmBanner() {
+  localStorage.setItem('pm2_banner_dismissed', '1');
+  renderPhase();
+}
+
+function boonDraftHTML() {
+  return `
+    ${phaseBriefHTML(5)}
+    <div class="center-block">
+      <div class="card-grid">
+        ${BOONS.map(b => `
+          <div class="boon-card">
+            <div class="boon-icon">${b.icon}</div>
+            <div class="boon-name">${b.name}</div>
+            <div class="boon-desc">${b.desc}</div>
+            <button class="btn btn-gold btn-lg" onclick="sendAction('selectBoon', {boonId: '${b.id}'})" title="锁定后本回合不可更换">🔒 锁定福缘</button>
+          </div>
+        `).join('')}
+      </div>
+    </div>
+  `;
+}
+
+function purchaseHTML() {
+  const g = serverState.yourGame;
+  const cards = g.resourceCards || [];
+  const flags = g.modifierFlags || {};
+  const discountChips = [];
+  if (flags.purchase_discount) discountChips.push('<span class="chip green">✨ 商贾魅力：实付约85折</span>');
+  if (flags.hemp_price_reduction) discountChips.push('<span class="chip green">🧶 麻布专营：麻布单价−2</span>');
+
+  return `
+    ${phaseBriefHTML(1, discountChips.join(''))}
+    <div class="card-grid">
+      ${cards.map(card => {
+        const purchased = g.purchasedCards.includes(card.id);
+        const canAfford = g.money >= card.totalCost && !purchased;
+        return `
+          <div class="card">
+            <div class="card-header">
+              <span>📍 ${card.port}</span>
+              <span class="card-tag ${card.isProductCard ? 'product' : ''}">${card.isProductCard ? '成品现货' : '原材料'}</span>
+            </div>
+            <div class="card-body">
+              ${card.resources.map(r => `
+                <div class="resource-row">
+                  <span class="icon">${ICONS[r.type]}</span>
+                  <span class="name tip" data-tip="${ITEM_TIPS[r.type] || ''}" style="color:${COLORS[r.type]}">${r.type}</span>
+                  <span class="qty">×${r.quantity}</span>
+                  <span class="price">单价 ${r.price}💰${r.materialDetails ? ` · 用料 ${r.materialDetails}` : ''}</span>
+                </div>
+              `).join('')}
+              <div class="card-total"><span>合计货款</span><span>${card.totalCost} 💰</span></div>
+            </div>
+            <div class="card-footer">
+              <button class="btn ${canAfford ? 'btn-success' : 'btn-grey'}" style="width:100%"
+                ${!canAfford ? 'disabled' : ''} onclick="sendAction('purchase', {cardId: ${card.id}})"
+                title="${purchased ? '该批货物已购入船舱' : (canAfford ? '立即购入，货物直接进入船舱' : '现金不足，无法采购')}">
+                ${purchased ? '✅ 已采购入舱' : (canAfford ? '🛒 采购此批货物' : '💸 现金不足')}
+              </button>
+            </div>
+          </div>
+        `;
+      }).join('')}
+    </div>
+    <div style="text-align:center; margin-top:22px">
+      <button class="btn btn-lg" onclick="sendAction('ready_for_next_phase')" title="确认后等待对方，双方都确认即进入互市">✅ 完成采购，进入互市<span class="btn-sub">双方确认后同步推进</span></button>
+    </div>
+  `;
+}
+
+/* 互市表单状态在重渲染间保留 */
+function captureTradeForm() {
+  const ids = ['sell-type', 'sell-qty', 'buy-type', 'buy-qty'];
+  const state = {};
+  let any = false;
+  ids.forEach(id => {
+    const el = document.getElementById(id);
+    if (el) { state[id] = el.value; any = true; }
+  });
+  return any ? state : null;
+}
+function restoreTradeForm(state) {
+  if (!state) return;
+  Object.keys(state).forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.value = state[id];
+  });
+}
+
+function tradePhaseHTML() {
+  const g = serverState.yourGame;
+  const orders = serverState.tradeOrders || [];
+  const mySlot = g.slot;
+  const receivedOrders = orders.filter(o => o.sellerSlot !== mySlot - 1);
+  const myOrders = orders.filter(o => o.sellerSlot === mySlot - 1);
+  const myReady = serverState.tradeReady[mySlot - 1];
+  const otherReady = serverState.tradeReady[2 - mySlot];
+  const partner = escapeHtml(serverState.partnerName || chatPartner || '对方');
+
+  const stockOf = t => t === '金币' ? g.money : (g.inventory[t] || 0);
+  const optionsHTML = ['金币', ...RESOURCES, ...PRODUCTS]
+    .map(t => `<option value="${t}">${ICONS[t] || ''} ${t}（我有 ${stockOf(t)}）</option>`).join('');
+
+  const readyChips = `
+    <span class="chip ${myReady ? 'green' : 'amber'}">我 ${myReady ? '✅ 已准备' : '⌛ 未准备'}</span>
+    <span class="chip ${otherReady ? 'green' : 'amber'}">${partner} ${otherReady ? '✅ 已准备' : '⌛ 未准备'}</span>`;
+
+  return `
+    ${phaseBriefHTML('trade', readyChips)}
+
+    <div class="trade-section">
+      <h3>📥 ${partner} 向你发起的交易</h3>
+      <div class="section-hint">接受即按订单内容即时互换；若任意一方资源不足，交易不会成立。不想要可直接拒绝。</div>
+      ${receivedOrders.length === 0 ? '<p class="muted">暂无来自对方的订单</p>' : receivedOrders.map(o => `
+        <div class="trade-order">
+          <div>📤 对方给出：<strong>${o.sell.map(i => `${ICONS[i.type] || ''}${i.type} ×${i.quantity}`).join('、')}</strong></div>
+          <div>📥 希望换取你的：<strong>${o.buy.map(i => `${ICONS[i.type] || ''}${i.type} ×${i.quantity}`).join('、')}</strong></div>
+          <div class="actions">
+            <button class="btn btn-success" onclick="sendAction('acceptTrade', {orderId:'${o.id}'})" title="接受后立即完成互换">✅ 接受成交</button>
+            <button class="btn btn-danger" onclick="sendAction('rejectTrade', {orderId:'${o.id}'})">❌ 拒绝</button>
+          </div>
+        </div>
+      `).join('')}
+    </div>
+
+    <div class="trade-section">
+      <h3>📤 向 ${partner} 发布交易订单</h3>
+      <div class="section-hint">下拉框中实时显示你的持有量，方便核对。订单发布后对方可接受或拒绝；本阶段结束前未成交的订单自动作废。</div>
+      <div class="trade-create">
+        <div>我 出售：
+          <select id="sell-type" title="选择你要给出的物资或金币">${optionsHTML}</select>
+          <input type="number" id="sell-qty" min="1" value="1" style="width:64px" title="给出数量"> 个
+        </div>
+        <div>换 取：
+          <select id="buy-type" title="选择希望从对方处获得的物资或金币">${optionsHTML}</select>
+          <input type="number" id="buy-qty" min="1" value="1" style="width:64px" title="索取数量"> 个
+        </div>
+        <button class="btn btn-gold" onclick="createTradeOrder()" title="发布后对方会立即看到此订单">📨 发布订单</button>
+      </div>
+    </div>
+
+    <div class="section-box">
+      <h3>🗂️ 我已发布的订单</h3>
+      ${myOrders.length === 0 ? '<span class="muted">暂无。发布订单后可在此查看其状态。</span>' : myOrders.map(o => `
+        <div style="font-size:12.5px; margin:5px 0">📤 出 ${o.sell.map(i => `${i.type}×${i.quantity}`).join('、')} ⇄ 换 ${o.buy.map(i => `${i.type}×${i.quantity}`).join('、')} <span class="muted">（等待对方接受或拒绝）</span></div>
+      `).join('')}
+    </div>
+
+    <div style="text-align:center; margin-top:20px">
+      <button class="btn btn-lg ${myReady ? 'btn-grey' : 'btn-success'}"
+        ${myReady ? 'disabled' : ''}
+        onclick="sendAction('setTradeReady')"
+        title="双方都点击后进入工匠管理。点击前请确认交易已谈妥">
+        ${myReady ? '⏳ 已准备，等待对方就绪' : '✅ 互市完毕，准备就绪'}
+        <span class="btn-sub">${myReady ? '' : '双方就绪后进入工匠管理'}</span>
+      </button>
+    </div>
+  `;
+}
+
+function createTradeOrder() {
+  const sellType = document.getElementById('sell-type').value;
+  const sellQty = parseInt(document.getElementById('sell-qty').value);
+  const buyType = document.getElementById('buy-type').value;
+  const buyQty = parseInt(document.getElementById('buy-qty').value);
+  if (isNaN(sellQty) || sellQty < 1 || isNaN(buyQty) || buyQty < 1) {
+    showNotification('数量必须为大于 0 的整数', true);
+    return;
+  }
+  if (sellType === buyType) {
+    showNotification('出售与换取不能是同一种物品', true);
+    return;
+  }
+  sendAction('createTradeOrder', {
+    sell: [{ type: sellType, quantity: sellQty }],
+    buy: [{ type: buyType, quantity: buyQty }]
+  });
+  showNotification('📨 订单已发布，对方可在其界面中接受或拒绝');
+}
+
+function workerMgmtHTML() {
+  const g = serverState.yourGame;
+  const hireDiscount = g.modifierFlags && g.modifierFlags.hire_discount;
+  const costOf = key => hireDiscount ? Math.floor(WAGES[key] / 2) : WAGES[key];
+
+  return `
+    ${phaseBriefHTML('worker_mgmt', hireDiscount ? '<span class="chip green">🎓 学徒传承：本回合雇佣半价</span>' : '')}
+    <div class="center-block">
+
+      <div class="section-box">
+        <h3>📦 当前库存速览</h3>
+        <div class="section-hint">分配生产任务会<strong>立即扣除</strong>对应材料，请先核对库存。</div>
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:20px">
+          <div>
+            <div class="inv-section-title">原 材 料</div>
+            ${RESOURCES.map(r => `<div class="inv-item"><span class="icon">${ICONS[r]}</span><span class="name">${r}</span><span class="count">${g.inventory[r] || 0}</span></div>`).join('')}
+          </div>
+          <div>
+            <div class="inv-section-title">成 品</div>
+            ${PRODUCTS.map(r => `<div class="inv-item"><span class="icon">${ICONS[r]}</span><span class="name">${r}</span><span class="count">${g.inventory[r] || 0}</span></div>`).join('')}
+          </div>
+        </div>
+      </div>
+
+      <div class="section-box">
+        <h3>🔨 雇佣工匠</h3>
+        <div class="section-hint">
+          雇佣本身免费，但每回合结算时自动支付工资（现金不足即破产）。工匠累计产出 2 件后晋升<strong>熟练⭐</strong>，此后每次产 2 件。
+          当前现金：<strong style="color:#059669">${g.money} 金币</strong>
+        </div>
+        <table style="width:100%;border-collapse:collapse;font-size:12px;margin:8px 0">
+          <tr style="color:var(--ink-faint);text-align:left"><th style="padding:4px">工匠</th><th>工资/回合</th><th>可制作</th><th></th></tr>
+          ${WORKER_TYPES.map(wt => `
+            <tr style="border-top:1px solid rgba(148,163,184,.25)">
+              <td style="padding:6px 4px;font-weight:700">${wt.icon} ${wt.name}</td>
+              <td>${costOf(wt.key)} 💰${hireDiscount ? ` <s class="muted">${WAGES[wt.key]}</s>` : ''}</td>
+              <td>${wt.can.map(t => `${ICONS[t]}${t}`).join('、')}</td>
+              <td style="text-align:right"><button class="btn btn-success" style="padding:6px 14px;font-size:12px" onclick="sendAction('hireWorker', {workerType: '${wt.key}'})" title="${wt.tip}">＋ 雇佣</button></td>
+            </tr>
+          `).join('')}
+        </table>
+      </div>
+
+      ${(g.weavers.length || g.masterWeavers.length || g.sachetMakers.length) ? `
+        <div class="section-box">
+          <h3>👥 团队任务分配</h3>
+          <div class="section-hint">为空闲工匠指派生产任务；产出将在<strong>结算阶段</strong>自动入库。解雇空闲工匠需支付一次工资作遣散费。</div>
+          ${workerListHTML('weaver', g.weavers, '织女', ['麻衣', '布衣'])}
+          ${workerListHTML('master', g.masterWeavers, '纺织大师', ['麻衣', '布衣', '绫罗绸缎'])}
+          ${workerListHTML('sachet_maker', g.sachetMakers, '香囊师', ['香囊'])}
+        </div>
+      ` : ''}
+
+      <div style="text-align:center; margin-top:20px">
+        <button class="btn btn-lg" onclick="sendAction('ready_for_next_phase')" title="双方确认后进入贸易订单阶段">✅ 完成工匠管理，进入贸易<span class="btn-sub">双方确认后同步推进</span></button>
+      </div>
+    </div>
+  `;
+}
+
+function workerListHTML(type, list, name, tasks) {
+  if (!list.length) return '';
+  return `
+    <div style="margin:12px 0">
+      <strong style="color:var(--ocean-900)">${name} × ${list.length}</strong>
+      ${list.map((w, i) => `
+        <div class="worker-row">
+          <span class="w-state">${name}${i + 1} ·
+            ${w.task
+              ? `<span class="busy">⚙️ 制作 ${w.task} 中</span>${w.isSkilled ? ' ⭐熟练（产2件）' : ''}`
+              : `<span class="idle">💤 空闲</span>${w.isSkilled ? ' ⭐熟练（产2件）' : ''}`}
+          </span>
+          <span>
+            ${!w.task ? `<button class="btn btn-danger" style="padding:4px 10px; font-size:11px" onclick="fireWorkerConfirm('${type}', ${i}, '${name}')" title="解雇需支付 ${WAGES[type]} 金币遣散费">解雇（付${WAGES[type]}💰）</button>` : ''}
+          </span>
+        </div>
+      `).join('')}
+      <div style="margin-top:6px">
+        ${tasks.map(t => {
+          const mats = RECIPE_MATS[t].map(([m, a]) => `${ICONS[m]}${m}×${a}`).join(' + ');
+          const can = RECIPE_MATS[t].every(([m, a]) => (serverState.yourGame.inventory[m] || 0) >= a);
+          return `<button class="btn ${can ? '' : 'btn-grey'}" style="margin:3px 3px 0 0; padding:7px 13px; font-size:11.5px"
+            onclick="sendAction('assignTask', {workerType: '${type}', task: '${t}'})"
+            title="${can ? '指派一名空闲' + name + '生产，立即消耗：' + mats : '材料不足：需 ' + mats}">
+            ${ICONS[t]} 制作${t}<span class="btn-sub">耗 ${mats}</span></button>`;
+        }).join('')}
+      </div>
+    </div>
+  `;
+}
+
+function fireWorkerConfirm(type, index, name) {
+  if (!confirm(`确定解雇这名${name}吗？需支付 ${WAGES[type]} 金币遣散费，且无法撤销。`)) return;
+  sendAction('fireWorker', { workerType: type, index });
+}
+
+function estimateTransport(g, totalItems) {
+  return Math.max(5, totalItems * 2 - g.shipLevel * 5);
+}
+
+function ordersHTML() {
+  const g = serverState.yourGame;
+  const cards = g.customerCards || [];
+  return `
+    ${phaseBriefHTML(2)}
+    <div class="card-grid">
+      ${cards.map(o => {
+        const canComplete = o.resources.every(r => (g.inventory[r.type] || 0) >= r.required);
+        const completed = g.completedOrders.includes(o.id);
+        const est = estimateTransport(g, o.totalItems);
+        return `
+          <div class="card">
+            <div class="card-header">
+              <span>📍 ${o.demandPort}</span>
+              <span class="card-tag ${o.isProductOrder ? 'product' : ''}">${o.isProductOrder ? '成品需求' : '原料需求'}</span>
+            </div>
+            <div class="card-body">
+              ${o.resources.map(r => {
+                const has = (g.inventory[r.type] || 0) >= r.required;
+                return `
+                  <div class="resource-row">
+                    <span style="font-size:14px;margin-right:4px">${has ? '✅' : '❌'}</span>
+                    <span class="icon">${ICONS[r.type]}</span>
+                    <span class="name" style="color:${COLORS[r.type]}">${r.type}</span>
+                    <span class="qty">×${r.required}</span>
+                    <span class="inv-status" style="color:${has ? '#059669' : '#e11d48'}">库存 ${g.inventory[r.type] || 0}</span>
+                  </div>
+                `;
+              }).join('')}
+              <div class="card-total"><span>💰 订单报酬</span><span>${o.reward} 💰</span></div>
+              <div class="stat-row" style="margin-top:3px">
+                <span class="tip" data-tip="运费 = max(5, 件数×2 − 船级×5)，福缘可进一步减免；成品另缴约5%增值税">📦 预计运费</span>
+                <span class="muted">≈ ${est} 💰${o.isProductOrder ? ' + 增值税' : ''}</span>
+              </div>
+            </div>
+            <div class="card-footer">
+              <button class="btn ${canComplete && !completed ? 'btn-success' : 'btn-grey'}" style="width:100%"
+                ${!canComplete || completed ? 'disabled' : ''} onclick="sendAction('completeOrder', {orderId: ${o.id}})"
+                title="${completed ? '该订单已交付' : (canComplete ? '交付货物并结算报酬、运费与税款' : '库存不足，无法交付')}">
+                ${completed ? '✅ 已交付' : (canComplete ? '🤝 交付订单' : '📦 库存不足')}
+              </button>
+            </div>
+          </div>
+        `;
+      }).join('')}
+    </div>
+    <div style="text-align:center; margin-top:22px">
+      <button class="btn btn-lg" onclick="sendAction('ready_for_next_phase')" title="确认后进入结算：生产入库、支付工资与维护费">✅ 完成交易，进入结算<span class="btn-sub">双方确认后同步推进</span></button>
+    </div>
+  `;
+}
+
+function maintenanceHTML() {
+  const g = serverState.yourGame;
+  const cost = g.fixedCost + (g.maintenancePenalty || 0);
+  const safe = g.money >= cost;
+  return `
+    ${phaseBriefHTML(3)}
+    <div class="center-block">
+      <div class="section-box" style="background:linear-gradient(135deg,rgba(52,211,153,.12),rgba(13,148,136,.08))">
+        <h3>✅ 已自动完成</h3>
+        <div class="section-hint">工匠产出已入库（可在左侧船舱货物中查看），全部工匠工资已自动结算扣除。</div>
+      </div>
+      <div class="section-box" style="${safe ? '' : 'border-color:rgba(225,29,72,.5)'}">
+        <h3>🔧 待支付：船队维护费</h3>
+        <div class="stat-row" style="font-size:14px"><span>维护费</span><strong>${cost} 金币</strong></div>
+        <div class="stat-row" style="font-size:14px"><span>当前现金</span><strong style="color:${safe ? '#059669' : '#e11d48'}">${g.money} 金币</strong></div>
+        ${!safe ? '<div style="background:var(--grad-danger);color:#fff;border-radius:10px;padding:8px 12px;font-size:12px;margin-top:8px;font-weight:700">🚨 现金不足以支付维护费——支付后将破产出局！</div>' : ''}
+        <div class="section-hint" style="margin-top:8px">支付维护费后还将按本回合净利润缴纳约10%所得税（持「免税令」福缘时为5%）。</div>
+      </div>
+      <div style="text-align:center">
+        <button class="btn btn-warning btn-xl" onclick="sendAction('doMaintenance')" title="支付维护费并结束本回合结算">💸 支付维护费<span class="btn-sub">双方完成后进入船坞</span></button>
+      </div>
+    </div>
+  `;
+}
+
+function shipyardHTML() {
+  const g = serverState.yourGame;
+  const canUpgrade = g.shipLevel < 3;
+  const upgCost = canUpgrade ? (g.shipUpgradeCost ? g.shipUpgradeCost[g.shipLevel] : [15, 25, 40][g.shipLevel]) + (g.shipUpgradePenalty || 0) : 0;
+  return `
+    ${phaseBriefHTML(4)}
+    <div class="center-block">
+      <div class="section-box">
+        <h3>🚢 旗舰档案</h3>
+        <div class="stat-row" style="font-size:13px"><span>当前等级</span><strong>Lv.${g.shipLevel} / 3</strong></div>
+        <div class="stat-row" style="font-size:13px"><span class="tip" data-tip="每单运费 = max(5, 件数×2 − 此减免)">运费永久减免</span><strong>−${g.shipLevel * 5} 金币/单</strong></div>
+        <div class="stat-row" style="font-size:13px"><span>模块槽位</span><strong>${(g.equippedModules || []).length} / ${g.shipLevel}</strong></div>
+        <div style="margin-top:6px">${modulesHTML(g)}</div>
+      </div>
+      <div style="text-align:center;display:flex;gap:12px;justify-content:center;flex-wrap:wrap">
+        ${canUpgrade ? `
+          <button class="btn btn-lg" onclick="sendAction('upgradeShip')" ${g.money < upgCost ? 'disabled' : ''}
+            title="升级后每单运费永久再减5金币，并增加1个模块槽位">
+            ⚓ 升级商船至 Lv.${g.shipLevel + 1}（${upgCost}💰）<span class="btn-sub">运费/单再 −5 金币 · +1 模块槽</span>
+          </button>` : '<span class="chip green">⚓ 旗舰已满级 Lv.3</span>'}
+        <button class="btn btn-success btn-lg" onclick="sendAction('ready_for_next_phase')" title="双方确认后开始下一航程">⏭️ 结束本航程<span class="btn-sub">双方确认后开启下一程</span></button>
+      </div>
+    </div>
+  `;
+}
+
+function bankruptcyHTML() {
+  const g = serverState.yourGame;
+  return `
+    <div class="center-block" style="text-align:center">
+      <div style="font-size:80px">💥</div>
+      <div class="hero-title" style="-webkit-text-fill-color:initial;background:none;color:#e11d48">船队破产！</div>
+      <p style="color:var(--ink-soft);margin:8px 0">现金无法覆盖工资或维护费，商队被迫清算。</p>
+      <div class="section-box" style="max-width:420px;margin:14px auto">
+        <div class="stat-row" style="font-size:14px"><span>最终现金</span><strong>${g.money} 金币</strong></div>
+        <div class="stat-row" style="font-size:14px"><span>最终声望</span><strong>${g.score}</strong></div>
+      </div>
+      ${pm1HintHTML('破产并不可怕——多半是工资与维护费规划失衡。')}
+      <button class="btn btn-lg" onclick="confirmRestart()" title="需等待对方也结束本局，双方进度将一同重置">🔄 重新起航</button>
+    </div>
+  `;
+}
+
+function endgameHTML() {
+  const g = serverState.yourGame;
+  let rating = "🌊 新手商人";
+  if (g.score >= 300) rating = "👑 丝绸之路霸主";
+  else if (g.score >= 200) rating = "🏆 海上贸易大亨";
+  else if (g.score >= 100) rating = "⭐ 成功商人";
+  else if (g.score >= 50) rating = "👍 合格商人";
+  return `
+    <div class="center-block" style="text-align:center">
+      <div style="font-size:70px">🎆</div>
+      <div class="hero-title">八大航程完结！</div>
+      <div class="section-box" style="max-width:460px;margin:14px auto;text-align:left">
+        <div class="stat-row" style="font-size:14px"><span>🏆 最终声望（信誉）</span><strong>${g.score}</strong></div>
+        <div class="stat-row" style="font-size:14px"><span>💰 最终现金</span><strong>${g.money} 金币</strong></div>
+        <div class="stat-row" style="font-size:15px"><span>📈 商人评级</span><strong>${rating}</strong></div>
+        <div class="section-hint" style="margin-top:8px">评级门槛：50 合格 · 100 成功 · 200 大亨 · 300 霸主</div>
+      </div>
+      ${g.score < 50 ? pm1HintHTML('首航成绩不理想很正常！') : ''}
+      <button class="btn btn-xl" onclick="confirmRestart()" title="需等待对方也结束本局，双方进度将一同重置">🔄 再启新航程</button>
+    </div>
+  `;
+}
+
+function confirmRestart() {
+  if (!confirm('重新起航将把双方的进度全部重置为第1程，确定继续吗？\n（需对方也已结束本局才会生效）')) return;
+  sendAction('restart');
+}
+
+/* ---------- 底部操作栏 ---------- */
+function renderControls() {
+  const g = serverState && serverState.yourGame;
+  const c = document.getElementById('control-panel');
+  if (!g || g.gameOver) {
+    c.innerHTML = `
+      <span class="sync-chip">🏁 本局已结束</span>
+      <div class="control-spacer"></div>
+      <button class="btn btn-danger" onclick="confirmRestart()">🔄 重新起航</button>
+      <button class="btn btn-ghost" onclick="showManual()">📖 手册</button>`;
+    return;
+  }
+  const phase = g.phase;
+  const readyCount = serverState.phaseReadyCount || 0;
+
+  let primary = '';
+  let hint = '';
+  if (phase === 0) {
+    primary = `<button class="btn btn-success btn-lg" onclick="sendAction('startBoon')">🧭 扬帆起航，抽取福缘</button>`;
+    hint = '双方都确认后进入福缘抽取';
+  } else if (phase === 5) {
+    hint = '请在上方卡片中选择并锁定一项福缘';
+  } else if (phase === 1) {
+    primary = `<button class="btn btn-lg" onclick="sendAction('ready_for_next_phase')">✅ 完成采购</button>`;
+    hint = '采购完成后确认，双方就绪即进入互市';
+  } else if (phase === 'trade') {
+    hint = '在互市界面发布/响应交易，谈妥后点「准备就绪」';
+  } else if (phase === 'worker_mgmt') {
+    primary = `<button class="btn btn-lg" onclick="sendAction('ready_for_next_phase')">✅ 完成工匠管理</button>`;
+    hint = '雇佣并指派任务后确认';
+  } else if (phase === 2) {
+    primary = `<button class="btn btn-lg" onclick="sendAction('ready_for_next_phase')">✅ 完成交易</button>`;
+    hint = '交付订单后确认，进入结算';
+  } else if (phase === 3) {
+    primary = `<button class="btn btn-warning btn-lg" onclick="sendAction('doMaintenance')">💸 支付维护费</button>`;
+    hint = '支付后等待对方完成结算';
+  } else if (phase === 4) {
+    primary = `<button class="btn btn-success btn-lg" onclick="sendAction('ready_for_next_phase')">⏭️ 结束航程</button>`;
+    hint = '可先升级商船，再结束本航程';
+  }
+
+  c.innerHTML = `
+    <span class="sync-chip" title="双方都确认后才会进入下一阶段">🔄 双方就绪 ${readyCount} / 2</span>
+    <span class="control-hint">💡 ${hint}</span>
+    <div class="control-spacer"></div>
+    ${primary}
+    <button class="btn btn-ghost" onclick="showManual()" title="快捷键 F1">📖 手册</button>
+  `;
+}
+
+function renderLog() {
+  const logs = (serverState && serverState.yourGame && serverState.yourGame.logs) || [];
+  const l = document.getElementById('log-panel');
+  l.innerHTML = `<div class="log-title">📜 航海日志 · 最近操作记录</div>` +
+    (logs.length
+      ? logs.map(m => `<div class="log-entry">${escapeHtml(m)}</div>`).join('')
+      : '<div class="log-entry muted">暂无记录。你的采购、交易、生产等操作会记录在这里。</div>');
+  l.scrollTop = l.scrollHeight;
+}
+
+function escapeHtml(s) {
+  return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+}
+
+function sendAction(action, payload = {}) {
+  if (ws && ws.readyState === WebSocket.OPEN) {
+    ws.send(JSON.stringify({ action, ...payload }));
+  }
+}
+
+/* ============================================================
+   游戏手册（分页式详尽文档） & 新手引导
+   ============================================================ */
+const MANUAL_TABS = [
+  { id: 'start',   label: '🚀 快速上手' },
+  { id: 'flow',    label: '🔄 回合流程' },
+  { id: 'economy', label: '💰 经济与税务' },
+  { id: 'workers', label: '👥 工匠与生产' },
+  { id: 'trade',   label: '🤝 互市与联机' },
+  { id: 'boons',   label: '🍀 福缘图鉴' },
+  { id: 'ship',    label: '🚢 船坞升级' },
+  { id: 'faq',     label: '❓ 常见问题' }
+];
+
+const MANUAL_CONTENT = {
+  start: `
+    <h4>🎯 游戏目标</h4>
+    <p>你与伙伴各自经营一支海上商队，在 <strong>8 个航程（回合）</strong>内通过「低买 → 生产 → 高卖」积累<strong>声望（信誉值）</strong>。声望来自每笔订单的净利润，游戏结束时按声望评级。开局资金 100 金币，并自带少量原料。</p>
+    <h4>🧭 第一程怎么玩（推荐路线）</h4>
+    <ol>
+      <li><strong>福缘</strong>：第一程建议选「紧急钱庄」（+40金币）或「商贾魅力」（采购85折），缓解开局现金压力。</li>
+      <li><strong>采购</strong>：优先买便宜的麻布、丝绸——它们是生产原料。注意给工资和 15 金币维护费留出现金。</li>
+      <li><strong>互市</strong>：开局可与伙伴互通有无，比如用富余茶叶换对方丝绸。</li>
+      <li><strong>工匠</strong>：先雇 1 名织女（8金币/回合）做麻衣或布衣，控制工资规模。</li>
+      <li><strong>贸易</strong>：优先交付「✅ 库存齐全」且报酬高于运费的订单。</li>
+      <li><strong>结算 / 船坞</strong>：付维护费；现金充裕再考虑升船。</li>
+    </ol>
+    <h4>⚖️ 核心原则</h4>
+    <ul>
+      <li><strong>现金流第一</strong>：工资 + 维护费付不起就直接破产，比少赚钱严重得多。</li>
+      <li><strong>成品利润远高于原料</strong>：香囊基准产值 80，原料转手只有个位数差价。</li>
+      <li><strong>双人同步</strong>：每个阶段都需双方确认才推进，多用聊天（💬）协调节奏。</li>
+    </ul>
+    <div class="pm-banner" style="margin-top:10px">
+      <span class="pm-icon">🧭</span>
+      <span><strong>本作为 PortMasters 2</strong>，上手门槛较高。若感到吃力，建议先体验上一代
+      <a href="${PM1_URL}" target="_blank" rel="noopener">PortMasters 1（中文版）→</a>，熟悉基础玩法后再回来。</span>
+    </div>
+  `,
+  flow: `
+    <h4>🔄 每个航程的 8 个阶段</h4>
+    <table>
+      <tr><th>阶段</th><th>你要做什么</th><th>推进条件</th></tr>
+      <tr><td>⚓ 启航</td><td>确认开始本回合</td><td>双方点击「扬帆起航」</td></tr>
+      <tr><td>🧭 福缘</td><td>从 8 张福缘卡中选 1 张，仅本回合生效</td><td>双方各自锁定福缘</td></tr>
+      <tr><td>🛒 采购</td><td>从 5 张进货卡中购买原料/成品（每张限购一次）</td><td>双方点击「完成采购」</td></tr>
+      <tr><td>🤝 互市</td><td>与伙伴自由交易货物与金币</td><td>双方点击「准备就绪」</td></tr>
+      <tr><td>👥 工匠</td><td>雇佣/解雇工匠，分配生产任务（立即耗料）</td><td>双方点击「完成工匠管理」</td></tr>
+      <tr><td>📦 贸易</td><td>用库存交付 5 张港口订单赚取报酬</td><td>双方点击「完成交易」</td></tr>
+      <tr><td>🔧 结算</td><td>产出入库、自动付工资，然后手动支付维护费</td><td>双方支付维护费</td></tr>
+      <tr><td>🚢 船坞</td><td>可选：升级商船；然后结束本航程</td><td>双方点击「结束航程」</td></tr>
+    </table>
+    <p>底部操作栏的「🔄 双方就绪 n/2」实时显示同步进度；你确认后若对方未确认，会显示等待提示。已破产的玩家视为自动就绪，不会阻塞对方。</p>
+  `,
+  economy: `
+    <h4>💸 四大支出，务必牢记</h4>
+    <table>
+      <tr><th>项目</th><th>计算方式</th><th>何时支付</th></tr>
+      <tr><td>📦 运费</td><td>max(5, 件数×2 − 船级×5 − 福缘减免)</td><td>每次交付订单时</td></tr>
+      <tr><td>🧾 增值税</td><td>(售价 − 材料均价成本 − 人工) × 5%</td><td>交付<strong>成品</strong>订单时自动扣除</td></tr>
+      <tr><td>📜 所得税</td><td>回合净利润 × 10%（免税令时 5%）</td><td>每回合结束自动扣除</td></tr>
+      <tr><td>🔧 维护费</td><td>固定 15 金币/回合</td><td>结算阶段手动支付，<strong>付不起即破产</strong></td></tr>
+    </table>
+    <h4>💰 收入来源</h4>
+    <ul>
+      <li><strong>原料订单</strong>：报酬 = 需求量×5 + 10~25 浮动，门槛低利润薄。</li>
+      <li><strong>成品订单</strong>：按成品市价结算（麻衣 30-42 / 布衣 50-65 / 绫罗绸缎 70-90 / 香囊 95-120），扣增值税后仍是主要利润来源。</li>
+      <li><strong>互市</strong>：和伙伴谈个好价钱，互补短板。</li>
+    </ul>
+    <h4>📈 采购小窍门</h4>
+    <p>每种原料都有特产港（麻布：泉州/宁波；丝绸：杭州/扬州；茶叶：广州/泉州），特产港进货单价低 1 金币上下；进货卡上的港口与价格都已列明，对比后再买。</p>
+  `,
+  workers: `
+    <h4>👥 三类工匠</h4>
+    <table>
+      <tr><th>工匠</th><th>工资/回合</th><th>可制作</th></tr>
+      <tr><td>👩‍🔧 织女</td><td>8 金币</td><td>麻衣、布衣</td></tr>
+      <tr><td>👩‍🎨 纺织大师</td><td>12 金币</td><td>麻衣、布衣、绫罗绸缎</td></tr>
+      <tr><td>🌸 香囊师</td><td>20 金币</td><td>香囊（唯一来源）</td></tr>
+    </table>
+    <h4>🧵 生产配方与产值</h4>
+    <table>
+      <tr><th>成品</th><th>所需材料</th><th>基准产值</th><th>市价区间</th></tr>
+      <tr><td>👔 麻衣</td><td>麻布×2</td><td>15</td><td>30 - 42</td></tr>
+      <tr><td>👕 布衣</td><td>麻布×2 + 丝绸×1</td><td>35</td><td>50 - 65</td></tr>
+      <tr><td>👗 绫罗绸缎</td><td>丝绸×3</td><td>60</td><td>70 - 90</td></tr>
+      <tr><td>🌸 香囊</td><td>丝绸×1 + 茶叶×2</td><td>80</td><td>95 - 120</td></tr>
+    </table>
+    <h4>⚙️ 生产规则</h4>
+    <ul>
+      <li>分配任务时<strong>立即扣除材料</strong>；成品在本回合<strong>结算阶段</strong>入库，下回合才能卖。</li>
+      <li>每名工匠每回合只能接一个任务；普通工匠产 1 件，<strong>熟练⭐</strong>（累计产出≥2件后自动晋升）产 2 件。</li>
+      <li>工资在结算阶段自动支付——<strong>现金不足直接破产</strong>，扩张团队前先算账。</li>
+      <li>解雇空闲工匠需支付一次工资作遣散费；生产中的工匠不能解雇。</li>
+    </ul>
+  `,
+  trade: `
+    <h4>🤝 互市阶段（本作双人核心玩法）</h4>
+    <ul>
+      <li>发布订单：「我出售 A×n，换取 B×m」，其中 A、B 可以是任意原料、成品或金币。</li>
+      <li>对方可<strong>接受</strong>（双方资源即时互换）或<strong>拒绝</strong>（订单作废）。任一方资源不足时交易不会成立。</li>
+      <li>双方都点击「✅ 准备就绪」后进入工匠管理；未成交订单自动作废。</li>
+      <li>右侧伙伴面板实时展示对方的存款、声望、库存、工匠与增益——<strong>看准对方缺什么再开价</strong>。</li>
+    </ul>
+    <h4>🌐 联机机制</h4>
+    <ul>
+      <li><strong>邀请</strong>：大厅中向在线玩家发出邀请，每分钟限 1 次，60 秒未回应自动超时。</li>
+      <li><strong>同步</strong>：双方始终同回合同阶段；每个阶段需双方确认才推进。</li>
+      <li><strong>断线重连</strong>：会话保留在服务器，重新登录即恢复进度；双方都离线时会话回收。</li>
+      <li><strong>聊天</strong>：点击右上角 💬 与伙伴实时沟通（对方离线时无法发送）。</li>
+      <li><strong>重新开始</strong>：双方都结束本局（完赛或破产）后，任一方可重置开新局。</li>
+    </ul>
+  `,
+  boons: `
+    <h4>🍀 福缘图鉴（每回合开始时八选一，仅当回合生效）</h4>
+    <table>
+      <tr><th>福缘</th><th>效果</th><th>适合时机</th></tr>
+      <tr><td>🌬️ 丝路顺风</td><td>丝绸及成品运费减半</td><td>本回合要交付大量成品订单</td></tr>
+      <tr><td>🌊 顺风顺水</td><td>基础运费减 4 金币</td><td>要交付多笔小额订单</td></tr>
+      <tr><td>✨ 商贾魅力</td><td>采购 85 折</td><td>本回合计划大量进货</td></tr>
+      <tr><td>🔨 匠人灵感</td><td>所有工人多产 1 件</td><td>工匠团队规模较大时收益最高</td></tr>
+      <tr><td>💰 紧急钱庄</td><td>立即获得 40 金币</td><td>现金紧张、濒临破产时的救命稻草</td></tr>
+      <tr><td>📜 免税令</td><td>所得税率降至 5%</td><td>预计本回合利润很高</td></tr>
+      <tr><td>🧶 麻布专营</td><td>麻布采购单价 −2 金币</td><td>主打麻衣/布衣生产线</td></tr>
+      <tr><td>🎓 学徒传承</td><td>雇佣工资减半</td><td>本回合计划扩编工匠团队</td></tr>
+    </table>
+  `,
+  ship: `
+    <h4>🚢 商船升级（船坞阶段）</h4>
+    <table>
+      <tr><th>升级</th><th>费用</th><th>累计效果</th></tr>
+      <tr><td>Lv.0 → Lv.1</td><td>15 金币</td><td>每单运费 −5 · 1 个模块槽</td></tr>
+      <tr><td>Lv.1 → Lv.2</td><td>25 金币</td><td>每单运费 −10 · 2 个模块槽</td></tr>
+      <tr><td>Lv.2 → Lv.3</td><td>40 金币</td><td>每单运费 −15 · 3 个模块槽</td></tr>
+    </table>
+    <ul>
+      <li>运费下限为 5 金币（部分福缘/模块可降至 0）。</li>
+      <li>升级是<strong>永久投资</strong>：交付订单越频繁，回本越快。一般建议第 2~4 程内升至 Lv.1~2。</li>
+      <li>末期（第 7、8 程）再升级往往回不了本，把现金留给进货更划算。</li>
+    </ul>
+  `,
+  faq: `
+    <h4>❓ 常见问题</h4>
+    <ul>
+      <li><strong>点了按钮没反应 / 一直在等待？</strong>——大概率在等对方确认。看底部「双方就绪 n/2」，并用 💬 聊天催一下伙伴。</li>
+      <li><strong>材料明明够却无法分配生产？</strong>——可能所有工匠都已有任务；每名工匠每回合仅能接一个任务。</li>
+      <li><strong>为什么突然破产了？</strong>——结算阶段现金不足以支付工资或维护费。扩编工匠前，先看左侧「⚠️ 本回合应付款项」。</li>
+      <li><strong>破产后还能玩吗？</strong>——本局出局，但不会阻塞对方；等伙伴结束后点「重新起航」即可同开新局。</li>
+      <li><strong>对方掉线怎么办？</strong>——会话保留在服务器，对方重新登录即恢复；期间无法聊天和互市成交。</li>
+      <li><strong>声望（信誉值）是什么？</strong>——每笔订单「报酬 − 运费」的累计，是最终评级唯一依据，不会被消费扣减。</li>
+    </ul>
+    <h4>⌨️ 快捷键</h4>
+    <ul>
+      <li><span class="kbd">F1</span> 打开本手册 · <span class="kbd">Esc</span> 关闭弹窗 / 聊天窗</li>
+    </ul>
+    <h4>😣 觉得 PortMasters 2 太难？</h4>
+    <p>本作的税务、工资与双人同步机制对新手并不友好。可以先游玩上一代
+    <a href="${PM1_URL}" target="_blank" rel="noopener"><strong>PortMasters 1（中文版）→</strong></a>
+    ，它没有联机同步与复杂税制，更适合熟悉「采购 → 生产 → 贸易」的基本循环。</p>
+  `
+};
+
+let activeManualTab = 'start';
+
+function showManual(tab) {
+  activeManualTab = tab || activeManualTab || 'start';
+  showModal(`
+    <h2>📖 PortMasters 2 · 航海手册</h2>
+    <div class="manual-tabs">
+      ${MANUAL_TABS.map(t => `<button class="mtab ${t.id === activeManualTab ? 'active' : ''}" onclick="switchManualTab('${t.id}')">${t.label}</button>`).join('')}
+    </div>
+    <div class="manual-body" id="manual-body">${MANUAL_CONTENT[activeManualTab]}</div>
+    <div style="text-align:center;margin-top:16px">
+      <button class="btn" onclick="closeModal()">关闭（Esc）</button>
+    </div>
+  `, true);
+}
+
+function switchManualTab(tab) {
+  activeManualTab = tab;
+  document.querySelectorAll('.mtab').forEach(b => b.classList.remove('active'));
+  const idx = MANUAL_TABS.findIndex(t => t.id === tab);
+  if (idx >= 0) document.querySelectorAll('.mtab')[idx].classList.add('active');
+  document.getElementById('manual-body').innerHTML = MANUAL_CONTENT[tab];
+}
+
+/* 兼容旧入口（F1 等） */
+function showInstructions() { showManual(); }
+
+/* ---------- 首次进入会话时的新手引导 ---------- */
+function maybeShowOnboarding() {
+  if (localStorage.getItem('pm2_onboarded') === '1') return;
+  showModal(`
+    <h2>🧭 欢迎登船，船长！</h2>
+    <div class="manual-body" style="max-height:46vh">
+      <p>这里是 <strong>PortMasters 2</strong> —— 海上丝绸之路双人联机贸易战略。开始前 60 秒了解三件事：</p>
+      <h4>1️⃣ 一切围绕现金流</h4>
+      <p>每回合必须支付<strong>工匠工资</strong>与 <strong>15 金币维护费</strong>，付不起立即破产。左侧面板会实时核算「本回合应付款项」，时刻盯紧它。</p>
+      <h4>2️⃣ 与伙伴同船同行</h4>
+      <p>每个阶段都需<strong>双方确认</strong>才推进（看底部「双方就绪 n/2」）。右侧面板可随时查看伙伴的存款、声望、货物、工匠与增益；互市阶段可自由交易，💬 聊天随时沟通。</p>
+      <h4>3️⃣ 生产成品才赚大钱</h4>
+      <p>雇工匠把原料加工成成品（香囊市价 95-120！），再交付订单。注意成品要缴约 5% 增值税，回合末还有约 10% 所得税。</p>
+      <div class="pm-banner">
+        <span class="pm-icon">💡</span>
+        <span>本作上手门槛较高。若中途感到吃力，可先体验
+        <a href="${PM1_URL}" target="_blank" rel="noopener">PortMasters 1（中文版）→</a>，再回来挑战。</span>
+      </div>
+    </div>
+    <div style="text-align:center;margin-top:16px;display:flex;gap:10px;justify-content:center;flex-wrap:wrap">
+      <button class="btn btn-success btn-lg" onclick="finishOnboarding(false)">⚓ 我已了解，开始航行</button>
+      <button class="btn btn-gold btn-lg" onclick="finishOnboarding(true)">📖 先看完整手册</button>
+    </div>
+  `, true);
+}
+
+function finishOnboarding(openManual) {
+  localStorage.setItem('pm2_onboarded', '1');
+  closeModal();
+  if (openManual) showManual('start');
+}
+
+/* ---------- 通用对话框 ---------- */
+function showModal(html, wide) {
+  document.getElementById('modal-root').innerHTML = `
+    <div class="modal-overlay" onclick="if(event.target===this)closeModal()">
+      <div class="modal ${wide ? 'modal-wide' : ''}">
+        <button class="modal-x" onclick="closeModal()" title="关闭（Esc）">×</button>
+        ${html}
+      </div>
+    </div>`;
+}
+
+function closeModal() { document.getElementById('modal-root').innerHTML = ''; }
+
+/* ---------- 全局快捷键（用户自由与控制：随时求助、随时退出弹层） ---------- */
+document.addEventListener('keydown', e => {
+  if (e.key === 'F1') {
+    e.preventDefault();
+    showManual();
+  } else if (e.key === 'Escape') {
+    if (document.getElementById('modal-root').innerHTML) {
+      closeModal();
+    } else if (document.getElementById('chat-window').style.display === 'flex') {
+      toggleChat();
+    }
+  }
+});
+</script>
+</body>
+</html>
