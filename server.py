@@ -135,6 +135,7 @@ class PlayerGame:
         self.boonChoices = []
         self.equippedModules = []
         self.draftChoices = []
+        self.lastRoundSummary = None
         self.lastLogs = []
         # 注入 slot 信息（由 SharedSession 设置）
         self.slot = None
@@ -502,12 +503,24 @@ class PlayerGame:
     def end_round(self):
         pre_tax = self.roundRevenue - self.roundCosts - self.maintenanceCosts - self.workerWages
         tax = self.calc_income_tax(pre_tax)
+        paid_tax = 0
         if tax > 0 and self.money >= tax:
+            paid_tax = tax
             self.money -= tax
             self.incomeTaxPaid += tax
         elif tax > 0 and self.money < tax:
+            paid_tax = self.money
             self.incomeTaxPaid += self.money
             self.money = 0
+        # 在清零回合计数前留存本程结算回顾，供下一程「启航」过渡页展示
+        self.lastRoundSummary = {
+            "round": self.currentRound,
+            "revenue": self.roundRevenue,
+            "costs": self.roundCosts,
+            "incomeTax": paid_tax,
+            "money": self.money,
+            "score": self.score,
+        }
         self.modifierFlags = {}
         self.phase2DemandTags = []
         self.revealedIntel = []
@@ -554,6 +567,7 @@ class PlayerGame:
             "revealedIntel": self.revealedIntel,
             "intelRemaining": len(self.phase2DemandTags),
             "boonChoices": self.boonChoices,
+            "lastRoundSummary": self.lastRoundSummary,
             "gameOver": self.gameOver,
             "bankrupt": self.bankrupt,
             "fixedCost": self.fixedCost,

@@ -395,17 +395,31 @@ a { color: var(--ocean-700); }
 .btn:hover:not(:disabled) { transform: translateY(-2px); box-shadow: 0 8px 20px var(--btn-shadow), inset 0 1px 0 rgba(255,255,255,.28); filter: saturate(1.12); }
 .btn:active:not(:disabled) { transform: translateY(0) scale(.97); }
 .btn:focus-visible { outline: 3px solid rgba(14, 165, 233, .45); outline-offset: 2px; }
-.btn:disabled { background: var(--grad-grey); cursor: not-allowed; box-shadow: none; opacity: .75; }
+.btn:disabled { background: var(--grad-grey); cursor: not-allowed; box-shadow: none; opacity: .75; color: #334155; }
 .btn-success { --btn-bg: var(--grad-success); --btn-shadow: rgba(13, 148, 136, .3); }
 .btn-warning { --btn-bg: var(--grad-warning); --btn-shadow: rgba(249, 115, 22, .3); }
 .btn-danger  { --btn-bg: var(--grad-danger);  --btn-shadow: rgba(225, 29, 72, .3); }
 .btn-gold    { --btn-bg: var(--grad-gold);    --btn-shadow: rgba(245, 158, 11, .35); color: #451a03; }
-.btn-grey    { --btn-bg: var(--grad-grey);    --btn-shadow: rgba(100, 116, 139, .25); }
+.btn-grey    { --btn-bg: var(--grad-grey);    --btn-shadow: rgba(100, 116, 139, .25); color: #334155; }
+/* 幽灵按钮按所处表面自适应配色：
+   默认（浅色玻璃面板）→ 海洋色文字 + 海洋色描边；
+   深色容器（顶栏 / 底部操作栏）→ 白色文字 + 白色描边。
+   任何按钮变体都不得假设自己只会出现在某一种背景上。 */
 .btn-ghost {
-  --btn-bg: rgba(255,255,255,.14);
-  background: rgba(255,255,255,.14);
-  border: 1px solid rgba(255,255,255,.32);
+  --btn-bg: rgba(255, 255, 255, .55);
+  background: rgba(255, 255, 255, .55);
+  border: 1px solid rgba(14, 165, 233, .45);
+  color: var(--ocean-700);
   box-shadow: none;
+}
+.btn-ghost:hover:not(:disabled) { background: rgba(224, 242, 254, .9); filter: none; }
+.header .btn-ghost, .control-panel .btn-ghost {
+  background: rgba(255, 255, 255, .14);
+  border: 1px solid rgba(255, 255, 255, .32);
+  color: #fff;
+}
+.header .btn-ghost:hover:not(:disabled), .control-panel .btn-ghost:hover:not(:disabled) {
+  background: rgba(255, 255, 255, .26);
 }
 .btn-lg { padding: 12px 26px; font-size: 14px; border-radius: 14px; }
 .btn-xl { padding: 15px 34px; font-size: 16px; border-radius: 16px; }
@@ -1732,7 +1746,21 @@ function renderPhase() {
 }
 
 /* ---------- 各阶段视图 ---------- */
+/* 双方确认启航的主按钮：确认后变为等待态，避免误以为没点上 */
+function setSailButtonHTML() {
+  const ready = !!serverState.youReady;
+  return `
+    <button class="btn ${ready ? 'btn-grey' : 'btn-success'} btn-xl" ${ready ? 'disabled' : ''}
+      onclick="sendAction('startBoon')" title="双方都点击后进入福缘抽取">
+      ${ready ? '⌛ 已确认，等待伙伴' : '🚢 扬帆起航'}<span class="btn-sub">双方确认后抽取本程福缘</span>
+    </button>`;
+}
+
 function welcomeHTML() {
+  const g = serverState.yourGame;
+  /* 阶段 0 既是首航欢迎页，也是每程之间的同步闸门：
+     第 2 程起不再回到首页式欢迎页，而是展示「启航 · 结算回顾」过渡页 */
+  if (g.currentRound > 1) return roundStartHTML(g);
   const dismissed = localStorage.getItem('pm2_banner_dismissed') === '1';
   return `
     <div class="center-block">
@@ -1756,8 +1784,37 @@ function welcomeHTML() {
         </div>
       </div>
       <div style="text-align:center; margin: 22px 0">
-        <button class="btn btn-success btn-xl" onclick="sendAction('startBoon')" title="双方都点击后进入福缘抽取">🚢 扬帆起航<span class="btn-sub">双方确认后开始本回合</span></button>
+        ${setSailButtonHTML()}
         <br><button class="btn btn-lg" onclick="showManual()" style="margin-top:12px">📖 游戏手册与新手指引</button>
+      </div>
+    </div>
+  `;
+}
+
+/* 第 N 程（N≥2）启航过渡页：承接上一程的结算回顾，保持航程连续感 */
+function roundStartHTML(g) {
+  const s = g.lastRoundSummary;
+  const net = s ? (s.revenue - s.costs - s.incomeTax) : 0;
+  return `
+    ${phaseBriefHTML(0)}
+    <div class="center-block" style="text-align:center">
+      <div style="font-size:54px">🌅</div>
+      <div class="hero-title">第 ${g.currentRound} 程 · 整装启航</div>
+      <div class="subtitle-text">航程进度 ${g.currentRound} / ${g.maxRounds} · 与伙伴确认后抽取本程福缘</div>
+      ${s ? `
+      <div class="section-box" style="max-width:460px;margin:14px auto;text-align:left">
+        <h3>📜 第 ${s.round} 程结算回顾</h3>
+        <div class="stat-row" style="font-size:13px"><span>💰 本程营收</span><span class="profit-positive">+${s.revenue} 金币</span></div>
+        <div class="stat-row" style="font-size:13px"><span>💸 本程支出（采购 / 运费 / 工资 / 维护）</span><span class="profit-negative">−${s.costs} 金币</span></div>
+        <div class="stat-row" style="font-size:13px"><span>📜 所得税</span><span class="profit-negative">−${s.incomeTax} 金币</span></div>
+        <div class="stat-row" style="font-size:13px;border-top:1px solid rgba(148,163,184,.3);margin-top:4px;padding-top:6px">
+          <span><strong>程末净利</strong></span>
+          <span class="${net >= 0 ? 'profit-positive' : 'profit-negative'}">${net >= 0 ? '+' : ''}${net} 金币</span>
+        </div>
+        <div class="stat-row" style="font-size:13px"><span><strong>当前现金 · 声望</strong></span><strong>${s.money} 金币 · ${s.score}</strong></div>
+      </div>` : ''}
+      <div style="margin:20px 0">
+        ${setSailButtonHTML()}
       </div>
     </div>
   `;
@@ -2353,8 +2410,10 @@ function renderControls() {
   let primary = '';
   let hint = '';
   if (phase === 0) {
-    primary = `<button class="btn btn-success btn-lg" onclick="sendAction('startBoon')">🧭 扬帆起航，抽取福缘</button>`;
-    hint = '双方都确认后进入福缘抽取';
+    primary = serverState.youReady
+      ? `<button class="btn btn-grey btn-lg" disabled>⌛ 已确认，等待伙伴</button>`
+      : `<button class="btn btn-success btn-lg" onclick="sendAction('startBoon')">🧭 扬帆起航，抽取福缘</button>`;
+    hint = serverState.youReady ? '等待对方确认后进入福缘抽取' : '双方都确认后进入福缘抽取';
   } else if (phase === 5) {
     hint = '请在上方卡片中选择并锁定一项福缘';
   } else if (phase === 1) {
