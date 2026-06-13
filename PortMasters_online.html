@@ -424,6 +424,10 @@ a { color: var(--ocean-700); }
 .btn-lg { padding: 12px 26px; font-size: 14px; border-radius: 14px; }
 .btn-xl { padding: 15px 34px; font-size: 16px; border-radius: 16px; }
 .btn-sub { display: block; font-size: 10px; font-weight: 500; opacity: .85; margin-top: 2px; }
+.btn-shield {
+  background: linear-gradient(135deg, #0f766e, #0ea5e9);
+  color: #fff;
+}
 
 /* ---- 卡牌 ---- */
 .card-grid {
@@ -443,6 +447,49 @@ a { color: var(--ocean-700); }
   transition: transform .2s ease, box-shadow .2s ease;
 }
 .card:hover { transform: translateY(-3px); box-shadow: var(--shadow-float); }
+.golden-order-card {
+  position: relative;
+  border: 1px solid rgba(245, 158, 11, .75);
+  background:
+    radial-gradient(circle at 12% 0%, rgba(253, 230, 138, .38), transparent 34%),
+    linear-gradient(135deg, rgba(255, 251, 235, .96), rgba(254, 243, 199, .94) 48%, rgba(255, 255, 255, .92));
+  box-shadow: 0 18px 48px rgba(146, 64, 14, .18);
+}
+.golden-order-card.final-mandate { grid-column: 1 / -1; }
+.golden-order-card::before,
+.golden-order-card::after {
+  content: '';
+  position: absolute;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: rgba(245, 158, 11, .78);
+  box-shadow: 0 0 18px rgba(245, 158, 11, .9);
+  animation: mandateSpark 2.8s ease-in-out infinite;
+  pointer-events: none;
+}
+.golden-order-card::before { top: 12px; right: 18px; }
+.golden-order-card::after { bottom: 14px; left: 20px; animation-delay: -1.4s; }
+.golden-order-card .card-header {
+  background: linear-gradient(135deg, #451a03, #b45309 52%, #f59e0b);
+  color: #fff7ed;
+  border-bottom-color: rgba(245, 158, 11, .55);
+  font-family: Georgia, "Times New Roman", "Noto Serif SC", serif;
+  letter-spacing: 0;
+}
+.golden-order-card .card-total {
+  color: #78350f;
+  border-top-color: rgba(180, 83, 9, .35);
+}
+.card-tag.golden {
+  background: linear-gradient(135deg, #fde68a, #f59e0b);
+  color: #451a03;
+  box-shadow: 0 2px 8px rgba(245, 158, 11, .28);
+}
+@keyframes mandateSpark {
+  0%, 100% { opacity: .28; transform: translateY(0) scale(.82); }
+  50% { opacity: 1; transform: translateY(-8px) scale(1.16); }
+}
 .card-header {
   background: linear-gradient(135deg, rgba(56, 189, 248, .14), rgba(20, 184, 166, .12));
   padding: 10px 14px;
@@ -536,6 +583,22 @@ a { color: var(--ocean-700); }
 }
 .section-box h3 { color: var(--ocean-900); font-size: 15px; margin-bottom: 8px; display: flex; align-items: center; gap: 6px; }
 .section-hint { font-size: 11.5px; color: var(--ink-faint); margin-bottom: 10px; line-height: 1.6; }
+.environment-banner {
+  background: linear-gradient(135deg, rgba(224, 242, 254, .82), rgba(204, 251, 241, .7));
+  border: 1px solid rgba(14, 165, 233, .28);
+  border-radius: var(--radius-md);
+  padding: 13px 16px;
+  margin: 0 0 16px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  box-shadow: var(--shadow-soft);
+}
+.environment-banner .env-icon { font-size: 32px; line-height: 1; }
+.environment-banner .env-copy { flex: 1; min-width: 180px; }
+.environment-banner .env-title { font-size: 14px; font-weight: 900; color: var(--ocean-900); }
+.environment-banner .env-desc { font-size: 12px; color: var(--ink-soft); line-height: 1.55; margin-top: 2px; }
+.environment-banner .env-tags { display: flex; gap: 6px; flex-wrap: wrap; justify-content: flex-end; }
 
 .separator { height: 1px; background: linear-gradient(90deg, transparent, rgba(14, 165, 233, .4), transparent); margin: 16px 0; border: none; }
 
@@ -1226,6 +1289,27 @@ const BOONS = [
 const boonName = b => (BOON_TEXT[b.id] ? pf(BOON_TEXT[b.id].name) : (b.name || b.id));
 const boonDesc = b => (BOON_TEXT[b.id] ? pf(BOON_TEXT[b.id].desc) : (b.desc || ''));
 
+const MONSOON_TEXT = {
+  spring_current: {
+    name: { zh: "春潮顺流", en: "Spring Current" },
+    desc: { zh: "泉州港与广州港订单报酬提高，茶叶采购价降低。海盗风险较低。", en: "Quanzhou and Guangzhou orders pay more, Tea is cheaper, and pirate risk is low." }
+  },
+  summer_monsoon: {
+    name: { zh: "盛夏季风", en: "Summer Monsoon" },
+    desc: { zh: "杭州港与扬州港订单报酬提高，丝绸采购价上升。海盗风险升高。", en: "Hangzhou and Yangzhou orders pay more, Silk is pricier, and pirate risk rises." }
+  },
+  autumn_gales: {
+    name: { zh: "秋汛乱流", en: "Autumn Gales" },
+    desc: { zh: "宁波港与泉州港订单报酬提高，麻布采购价降低。海盗风险中等。", en: "Ningbo and Quanzhou orders pay more, Hemp Cloth is cheaper, and pirate risk is moderate." }
+  },
+  winter_blockade: {
+    name: { zh: "冬海封锁", en: "Winter Blockade" },
+    desc: { zh: "广州港与杭州港订单报酬大幅提高，茶叶采购价上升。海盗风险最高。", en: "Guangzhou and Hangzhou orders pay much more, Tea is pricier, and pirate risk is highest." }
+  }
+};
+const monsoonName = m => (MONSOON_TEXT[m && m.id] ? pf(MONSOON_TEXT[m.id].name) : ((m && m.name) || ''));
+const monsoonDesc = m => (MONSOON_TEXT[m && m.id] ? pf(MONSOON_TEXT[m.id].desc) : ((m && m.desc) || ''));
+
 const MODULE_TEXT = {
   smugglers_hold:    { name: { zh: "走私暗舱", en: "Smuggler's Hold" },    desc: { zh: "采购成本-15%。所得税+20%。", en: "Purchase costs −15%. Income tax +20%." } },
   bulk_hauler:       { name: { zh: "散货索具", en: "Bulk Rigging" },       desc: { zh: "每件货物运费-1。船坞升级费用+15金币。", en: "Shipping −1 gold per item. Ship upgrades cost +15 gold." } },
@@ -1338,6 +1422,11 @@ const SERVER_TEXT_RULES = [
   [/^❌ 所有工匠都在忙$/, () => `❌ All artisans are busy`],
   [/^⚠️ 工资不足，(\d+)金币$/, m => `⚠️ Cannot cover wages of ${m[1]} gold`],
   [/^⚠️ 维护费不足，破产$/, () => `⚠️ Cannot cover upkeep — bankrupt`],
+  [/^🛡️ 护航舰队已就位$/, () => `🛡️ Escort fleet is already in position`],
+  [/^❌ 需要(\d+)金币才能雇佣护航$/, m => `❌ You need ${m[1]} gold to hire an escort`],
+  [/^🛡️ 雇佣护航，花费(\d+)金币$/, m => `🛡️ Hired an escort for ${m[1]} gold`],
+  [/^🛡️ 护航舰队震慑海盗，本程无损$/, () => `🛡️ Escort fleet deterred pirates — no losses this voyage`],
+  [/^🏴‍☠️ 海盗袭扰，损失(\d+)金币$/, m => `🏴‍☠️ Pirate raid — lost ${m[1]} gold`],
   [/^🤝 互市成功！$/, () => `🤝 Barter complete!`],
   /* 同步等待提示 */
   [/^请点击“准备就绪”以进入工匠管理$/, () => `Click "Ready" to proceed to artisan management`],
@@ -1849,6 +1938,30 @@ function buffChipsHTML(g) {
   return chips.length ? chips.join('') : `<span class="muted">${tr('本回合暂无增益', 'No buffs this round')}</span>`;
 }
 
+function environmentBannerHTML(g) {
+  const m = g && g.monsoon_state;
+  if (!m) return '';
+  const ports = (m.rewardPorts || []).map(tn).join(tr('、', ', '));
+  const resource = m.resource ? tn(m.resource) : '';
+  const rewardPct = Math.round(((m.rewardMultiplier || 1) - 1) * 100);
+  const pricePct = Math.round(Math.abs(((m.purchaseMultiplier || 1) - 1) * 100));
+  const riskPct = Math.round((m.pirateRisk || 0) * 100);
+  const priceWord = (m.purchaseMultiplier || 1) < 1 ? tr('降价', 'cheaper') : tr('涨价', 'pricier');
+  return `
+    <div class="environment-banner">
+      <div class="env-icon">${m.icon || '🌦️'}</div>
+      <div class="env-copy">
+        <div class="env-title">${tr('全球环境：', 'Global Environment: ')}${escapeHtml(monsoonName(m))}</div>
+        <div class="env-desc">${escapeHtml(monsoonDesc(m))}</div>
+      </div>
+      <div class="env-tags">
+        <span class="chip green">${tr(`${ports} 订单 +${rewardPct}%`, `${ports} orders +${rewardPct}%`)}</span>
+        <span class="chip amber">${tr(`${resource} ${priceWord} ${pricePct}%`, `${resource} ${priceWord} ${pricePct}%`)}</span>
+        <span class="chip ${g.pirate_immunity ? 'green' : 'amber'}">${g.pirate_immunity ? tr('🛡️ 已护航', '🛡️ Escorted') : tr(`🏴‍☠️ 海盗 ${riskPct}%`, `🏴‍☠️ Pirates ${riskPct}%`)}</span>
+      </div>
+    </div>`;
+}
+
 function modulesHTML(g) {
   if (!g.equippedModules || !g.equippedModules.length) return `<span class="muted">${tr('尚未安装模块', 'No modules installed')}</span>`;
   return g.equippedModules.map(m =>
@@ -1903,6 +2016,10 @@ function crewSectionsHTML(g) {
     <div class="status-section">
       <h3>${tr('🪄 本回合增益', '🪄 Round Buffs')}</h3>
       ${buffChipsHTML(g)}
+    </div>
+    <div class="status-section">
+      <h3>${tr('🌦️ 全球环境', '🌦️ Global Environment')}</h3>
+      <div style="font-size:12px;color:var(--ink-soft);line-height:1.55">${(g.monsoon_state && (g.monsoon_state.icon || '🌦️'))} <strong>${escapeHtml(monsoonName(g.monsoon_state || {}))}</strong><br>${escapeHtml(monsoonDesc(g.monsoon_state || {}))}</div>
     </div>
     <div class="status-section">
       <h3>${tr('🚢 旗舰状态', '🚢 Flagship')}</h3>
@@ -2116,6 +2233,7 @@ function welcomeHTML() {
       <div class="hero-title">⚓ PortMasters 2 🚢</div>
       <div class="subtitle-text">${tr('海上丝绸之路 · 八大航程 · 与伙伴同船竞航，成为海上霸主！',
         'The Maritime Silk Road · Eight voyages · Race your partner fleet-to-fleet to rule the seas!')}</div>
+      ${environmentBannerHTML(g)}
       ${!dismissed ? `
       <div class="pm-banner">
         <span class="pm-icon">📣</span>
@@ -2153,6 +2271,7 @@ function roundStartHTML(g) {
   return `
     ${phaseBriefHTML(0)}
     <div class="center-block" style="text-align:center">
+      ${environmentBannerHTML(g)}
       <div style="font-size:54px">🌅</div>
       <div class="hero-title">${tr(`第 ${g.currentRound} 程 · 整装启航`, `Round ${g.currentRound} · Ready to Sail`)}</div>
       <div class="subtitle-text">${tr(`航程进度 ${g.currentRound} / ${g.maxRounds} · 与伙伴确认后抽取本程福缘`,
@@ -2216,6 +2335,7 @@ function purchaseHTML() {
 
   return `
     ${phaseBriefHTML(1, discountChips.join(''))}
+    ${environmentBannerHTML(g)}
     ${brokerWhisperHTML(g)}
     <div class="card-grid">
       ${cards.map(card => {
@@ -2519,21 +2639,27 @@ function ordersHTML() {
   const cards = g.customerCards || [];
   return `
     ${phaseBriefHTML(2)}
+    ${environmentBannerHTML(g)}
     <div class="card-grid">
       ${cards.map(o => {
         const canComplete = o.resources.every(r => (g.inventory[r.type] || 0) >= r.required);
         const completed = g.completedOrders.includes(o.id);
         const est = estimateTransport(g, o.totalItems);
+        const isGolden = o.kind === 'EmperorMandate';
+        const cardClass = `${isGolden ? 'golden-order-card' : ''} ${isGolden && g.currentRound >= 8 ? 'final-mandate' : ''}`.trim();
         return `
-          <div class="card">
+          <div class="card ${cardClass}">
             <div class="card-header">
-              <span>📍 ${tn(o.demandPort)}</span>
+              <span>${isGolden ? tr('👑 皇命金单', '👑 Emperor Mandate') : '📍'} ${isGolden ? `${tn(o.demandPort)} · ${tr('钦定贡令', 'Imperial Commission')}` : tn(o.demandPort)}</span>
               <span style="display:flex;gap:4px">
+                ${isGolden ? `<span class="card-tag golden" data-particle-hook="golden-order">${tr('⭐ 黄金订单', '⭐ Golden Order')}</span>` : ''}
                 ${o.fromIntel ? `<span class="card-tag" style="background:rgba(245,158,11,.2);color:#92400e" title="${tr('这张订单由你购买的牙行密语兑现而来', "This order materialized from a Broker's Whisper you purchased")}">${tr('🗣️ 密语应验', '🗣️ Whisper Fulfilled')}</span>` : ''}
                 <span class="card-tag ${o.isProductOrder ? 'product' : ''}">${o.isProductOrder ? tr('成品需求', 'Products Wanted') : tr('原料需求', 'Materials Wanted')}</span>
               </span>
             </div>
             <div class="card-body">
+              ${isGolden ? `<div class="section-hint" style="color:#92400e">${tr('帝国使节只在关键航程现身。提前囤好指定货物，可换取足以改写本局的报酬。',
+                'Imperial envoys appear only at milestone voyages. Hoard the requested goods early for a run-defining payout.')}</div>` : ''}
               ${o.resources.map(r => {
                 const has = (g.inventory[r.type] || 0) >= r.required;
                 return `
@@ -2573,8 +2699,13 @@ function maintenanceHTML() {
   const g = serverState.yourGame;
   const cost = g.fixedCost + (g.maintenancePenalty || 0);
   const safe = g.money >= cost;
+  const m = g.monsoon_state || {};
+  const riskPct = Math.round((m.pirateRisk || 0) * 100);
+  const escortCost = g.escortCost || 10;
+  const canEscort = !g.pirate_immunity && g.money >= escortCost;
   return `
     ${phaseBriefHTML(3)}
+    ${environmentBannerHTML(g)}
     <div class="center-block">
       <div class="section-box" style="background:linear-gradient(135deg,rgba(52,211,153,.12),rgba(13,148,136,.08))">
         <h3>${tr('✅ 已自动完成', '✅ Handled Automatically')}</h3>
@@ -2586,6 +2717,18 @@ function maintenanceHTML() {
         <div class="stat-row" style="font-size:14px"><span>${tr('当前现金', 'Gold on hand')}</span><strong style="color:${safe ? '#059669' : '#e11d48'}">${g.money} ${tr('金币', 'gold')}</strong></div>
         ${!safe ? `<div style="background:var(--grad-danger);color:#fff;border-radius:10px;padding:8px 12px;font-size:12px;margin-top:8px;font-weight:700">${tr('🚨 现金不足以支付维护费——支付后将破产出局！', "🚨 You can't cover the upkeep — paying it will bankrupt your fleet!")}</div>` : ''}
         <div class="section-hint" style="margin-top:8px">${tr('支付维护费后还将按本回合净利润缴纳约10%所得税（持「免税令」福缘时为5%）。', "After upkeep, ~10% income tax is levied on this round's net profit (5% with the Tax Exemption fortune).")}</div>
+      </div>
+      <div class="section-box">
+        <h3>${tr('🛡️ 海盗反制：雇佣护航', '🛡️ Pirate Counterplay: Hire Escort')}</h3>
+        <div class="section-hint">
+          ${tr(`当前环境海盗袭扰概率为 <strong>${riskPct}%</strong>，若触发将损失至多 ${m.pirateLoss || 0} 金币。雇佣护航可完全免疫本次结算的海盗 RNG。`,
+               `Current pirate raid chance is <strong>${riskPct}%</strong>; a raid can cost up to ${m.pirateLoss || 0} gold. Hiring an escort fully neutralizes pirate RNG for this upkeep.`)}
+        </div>
+        <button class="btn ${g.pirate_immunity ? 'btn-grey' : 'btn-shield'}" ${g.pirate_immunity || !canEscort ? 'disabled' : ''}
+          onclick="sendAction('hireEscort')"
+          title="${g.pirate_immunity ? tr('本程已获得护航保护', 'Escort protection is already active') : (canEscort ? tr('支付金币，免疫本次结算的海盗事件', 'Pay gold to prevent pirate events this upkeep') : tr('现金不足，无法雇佣护航', 'Not enough gold to hire an escort'))}">
+          ${g.pirate_immunity ? tr('🛡️ 护航已就位', '🛡️ Escort Active') : tr(`🛡️ 雇佣护航（${escortCost}💰）`, `🛡️ Hire Escort (${escortCost}💰)`)}
+        </button>
       </div>
       <div style="text-align:center">
         <button class="btn btn-warning btn-xl" onclick="sendAction('doMaintenance')" title="${tr('支付维护费并结束本回合结算', "Pay the upkeep and finish this round's settlement")}">${tr('💸 支付维护费', '💸 Pay Upkeep')}<span class="btn-sub">${tr('双方完成后进入船坞', 'Shipyard opens when both have paid')}</span></button>

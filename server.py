@@ -31,6 +31,58 @@ import secrets
 RESOURCES = ["麻布", "丝绸", "茶叶"]
 PRODUCTS = ["麻衣", "布衣", "绫罗绸缎", "香囊"]
 PORTS = ["泉州港", "广州港", "宁波港", "扬州港", "杭州港"]
+ESCORT_COST = 10
+
+MONSOON_STATES = [
+    {
+        "id": "spring_current",
+        "name": "春潮顺流",
+        "icon": "🌦️",
+        "desc": "泉州港与广州港订单报酬提高15%，茶叶采购价降低10%。海盗风险较低。",
+        "rewardPorts": ["泉州港", "广州港"],
+        "rewardMultiplier": 1.15,
+        "resource": "茶叶",
+        "purchaseMultiplier": 0.90,
+        "pirateRisk": 0.10,
+        "pirateLoss": 8,
+    },
+    {
+        "id": "summer_monsoon",
+        "name": "盛夏季风",
+        "icon": "⛈️",
+        "desc": "杭州港与扬州港订单报酬提高20%，丝绸采购价提高15%。海盗风险升高。",
+        "rewardPorts": ["杭州港", "扬州港"],
+        "rewardMultiplier": 1.20,
+        "resource": "丝绸",
+        "purchaseMultiplier": 1.15,
+        "pirateRisk": 0.25,
+        "pirateLoss": 14,
+    },
+    {
+        "id": "autumn_gales",
+        "name": "秋汛乱流",
+        "icon": "🍂",
+        "desc": "宁波港与泉州港订单报酬提高18%，麻布采购价降低15%。海盗风险中等。",
+        "rewardPorts": ["宁波港", "泉州港"],
+        "rewardMultiplier": 1.18,
+        "resource": "麻布",
+        "purchaseMultiplier": 0.85,
+        "pirateRisk": 0.18,
+        "pirateLoss": 11,
+    },
+    {
+        "id": "winter_blockade",
+        "name": "冬海封锁",
+        "icon": "❄️",
+        "desc": "广州港与杭州港订单报酬提高25%，茶叶采购价提高15%。海盗风险最高。",
+        "rewardPorts": ["广州港", "杭州港"],
+        "rewardMultiplier": 1.25,
+        "resource": "茶叶",
+        "purchaseMultiplier": 1.15,
+        "pirateRisk": 0.30,
+        "pirateLoss": 18,
+    },
+]
 
 RECIPES = {
     "麻衣": {"materials": {"麻布": 2}, "value": 15, "worker_type": "weaver"},
@@ -129,6 +181,9 @@ class PlayerGame:
         self.gameOver = False
         self.bankrupt = False
         self.modifierFlags = {}
+        self.monsoon_state = MONSOON_STATES[0].copy()
+        self.pirate_immunity = False
+        self.escortCost = ESCORT_COST
         self.phase2DemandTags = []
         self.revealedIntel = []
         self.intelCost = 5
@@ -202,6 +257,55 @@ class PlayerGame:
             wage = int(wage * 0.5)
         return wage
 
+    def set_monsoon_state(self, state):
+        self.monsoon_state = state.copy()
+
+    def env_purchase_price(self, item, price):
+        state = self.monsoon_state or {}
+        if item == state.get("resource"):
+            return max(1, int(round(price * state.get("purchaseMultiplier", 1))))
+        return price
+
+    def env_reward(self, port, reward):
+        state = self.monsoon_state or {}
+        if port in state.get("rewardPorts", []):
+            return max(1, int(round(reward * state.get("rewardMultiplier", 1))))
+        return reward
+
+    def gen_emperor_mandate_order(self):
+        round_no = self.currentRound
+        if round_no >= 8:
+            resources = [
+                {"type": "布衣", "required": 2},
+                {"type": "绫罗绸缎", "required": 2},
+                {"type": "香囊", "required": 2},
+            ]
+            reward = 420
+            port = "杭州港"
+        elif round_no >= 6:
+            resources = [
+                {"type": "绫罗绸缎", "required": 2},
+                {"type": "香囊", "required": 1},
+            ]
+            reward = 260
+            port = "扬州港"
+        else:
+            resources = [
+                {"type": "丝绸", "required": 4},
+                {"type": "茶叶", "required": 3},
+            ]
+            reward = 135
+            port = "泉州港"
+        total = sum(r["required"] for r in resources)
+        return {
+            "kind": "EmperorMandate",
+            "demandPort": port,
+            "resources": resources,
+            "reward": self.env_reward(port, reward),
+            "totalItems": total,
+            "isProductOrder": any(r["type"] in PRODUCTS for r in resources),
+        }
+
     # ---------- 卡牌生成 ----------
     def gen_raw_order(self, filter=None):
         num = rand(1, 3)
@@ -222,7 +326,7 @@ class PlayerGame:
                 total += req
                 resources.append({"type": r, "required": req})
         base = sum(r["required"] * 5 for r in resources)
-        reward = base + rand(10, 25)
+        reward = self.env_reward(port, base + rand(10, 25))
         return {"demandPort": port, "resources": resources, "reward": reward, "totalItems": total, "isProductOrder": False}
 
     def gen_product_order(self, filter=None):
@@ -230,7 +334,7 @@ class PlayerGame:
         req = rand(1, 3)
         port = choice(PORTS)
         base_price = rand(*PRODUCT_PRICES[product])
-        return {"demandPort": port, "resources": [{"type": product, "required": req}], "reward": base_price * req, "totalItems": req, "isProductOrder": True}
+        return {"demandPort": port, "resources": [{"type": product, "required": req}], "reward": self.env_reward(port, base_price * req), "totalItems": req, "isProductOrder": True}
 
     def gen_mixed_order(self):
         # 每条已购密语精确兑现为一张订单：货品与港口都与密语一致
@@ -264,6 +368,7 @@ class PlayerGame:
             minP, maxP = COMMODITIES[chosen]["basePrice"]
             base = rand(minP, maxP)
             price = base - 1 if port in COMMODITIES[chosen]["ports"] else base + 1
+            price = self.env_purchase_price(chosen, price)
             resources.append({"type": chosen, "quantity": qty, "price": price})
         total = sum(r["quantity"] * r["price"] for r in resources)
         return {"port": port, "resources": resources, "totalCost": total, "isProductCard": False}
@@ -282,6 +387,7 @@ class PlayerGame:
         markup = 1.4 + random.random() * 0.4
         unit_price = int(mat_cost * markup)
         unit_price = max(PRODUCT_PRICES[product][0], min(unit_price, PRODUCT_PRICES[product][1]))
+        unit_price = self.env_purchase_price(product, unit_price)
         return {
             "port": port,
             "resources": [{
@@ -489,6 +595,7 @@ class PlayerGame:
 
     def pay_maintenance(self):
         cost = self.fixedCost + self.maintenancePenalty
+        self.resolve_pirate_hazard()
         if self.money >= cost:
             self.money -= cost
             self.maintenanceCosts += cost
@@ -499,6 +606,35 @@ class PlayerGame:
             self.money = 0
             self.log("⚠️ 维护费不足，破产")
             return False
+
+    def hire_escort(self):
+        if self.pirate_immunity:
+            self.log("🛡️ 护航舰队已就位")
+            return False
+        if self.money < self.escortCost:
+            self.log(f"❌ 需要{self.escortCost}金币才能雇佣护航")
+            return False
+        self.money -= self.escortCost
+        self.roundCosts += self.escortCost
+        self.totalCosts += self.escortCost
+        self.pirate_immunity = True
+        self.log(f"🛡️ 雇佣护航，花费{self.escortCost}金币")
+        return True
+
+    def resolve_pirate_hazard(self):
+        state = self.monsoon_state or {}
+        risk = state.get("pirateRisk", 0)
+        if risk <= 0:
+            return
+        if self.pirate_immunity:
+            self.log("🛡️ 护航舰队震慑海盗，本程无损")
+            return
+        if random.random() < risk:
+            loss = min(self.money, state.get("pirateLoss", 10))
+            self.money -= loss
+            self.roundCosts += loss
+            self.totalCosts += loss
+            self.log(f"🏴‍☠️ 海盗袭扰，损失{loss}金币")
 
     def end_round(self):
         pre_tax = self.roundRevenue - self.roundCosts - self.maintenanceCosts - self.workerWages
@@ -522,6 +658,7 @@ class PlayerGame:
             "score": self.score,
         }
         self.modifierFlags = {}
+        self.pirate_immunity = False
         self.phase2DemandTags = []
         self.revealedIntel = []
         self.boonChoices = []
@@ -563,6 +700,9 @@ class PlayerGame:
             "masterWeavers": self.masterWeavers,
             "sachetMakers": self.sachetMakers,
             "modifierFlags": self.modifierFlags,
+            "monsoon_state": self.monsoon_state,
+            "pirate_immunity": self.pirate_immunity,
+            "escortCost": self.escortCost,
             "intelCost": self.intelCost,
             "revealedIntel": self.revealedIntel,
             "intelRemaining": len(self.phase2DemandTags),
@@ -644,6 +784,8 @@ class SharedSession:
         self.trade_ready = [False, False]   # 互市阶段双方是否点了准备
         self.ready = set()                  # 当前阶段已点击“继续”的槽位
         self.chat_history = []
+        self.monsoon_state = MONSOON_STATES[0].copy()
+        self.sync_monsoon_state()
 
     # ---------- 身份 ----------
     def slot_of(self, username):
@@ -665,6 +807,13 @@ class SharedSession:
             if not g.gameOver:
                 g.phase = phase
 
+    def sync_monsoon_state(self):
+        active_game = next((g for g in self.games if not g.gameOver), self.games[0])
+        active_round = max(1, min(active_game.currentRound, active_game.maxRounds))
+        self.monsoon_state = MONSOON_STATES[((active_round - 1) // 2) % len(MONSOON_STATES)].copy()
+        for g in self.games:
+            g.set_monsoon_state(self.monsoon_state)
+
     def gate_complete(self):
         # 已破产/已结束的玩家视为自动准备，避免阻塞对方
         return all((i in self.ready) or self.games[i].gameOver for i in (0, 1))
@@ -681,6 +830,7 @@ class SharedSession:
         """双方都准备好后，整个会话同步进入下一阶段。"""
         phase = self._active_phase()
         if phase == 0:
+            self.sync_monsoon_state()
             self._set_phase(5)
             # 每位玩家从福缘池中独立随机抽取4张，互不可见、互不相同
             for g in self.games:
@@ -708,7 +858,13 @@ class SharedSession:
                 if g.gameOver:
                     continue
                 g.customerCards = []
-                for i in range(5):
+                next_id = 0
+                if g.currentRound in (3, 6, 8):
+                    o = g.gen_emperor_mandate_order()
+                    o["id"] = next_id
+                    g.customerCards.append(o)
+                    next_id += 1
+                for i in range(next_id, 5):
                     o = g.gen_mixed_order()
                     o["id"] = i
                     g.customerCards.append(o)
@@ -748,6 +904,7 @@ class SharedSession:
         self.trade_orders = []
         self.trade_ready = [False, False]
         self.ready.clear()
+        self.sync_monsoon_state()
 
     # ---------- 等待提示 ----------
     def waiting_message(self, slot):
@@ -1065,6 +1222,10 @@ async def handle_game_action(username, data):
             changed = True
             if sess.gate_complete():
                 sess.advance()
+    elif action == "hireEscort":
+        if phase == 3 and slot not in sess.ready:
+            game.hire_escort()
+            changed = True
     elif action == "upgradeShip":
         if phase == 4 and game.shipLevel < 3:
             cost = game.shipUpgradeCost[game.shipLevel] + game.shipUpgradePenalty
