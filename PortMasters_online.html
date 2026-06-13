@@ -1224,31 +1224,44 @@ const pm1Label = () => tr('PortMasters 1（中文版）→', 'PortMasters 1 →'
    既用于界面渲染，也用于翻译服务器下发的日志文本。 */
 const EN_NAMES = {
   "麻布": "Hemp Cloth", "丝绸": "Silk", "茶叶": "Tea Leaves",
+  "瓷土": "Porcelain Clay", "铜矿": "Copper Ore", "香料": "Spices", "珍珠": "Pearls",
   "麻衣": "Hemp Garb", "布衣": "Cloth Tunic", "绫罗绸缎": "Fine Brocade", "香囊": "Scented Sachet",
+  "紫铜镜": "Bronze Mirror", "青瓷器": "Celadon Porcelain", "蕃香脂": "Foreign Perfume Oil", "珠链": "Pearl Necklace",
   "金币": "Gold",
   "泉州港": "Quanzhou", "广州港": "Guangzhou", "宁波港": "Ningbo", "扬州港": "Yangzhou", "杭州港": "Hangzhou",
+  "福州港": "Fuzhou", "高丽港": "Goryeo", "三佛齐港": "Srivijaya", "大食港": "Dashi",
   "走私暗舱": "Smuggler's Hold", "散货索具": "Bulk Rigging", "工匠工坊": "Artisan's Workshop",
   "避税账本": "Hidden Ledger", "丝路垂断": "Silk Monopoly", "牙行网络": "Broker's Network",
   "打捞起重机": "Salvage Crane", "超载引擎": "Overdrive Engine",
+  "市舶司令牌": "Trade Bureau Token", "陶土窖": "Kiln Cellar", "远洋通译": "Ocean-Going Interpreter",
+  "蕃坊行会证": "Foreign Quarter Guild Pass", "波斯穹顶罗盘": "Persian Dome Compass", "万宝商船": "Fleet of Ten-Thousand Treasures",
   "丝路顺风": "Silk Road Tailwind", "顺风顺水": "Favorable Tides", "商贾魅力": "Merchant's Charm",
   "匠人灵感": "Artisan's Inspiration", "紧急钱庄": "Emergency Loan", "免税令": "Tax Exemption",
   "麻布专营": "Hemp Monopoly", "学徒传承": "Apprentice Legacy",
-  "织女": "Weaver", "纺织大师": "Master Weaver", "香囊师": "Sachet Maker"
+  "千里眼": "Farsight", "陶铜联号": "Porcelain & Bronze Consortium", "拓商减负": "Frontier Tariff Relief",
+  "蕃国奇珍": "Treasures from Afar", "远洋护航": "Deep-Sea Escort Pact", "万商云集": "Merchants Converge",
+  "织女": "Weaver", "纺织大师": "Master Weaver", "香囊师": "Sachet Maker",
+  "铜匠": "Coppersmith", "陶匠": "Potter", "香料师": "Perfumer", "珠宝匠": "Jeweler"
 };
 /* 翻译单个规范名（物品/港口/模块等） */
 const tn = name => (LANG === 'en' ? (EN_NAMES[name] || name) : name);
 
 const ICONS = {
   "麻布": "🧶", "丝绸": "👘", "茶叶": "🍵",
-  "麻衣": "👔", "布衣": "👕", "绫罗绸缎": "👗", "香囊": "🌸", "金币": "💰"
+  "瓷土": "🧱", "铜矿": "⛏️", "香料": "🌶️", "珍珠": "🦪",
+  "麻衣": "👔", "布衣": "👕", "绫罗绸缎": "👗", "香囊": "🌸",
+  "紫铜镜": "🪞", "青瓷器": "🏺", "蕃香脂": "🧴", "珠链": "📿",
+  "金币": "💰"
 };
 const COLORS = {
   "麻布": "#8B7355", "丝绸": "#DC143C", "茶叶": "#228B22",
-  "麻衣": "#D2691E", "布衣": "#4169E1", "绫罗绸缎": "#8B008B", "香囊": "#FF1493"
+  "瓷土": "#A0826D", "铜矿": "#B87333", "香料": "#E25822", "珍珠": "#7B6F8E",
+  "麻衣": "#D2691E", "布衣": "#4169E1", "绫罗绸缎": "#8B008B", "香囊": "#FF1493",
+  "紫铜镜": "#8C5E3C", "青瓷器": "#6B8E7F", "蕃香脂": "#BA55D3", "珠链": "#D4AF37"
 };
-const RESOURCES = ["麻布", "丝绸", "茶叶"];
-const PRODUCTS = ["麻衣", "布衣", "绫罗绸缎", "香囊"];
-const WAGES = { weaver: 8, master: 12, sachet_maker: 20 };
+const RESOURCES = ["麻布", "丝绸", "茶叶", "瓷土", "铜矿", "香料", "珍珠"];
+const PRODUCTS = ["麻衣", "布衣", "绫罗绸缎", "香囊", "紫铜镜", "青瓷器", "蕃香脂", "珠链"];
+const WAGES = { weaver: 8, master: 12, sachet_maker: 20, coppersmith: 12, potter: 14, perfumer: 18, jeweler: 24 };
 
 const ITEM_TIPS = {
   "麻布": { zh: "基础原料。可由织女制成麻衣（×2）或布衣（×2，另需丝绸×1）",
@@ -1264,7 +1277,23 @@ const ITEM_TIPS = {
   "绫罗绸缎": { zh: "高级成品 · 基准产值 60。仅纺织大师可制作（丝绸×3）",
             en: "Premium product · base value 60. Master Weavers only (Silk ×3)" },
   "香囊": { zh: "顶级成品 · 基准产值 80。仅香囊师可制作（丝绸×1 + 茶叶×2）",
-            en: "Top-tier product · base value 80. Sachet Makers only (Silk ×1 + Tea ×2)" }
+            en: "Top-tier product · base value 80. Sachet Makers only (Silk ×1 + Tea ×2)" },
+  "瓷土": { zh: "基础原料。可由陶匠制成青瓷器（×3）",
+            en: "Basic material. Potters turn it into Celadon Porcelain (×3)" },
+  "铜矿": { zh: "基础原料。可由铜匠制成紫铜镜（×3）",
+            en: "Basic material. Coppersmiths turn it into Bronze Mirror (×3)" },
+  "香料": { zh: "高级原料。用于蕃香脂（×2，另需丝绸×1）",
+            en: "Premium material. Used in Foreign Perfume Oil (×2, plus Silk ×1)" },
+  "珍珠": { zh: "高级原料。用于珠链（×2，另需丝绸×1）",
+            en: "Premium material. Used in Pearl Necklace (×2, plus Silk ×1)" },
+  "紫铜镜": { zh: "成品 · 基准产值 45。由铜匠制作（铜矿×3）",
+            en: "Product · base value 45. Made by Coppersmiths (Copper Ore ×3)" },
+  "青瓷器": { zh: "成品 · 基准产值 65。由陶匠制作（瓷土×3）",
+            en: "Product · base value 65. Made by Potters (Porcelain Clay ×3)" },
+  "蕃香脂": { zh: "顶级成品 · 基准产值 85。仅香料师可制作（香料×2 + 丝绸×1）",
+            en: "Top-tier product · base value 85. Perfumers only (Spices ×2 + Silk ×1)" },
+  "珠链": { zh: "顶级成品 · 基准产值 105。仅珠宝匠可制作（珍珠×2 + 丝绸×1）",
+            en: "Top-tier product · base value 105. Jewelers only (Pearls ×2 + Silk ×1)" }
 };
 const itemTip = r => pf(ITEM_TIPS[r]) || '';
 
@@ -1278,13 +1307,22 @@ const BOON_TEXT = {
   emergency_loan:      { name: { zh: "紧急钱庄", en: "Emergency Loan" },       desc: { zh: "立即获得40金币。", en: "Gain 40 gold immediately." } },
   tax_shelter:         { name: { zh: "免税令", en: "Tax Exemption" },          desc: { zh: "本回合所得税率降至5%。", en: "Income tax rate drops to 5% this round." } },
   hemp_monopoly:       { name: { zh: "麻布专营", en: "Hemp Monopoly" },        desc: { zh: "麻布采购单价降低2金币。", en: "Hemp Cloth purchase price −2 gold per unit." } },
-  master_apprentice:   { name: { zh: "学徒传承", en: "Apprentice Legacy" },    desc: { zh: "本回合雇佣工资减半。", en: "Hiring wages halved this round." } }
+  master_apprentice:   { name: { zh: "学徒传承", en: "Apprentice Legacy" },    desc: { zh: "本回合雇佣工资减半。", en: "Hiring wages halved this round." } },
+  farsight:                 { name: { zh: "千里眼", en: "Farsight" },                              desc: { zh: "本回合免费获得1条牙行密语线索。", en: "Gain 1 free Broker's Whisper clue this round." } },
+  porcelain_bronze_guild:   { name: { zh: "陶铜联号", en: "Porcelain & Bronze Consortium" },       desc: { zh: "本回合「青瓷器」与「紫铜镜」订单报酬提高15%。", en: "Celadon Porcelain and Bronze Mirror orders pay 15% more this round." } },
+  frontier_tariff_relief:   { name: { zh: "拓商减负", en: "Frontier Tariff Relief" },              desc: { zh: "本回合交付成品订单的增值税减半。", en: "VAT on finished-goods deliveries is halved this round." } },
+  exotic_treasures:         { name: { zh: "蕃国奇珍", en: "Treasures from Afar" },                 desc: { zh: "本回合「蕃香脂」与「珠链」订单报酬提高15%。", en: "Foreign Perfume Oil and Pearl Necklace orders pay 15% more this round." } },
+  deep_sea_escort_pact:     { name: { zh: "远洋护航", en: "Deep-Sea Escort Pact" },                 desc: { zh: "本回合雇佣护航费用减半，海盗风险减半。", en: "Escort hiring costs half price and pirate risk is halved this round." } },
+  merchants_converge:       { name: { zh: "万商云集", en: "Merchants Converge" },                  desc: { zh: "本回合贸易阶段额外出现1张订单。", en: "1 extra order appears in the Trade phase this round." } }
 };
 const BOONS = [
   { id: "silk_wind", icon: "🌬️" }, { id: "favorable_tides", icon: "🌊" },
   { id: "merchant_charm", icon: "✨" }, { id: "artisan_inspiration", icon: "🔨" },
   { id: "emergency_loan", icon: "💰" }, { id: "tax_shelter", icon: "📜" },
-  { id: "hemp_monopoly", icon: "🧶" }, { id: "master_apprentice", icon: "🎓" }
+  { id: "hemp_monopoly", icon: "🧶" }, { id: "master_apprentice", icon: "🎓" },
+  { id: "farsight", icon: "🔮" }, { id: "porcelain_bronze_guild", icon: "🏮" },
+  { id: "frontier_tariff_relief", icon: "🧾" }, { id: "exotic_treasures", icon: "💎" },
+  { id: "deep_sea_escort_pact", icon: "🛡️" }, { id: "merchants_converge", icon: "🛍️" }
 ];
 const boonName = b => (BOON_TEXT[b.id] ? pf(BOON_TEXT[b.id].name) : (b.name || b.id));
 const boonDesc = b => (BOON_TEXT[b.id] ? pf(BOON_TEXT[b.id].desc) : (b.desc || ''));
@@ -1305,6 +1343,22 @@ const MONSOON_TEXT = {
   winter_blockade: {
     name: { zh: "冬海封锁", en: "Winter Blockade" },
     desc: { zh: "广州港与杭州港订单报酬大幅提高，茶叶采购价上升。海盗风险最高。", en: "Guangzhou and Hangzhou orders pay much more, Tea is pricier, and pirate risk is highest." }
+  },
+  fujian_kiln_smoke: {
+    name: { zh: "闽江窑烟", en: "Min River Kiln-Smoke" },
+    desc: { zh: "福州港与泉州港订单报酬提高，瓷土采购价降低。海盗风险中等。", en: "Fuzhou and Quanzhou orders pay more, Porcelain Clay is cheaper, and pirate risk is moderate." }
+  },
+  goryeo_dawn_route: {
+    name: { zh: "高丽晓航", en: "Goryeo Dawn Route" },
+    desc: { zh: "高丽港与广州港订单报酬提高，铜矿采购价降低。海盗风险较高。", en: "Goryeo and Guangzhou orders pay more, Copper Ore is cheaper, and pirate risk is elevated." }
+  },
+  srivijaya_spice_breeze: {
+    name: { zh: "三佛齐香风", en: "Srivijaya Spice Breeze" },
+    desc: { zh: "三佛齐港与大食港订单报酬提高，香料采购价降低。海盗风险较高。", en: "Srivijaya and Dashi orders pay more, Spices are cheaper, and pirate risk is elevated." }
+  },
+  dashi_pearl_moon: {
+    name: { zh: "大食珠月", en: "Dashi Pearl Moon" },
+    desc: { zh: "大食港与三佛齐港订单报酬大幅提高，珍珠采购价降低。海盗风险最高。", en: "Dashi and Srivijaya orders pay much more, Pearls are cheaper, and pirate risk is highest." }
   }
 };
 const monsoonName = m => (MONSOON_TEXT[m && m.id] ? pf(MONSOON_TEXT[m.id].name) : ((m && m.name) || ''));
@@ -1318,10 +1372,32 @@ const MODULE_TEXT = {
   silk_monopoly:     { name: { zh: "丝路垄断", en: "Silk Monopoly" },      desc: { zh: "丝绸运费为0。丝绸产品订单收入+20%。", en: "Silk ships free. Silk-product order income +20%." } },
   brokers_network:   { name: { zh: "牙行网络", en: "Broker's Network" },   desc: { zh: "每次花费2金币。每次购买密语显示2条线索。", en: "Whispers cost only 2 gold and reveal 2 clues per purchase." } },
   salvage_crane:     { name: { zh: "打捞起重机", en: "Salvage Crane" },    desc: { zh: "30%概率在订单完成时退还运费。", en: "30% chance to refund shipping when an order completes." } },
-  overdrive_engine:  { name: { zh: "超载引擎", en: "Overdrive Engine" },   desc: { zh: "运费-5金币。维护费+10金币。", en: "Shipping −5 gold. Maintenance +10 gold." } }
+  overdrive_engine:  { name: { zh: "超载引擎", en: "Overdrive Engine" },   desc: { zh: "运费-5金币。维护费+10金币。", en: "Shipping −5 gold. Maintenance +10 gold." } },
+  bureau_token:          { name: { zh: "市舶司令牌", en: "Trade Bureau Token" },             desc: { zh: "新航线货品（瓷土、铜矿及其成品）订单收入+10%。", en: "Orders for new trade-route goods (Porcelain Clay, Copper Ore and their products) pay +10%." } },
+  kiln_cellar:           { name: { zh: "陶土窖", en: "Kiln Cellar" },                        desc: { zh: "瓷土与铜矿采购单价各降低2金币。", en: "Porcelain Clay and Copper Ore purchase price −2 gold per unit." } },
+  ocean_relay:           { name: { zh: "远洋通译", en: "Ocean-Going Interpreter" },          desc: { zh: "牙行密语每次额外显示1条线索（不增加花费）。", en: "Each Broker's Whisper purchase reveals 1 extra clue at no added cost." } },
+  foreign_quarter_pass:  { name: { zh: "蕃坊行会证", en: "Foreign Quarter Guild Pass" },     desc: { zh: "香料与珍珠采购单价各降低3金币。", en: "Spices and Pearls purchase price −3 gold per unit." } },
+  persian_dome_compass:  { name: { zh: "波斯穹顶罗盘", en: "Persian Dome Compass" },         desc: { zh: "海盗风险降低30%。", en: "Pirate risk reduced by 30%." } },
+  fleet_of_treasures:    { name: { zh: "万宝商船", en: "Fleet of Ten-Thousand Treasures" },  desc: { zh: "「蕃香脂」与「珠链」每件运费降低3金币。", en: "Shipping for Foreign Perfume Oil and Pearl Necklace is 3 gold cheaper per item." } }
 };
 const modName = m => (MODULE_TEXT[m.id] ? pf(MODULE_TEXT[m.id].name) : (m.name || m.id));
 const modDesc = m => (MODULE_TEXT[m.id] ? pf(MODULE_TEXT[m.id].desc) : (m.desc || ''));
+
+/* 丝路特许：第3/5程开局时显示的解锁公告，服务器以 charterEvent={id,icon,name,desc} 下发 */
+const CHARTER_TEXT = {
+  tier1: {
+    name: { zh: "市舶新政", en: "New Maritime Edict" },
+    desc: { zh: "福建市舶司新政颁布！瓷土、铜矿、青瓷器、紫铜镜加入行情；福州港、高丽港正式开埠；陶匠与铜匠加入劳务市场；新的福缘与战船改装随之而来。",
+            en: "A new edict from the Fujian Maritime Trade Bureau! Porcelain Clay, Copper Ore, Celadon Porcelain and Bronze Mirror enter the market; Fuzhou and Goryeo ports open; Potters and Coppersmiths join the labor market; new Fortunes and ship modules become available." }
+  },
+  tier2: {
+    name: { zh: "万国通商", en: "Ten Thousand Kingdoms Trade" },
+    desc: { zh: "万国通商盛况空前！香料、珍珠、蕃香脂、珠链加入行情；三佛齐港、大食港正式开埠；香料师与珠宝匠加入劳务市场；更多福缘与战船改装随之而来。",
+            en: "Trade opens with ten thousand kingdoms! Spices, Pearls, Foreign Perfume Oil and Pearl Necklaces enter the market; Srivijaya and Dashi ports open; Perfumers and Jewelers join the labor market; more Fortunes and ship modules arrive." }
+  }
+};
+const charterName = c => (CHARTER_TEXT[c && c.id] ? pf(CHARTER_TEXT[c.id].name) : ((c && c.name) || ''));
+const charterDesc = c => (CHARTER_TEXT[c && c.id] ? pf(CHARTER_TEXT[c.id].desc) : ((c && c.desc) || ''));
 
 /* 服务器把所选福缘以 modifierFlags 形式下发；这里反查出名称用于展示增益 */
 const FLAG_LABELS = {
@@ -1332,7 +1408,11 @@ const FLAG_LABELS = {
   instant_gold:            { icon: "💰", id: "emergency_loan" },
   income_tax_override:     { icon: "📜", id: "tax_shelter" },
   hemp_price_reduction:    { icon: "🧶", id: "hemp_monopoly" },
-  hire_discount:           { icon: "🎓", id: "master_apprentice" }
+  hire_discount:           { icon: "🎓", id: "master_apprentice" },
+  free_intel:              { icon: "🔮", id: "farsight" },
+  vat_discount:            { icon: "🧾", id: "frontier_tariff_relief" },
+  escort_discount:         { icon: "🛡️", id: "deep_sea_escort_pact" },
+  extra_order:             { icon: "🛍️", id: "merchants_converge" }
 };
 
 const WORKER_TYPES = [
@@ -1344,7 +1424,19 @@ const WORKER_TYPES = [
     tip: { zh: "工资12金币/回合，额外可制作绫罗绸缎", en: "Wage 12 gold/round. Additionally crafts Fine Brocade" } },
   { key: "sachet_maker", icon: "🌸", listKey: "sachetMakers", can: ["香囊"],
     name: { zh: "香囊师", en: "Sachet Maker" },
-    tip: { zh: "工资20金币/回合，唯一可制作香囊的工匠", en: "Wage 20 gold/round. The only artisan who can craft Sachets" } }
+    tip: { zh: "工资20金币/回合，唯一可制作香囊的工匠", en: "Wage 20 gold/round. The only artisan who can craft Sachets" } },
+  { key: "coppersmith", icon: "🪞", listKey: "coppersmiths", can: ["紫铜镜"],
+    name: { zh: "铜匠", en: "Coppersmith" },
+    tip: { zh: "工资12金币/回合，可制作紫铜镜", en: "Wage 12 gold/round. Crafts Bronze Mirrors" } },
+  { key: "potter", icon: "🏺", listKey: "potters", can: ["青瓷器"],
+    name: { zh: "陶匠", en: "Potter" },
+    tip: { zh: "工资14金币/回合，可制作青瓷器", en: "Wage 14 gold/round. Crafts Celadon Porcelain" } },
+  { key: "perfumer", icon: "🧴", listKey: "perfumers", can: ["蕃香脂"],
+    name: { zh: "香料师", en: "Perfumer" },
+    tip: { zh: "工资18金币/回合，唯一可制作蕃香脂的工匠", en: "Wage 18 gold/round. The only artisan who can craft Foreign Perfume Oil" } },
+  { key: "jeweler", icon: "📿", listKey: "jewelers", can: ["珠链"],
+    name: { zh: "珠宝匠", en: "Jeweler" },
+    tip: { zh: "工资24金币/回合，唯一可制作珠链的工匠", en: "Wage 24 gold/round. The only artisan who can craft Pearl Necklaces" } }
 ];
 const wName = key => pf((WORKER_TYPES.find(w => w.key === key) || {}).name) || key;
 
@@ -1352,7 +1444,11 @@ const RECIPE_MATS = {
   "麻衣":     [["麻布", 2]],
   "布衣":     [["麻布", 2], ["丝绸", 1]],
   "绫罗绸缎": [["丝绸", 3]],
-  "香囊":     [["丝绸", 1], ["茶叶", 2]]
+  "香囊":     [["丝绸", 1], ["茶叶", 2]],
+  "紫铜镜":   [["铜矿", 3]],
+  "青瓷器":   [["瓷土", 3]],
+  "蕃香脂":   [["香料", 2], ["丝绸", 1]],
+  "珠链":     [["珍珠", 2], ["丝绸", 1]]
 };
 
 /* 回合内 8 个阶段的元信息（识别优于记忆：阶段名 + 目标 + 操作提示一直可见） */
@@ -1929,12 +2025,22 @@ function renderAll(force = false) {
 function buffChipsHTML(g) {
   const flags = g.modifierFlags || {};
   const chips = Object.keys(flags)
-    .map(k => FLAG_LABELS[k])
-    .filter(Boolean)
-    .map(f => {
+    .map(k => {
+      /* product_order_bonus 由两种福缘共享，payload 内含products/pct，直接据此渲染 */
+      if (k === 'product_order_bonus') {
+        const v = flags[k];
+        if (!v || !v.products || !v.products.length) return null;
+        const names = v.products.map(tn).join(tr('、', ', '));
+        const pct = Math.round((v.pct || 0) * 100);
+        const icon = ICONS[v.products[0]] || '💎';
+        return `<span class="chip tip" data-tip="${tr(`${names}订单报酬提高${pct}%`, `${names} orders pay +${pct}% this round`)}">${icon} ${names} +${pct}%</span>`;
+      }
+      const f = FLAG_LABELS[k];
+      if (!f) return null;
       const t = BOON_TEXT[f.id] || {};
       return `<span class="chip tip" data-tip="${pf(t.desc)}">${f.icon} ${pf(t.name)}</span>`;
-    });
+    })
+    .filter(Boolean);
   return chips.length ? chips.join('') : `<span class="muted">${tr('本回合暂无增益', 'No buffs this round')}</span>`;
 }
 
@@ -1962,6 +2068,19 @@ function environmentBannerHTML(g) {
     </div>`;
 }
 
+/* 丝路特许公告：服务器在第3/5程的「启航」页下发 charterEvent={id,icon,name,desc} */
+function charterBannerHTML(charterEvent) {
+  if (!charterEvent) return '';
+  return `
+    <div class="pm-banner" style="margin:14px auto;max-width:640px;text-align:left">
+      <span class="pm-icon">${charterEvent.icon || '🗺️'}</span>
+      <span>
+        <strong>${tr('丝路特许：', 'Silk Road Charter — ')}${escapeHtml(charterName(charterEvent))}</strong><br>
+        ${escapeHtml(charterDesc(charterEvent))}
+      </span>
+    </div>`;
+}
+
 function modulesHTML(g) {
   if (!g.equippedModules || !g.equippedModules.length) return `<span class="muted">${tr('尚未安装模块', 'No modules installed')}</span>`;
   return g.equippedModules.map(m =>
@@ -1978,9 +2097,9 @@ function invListHTML(g) {
     </div>`;
   return `
     <div class="inv-section-title">${tr('原 材 料', 'MATERIALS')}</div>
-    ${RESOURCES.map(row).join('')}
+    ${(g.unlockedResources || RESOURCES).map(row).join('')}
     <div class="inv-section-title">${tr('成 品', 'PRODUCTS')}</div>
-    ${PRODUCTS.map(row).join('')}
+    ${(g.unlockedProducts || PRODUCTS).map(row).join('')}
   `;
 }
 
@@ -2271,6 +2390,7 @@ function roundStartHTML(g) {
   return `
     ${phaseBriefHTML(0)}
     <div class="center-block" style="text-align:center">
+      ${charterBannerHTML(g.charterEvent)}
       ${environmentBannerHTML(g)}
       <div style="font-size:54px">🌅</div>
       <div class="hero-title">${tr(`第 ${g.currentRound} 程 · 整装启航`, `Round ${g.currentRound} · Ready to Sail`)}</div>
@@ -2332,6 +2452,8 @@ function purchaseHTML() {
   const discountChips = [];
   if (flags.purchase_discount) discountChips.push(`<span class="chip green">${tr('✨ 商贾魅力：实付约85折', "✨ Merchant's Charm: ~15% off")}</span>`);
   if (flags.hemp_price_reduction) discountChips.push(`<span class="chip green">${tr('🧶 麻布专营：麻布单价−2', '🧶 Hemp Monopoly: −2/unit on Hemp Cloth')}</span>`);
+  if ((g.equippedModules || []).some(m => m.id === 'kiln_cellar')) discountChips.push(`<span class="chip green">${tr('🔥 陶土窖：瓷土、铜矿单价−2', '🔥 Kiln Cellar: −2/unit on Porcelain Clay & Copper Ore')}</span>`);
+  if ((g.equippedModules || []).some(m => m.id === 'foreign_quarter_pass')) discountChips.push(`<span class="chip green">${tr('🪪 蕃坊行会证：香料、珍珠单价−3', '🪪 Foreign Quarter Guild Pass: −3/unit on Spices & Pearls')}</span>`);
 
   return `
     ${phaseBriefHTML(1, discountChips.join(''))}
@@ -2383,6 +2505,7 @@ function brokerWhisperHTML(g) {
   const remaining = g.intelRemaining || 0;
   const canBuy = remaining > 0 && g.money >= g.intelCost;
   const hasNetwork = (g.equippedModules || []).some(m => m.id === 'brokers_network');
+  const hasOceanRelay = (g.equippedModules || []).some(m => m.id === 'ocean_relay');
   return `
     <details class="whisper-panel" ${_whisperOpen ? 'open' : ''} ontoggle="_whisperOpen = this.open">
       <summary>
@@ -2390,6 +2513,7 @@ function brokerWhisperHTML(g) {
         <span class="chip amber">${tr(`🔮 花 ${g.intelCost} 金币打探未来需求`, `🔮 ${g.intelCost} gold buys future-demand intel`)}</span>
         ${revealed.length ? `<span class="chip green">${tr(`📜 已获 ${revealed.length} 条线索`, `📜 ${revealed.length} clue${revealed.length > 1 ? 's' : ''} gathered`)}</span>` : ''}
         ${hasNetwork ? `<span class="chip green">${tr('🕵️ 牙行网络已生效', "🕵️ Broker's Network active")}</span>` : ''}
+        ${hasOceanRelay ? `<span class="chip green">${tr('📡 远洋通译已生效', "📡 Ocean-Going Interpreter active")}</span>` : ''}
       </summary>
       <div class="whisper-body">
         <div class="section-hint">
@@ -2400,6 +2524,10 @@ function brokerWhisperHTML(g) {
                  `<strong>🕵️ Broker's Network</strong> equipped: each purchase costs only ${g.intelCost} gold and reveals <strong>2 clues</strong>.`)
             : tr('提示：在船坞安装 <strong>🕵️ 牙行网络</strong> 模块后，每次仅需 2 金币且一次获得 2 条线索。',
                  "Tip: install the <strong>🕵️ Broker's Network</strong> module at the Shipyard to pay only 2 gold and get 2 clues per purchase.")}
+          ${hasOceanRelay
+            ? tr(` 此外，<strong>📡 远洋通译</strong>已生效：每次额外多获得 <strong>1 条</strong>线索（不增加花费）。`,
+                 ` Additionally, <strong>📡 Ocean-Going Interpreter</strong> is active: each purchase reveals <strong>1 extra clue</strong> at no added cost.`)
+            : ''}
         </div>
         <div style="margin:10px 0">
           <button class="btn btn-gold" ${canBuy ? '' : 'disabled'} onclick="sendAction('purchaseIntel')"
@@ -2446,7 +2574,7 @@ function tradePhaseHTML() {
   const partner = escapeHtml(serverState.partnerName || chatPartner || tr('对方', 'Partner'));
 
   const stockOf = t => t === '金币' ? g.money : (g.inventory[t] || 0);
-  const optionsHTML = ['金币', ...RESOURCES, ...PRODUCTS]
+  const optionsHTML = ['金币', ...(g.unlockedResources || RESOURCES), ...(g.unlockedProducts || PRODUCTS)]
     .map(t => `<option value="${t}">${ICONS[t] || ''} ${tn(t)}${tr(`（我有 ${stockOf(t)}）`, ` (you have ${stockOf(t)})`)}</option>`).join('');
   const sep = tr('、', ', ');
 
@@ -2544,11 +2672,11 @@ function workerMgmtHTML() {
         <div style="display:grid; grid-template-columns:1fr 1fr; gap:20px">
           <div>
             <div class="inv-section-title">${tr('原 材 料', 'MATERIALS')}</div>
-            ${RESOURCES.map(r => `<div class="inv-item"><span class="icon">${ICONS[r]}</span><span class="name">${tn(r)}</span><span class="count">${g.inventory[r] || 0}</span></div>`).join('')}
+            ${(g.unlockedResources || RESOURCES).map(r => `<div class="inv-item"><span class="icon">${ICONS[r]}</span><span class="name">${tn(r)}</span><span class="count">${g.inventory[r] || 0}</span></div>`).join('')}
           </div>
           <div>
             <div class="inv-section-title">${tr('成 品', 'PRODUCTS')}</div>
-            ${PRODUCTS.map(r => `<div class="inv-item"><span class="icon">${ICONS[r]}</span><span class="name">${tn(r)}</span><span class="count">${g.inventory[r] || 0}</span></div>`).join('')}
+            ${(g.unlockedProducts || PRODUCTS).map(r => `<div class="inv-item"><span class="icon">${ICONS[r]}</span><span class="name">${tn(r)}</span><span class="count">${g.inventory[r] || 0}</span></div>`).join('')}
           </div>
         </div>
       </div>
@@ -2562,7 +2690,7 @@ function workerMgmtHTML() {
         </div>
         <table style="width:100%;border-collapse:collapse;font-size:12px;margin:8px 0">
           <tr style="color:var(--ink-faint);text-align:left"><th style="padding:4px">${tr('工匠', 'Artisan')}</th><th>${tr('工资/回合', 'Wage/round')}</th><th>${tr('可制作', 'Crafts')}</th><th></th></tr>
-          ${WORKER_TYPES.map(wt => `
+          ${WORKER_TYPES.filter(wt => !g.unlockedWorkerTypes || g.unlockedWorkerTypes.includes(wt.key)).map(wt => `
             <tr style="border-top:1px solid rgba(148,163,184,.25)">
               <td style="padding:6px 4px;font-weight:700">${wt.icon} ${pf(wt.name)}</td>
               <td>${costOf(wt.key)} 💰${hireDiscount ? ` <s class="muted">${WAGES[wt.key]}</s>` : ''}</td>
@@ -2573,14 +2701,12 @@ function workerMgmtHTML() {
         </table>
       </div>
 
-      ${(g.weavers.length || g.masterWeavers.length || g.sachetMakers.length) ? `
+      ${WORKER_TYPES.some(wt => (g[wt.listKey] || []).length) ? `
         <div class="section-box">
           <h3>${tr('👥 团队任务分配', '👥 Task Assignments')}</h3>
           <div class="section-hint">${tr('为空闲工匠指派生产任务；产出将在<strong>结算阶段</strong>自动入库。解雇空闲工匠需支付一次工资作遣散费。',
             "Assign tasks to idle artisans; output arrives automatically at <strong>Upkeep</strong>. Dismissing an idle artisan costs one wage as severance.")}</div>
-          ${workerListHTML('weaver', g.weavers, ['麻衣', '布衣'])}
-          ${workerListHTML('master', g.masterWeavers, ['麻衣', '布衣', '绫罗绸缎'])}
-          ${workerListHTML('sachet_maker', g.sachetMakers, ['香囊'])}
+          ${WORKER_TYPES.map(wt => workerListHTML(wt.key, g[wt.listKey] || [], wt.can)).join('')}
         </div>
       ` : ''}
 
@@ -3029,24 +3155,26 @@ function sendAction(action, payload = {}) {
    ============================================================ */
 const MANUAL_TABS_I18N = {
   zh: [
-    { id: 'start',   label: '🚀 快速上手' },
-    { id: 'flow',    label: '🔄 回合流程' },
-    { id: 'economy', label: '💰 经济与税务' },
-    { id: 'workers', label: '👥 工匠与生产' },
-    { id: 'trade',   label: '🤝 互市与联机' },
-    { id: 'boons',   label: '🍀 福缘图鉴' },
-    { id: 'ship',    label: '🚢 船坞升级' },
-    { id: 'faq',     label: '❓ 常见问题' }
+    { id: 'start',     label: '🚀 快速上手' },
+    { id: 'flow',      label: '🔄 回合流程' },
+    { id: 'economy',   label: '💰 经济与税务' },
+    { id: 'workers',   label: '👥 工匠与生产' },
+    { id: 'trade',     label: '🤝 互市与联机' },
+    { id: 'boons',     label: '🍀 福缘图鉴' },
+    { id: 'ship',      label: '🚢 船坞升级' },
+    { id: 'expansion', label: '🗺️ 拓展航线' },
+    { id: 'faq',       label: '❓ 常见问题' }
   ],
   en: [
-    { id: 'start',   label: '🚀 Quick Start' },
-    { id: 'flow',    label: '🔄 Round Flow' },
-    { id: 'economy', label: '💰 Economy & Taxes' },
-    { id: 'workers', label: '👥 Artisans & Crafting' },
-    { id: 'trade',   label: '🤝 Barter & Online' },
-    { id: 'boons',   label: '🍀 Fortune Codex' },
-    { id: 'ship',    label: '🚢 Ship Upgrades' },
-    { id: 'faq',     label: '❓ FAQ' }
+    { id: 'start',     label: '🚀 Quick Start' },
+    { id: 'flow',      label: '🔄 Round Flow' },
+    { id: 'economy',   label: '💰 Economy & Taxes' },
+    { id: 'workers',   label: '👥 Artisans & Crafting' },
+    { id: 'trade',     label: '🤝 Barter & Online' },
+    { id: 'boons',     label: '🍀 Fortune Codex' },
+    { id: 'ship',      label: '🚢 Ship Upgrades' },
+    { id: 'expansion', label: '🗺️ Expansion Routes' },
+    { id: 'faq',       label: '❓ FAQ' }
   ]
 };
 const manualTabs = () => MANUAL_TABS_I18N[LANG] || MANUAL_TABS_I18N.zh;
@@ -3162,7 +3290,84 @@ const manualContentZh = () => ({
       <tr><td>📜 免税令</td><td>所得税率降至 5%</td><td>预计本回合利润很高</td></tr>
       <tr><td>🧶 麻布专营</td><td>麻布采购单价 −2 金币</td><td>主打麻衣/布衣生产线</td></tr>
       <tr><td>🎓 学徒传承</td><td>雇佣工资减半</td><td>本回合计划扩编工匠团队</td></tr>
+      <tr><td>🔮 千里眼<br><span class="muted">市舶新政 · 第3程起</span></td><td>本回合免费获得 1 条牙行密语线索</td><td>想提前锁定贸易阶段订单</td></tr>
+      <tr><td>🏮 陶铜联号<br><span class="muted">市舶新政 · 第3程起</span></td><td>本回合「青瓷器」与「紫铜镜」订单报酬 +15%</td><td>库存中已有大量青瓷器/紫铜镜待交付</td></tr>
+      <tr><td>🧾 拓商减负<br><span class="muted">市舶新政 · 第3程起</span></td><td>本回合交付成品订单的增值税减半</td><td>本回合计划大量交付成品</td></tr>
+      <tr><td>💎 蕃国奇珍<br><span class="muted">万国通商 · 第5程起</span></td><td>本回合「蕃香脂」与「珠链」订单报酬 +15%</td><td>库存中已有大量蕃香脂/珠链待交付</td></tr>
+      <tr><td>🛡️ 远洋护航<br><span class="muted">万国通商 · 第5程起</span></td><td>本回合雇佣护航费用减半，海盗风险减半</td><td>季风海盗风险较高时</td></tr>
+      <tr><td>🛍️ 万商云集<br><span class="muted">万国通商 · 第5程起</span></td><td>本回合贸易阶段额外出现 1 张订单</td><td>想要更多交付机会</td></tr>
     </table>
+  `,
+  expansion: `
+    <h4>🗺️ 丝路特许：分批解锁</h4>
+    <p>第 1-2 程的玩法与最初版本完全一致——3 种原料、4 种成品、3 类工匠、5 座港口。从<strong>第 3 程</strong>起，「市舶新政」颁布；从<strong>第 5 程</strong>起，「万国通商」开启。两批新内容会分别加入原料、成品、港口、工匠、福缘、战船改装与季风的可选池——航路越往后，棋盘越宽。</p>
+    <table>
+      <tr><th>批次</th><th>解锁时机</th><th>新增内容概览</th></tr>
+      <tr><td>🗺️ 市舶新政</td><td>第 3 程起</td><td>瓷土、铜矿、紫铜镜、青瓷器；福州港、高丽港；铜匠、陶匠；3 福缘 + 3 战船改装 + 2 季风</td></tr>
+      <tr><td>🌏 万国通商</td><td>第 5 程起</td><td>香料、珍珠、蕃香脂、珠链；三佛齐港、大食港；香料师、珠宝匠；3 福缘 + 3 战船改装 + 2 季风</td></tr>
+    </table>
+
+    <h4>📦 新增原料</h4>
+    <table>
+      <tr><th>原料</th><th>解锁批次</th><th>特产港</th><th>参考单价</th></tr>
+      <tr><td>🧱 瓷土</td><td>市舶新政</td><td>泉州港、福州港</td><td>8 - 12</td></tr>
+      <tr><td>⛏️ 铜矿</td><td>市舶新政</td><td>广州港、高丽港</td><td>10 - 15</td></tr>
+      <tr><td>🌶️ 香料</td><td>万国通商</td><td>三佛齐港、大食港</td><td>14 - 20</td></tr>
+      <tr><td>🦪 珍珠</td><td>万国通商</td><td>广州港、三佛齐港</td><td>16 - 24</td></tr>
+    </table>
+
+    <h4>🏺 新增成品</h4>
+    <table>
+      <tr><th>成品</th><th>解锁批次</th><th>所需材料</th><th>基准产值</th><th>市价区间</th><th>制作工匠</th></tr>
+      <tr><td>🪞 紫铜镜</td><td>市舶新政</td><td>铜矿×3</td><td>45</td><td>55 - 72</td><td>铜匠</td></tr>
+      <tr><td>🏺 青瓷器</td><td>市舶新政</td><td>瓷土×3</td><td>65</td><td>78 - 100</td><td>陶匠</td></tr>
+      <tr><td>🧴 蕃香脂</td><td>万国通商</td><td>香料×2 + 丝绸×1</td><td>85</td><td>100 - 130</td><td>香料师</td></tr>
+      <tr><td>📿 珠链</td><td>万国通商</td><td>珍珠×2 + 丝绸×1</td><td>105</td><td>125 - 160</td><td>珠宝匠</td></tr>
+    </table>
+
+    <h4>👷 新增工匠</h4>
+    <table>
+      <tr><th>工匠</th><th>解锁批次</th><th>工资/回合</th><th>可制作</th></tr>
+      <tr><td>🪞 铜匠</td><td>市舶新政</td><td>12 金币</td><td>紫铜镜</td></tr>
+      <tr><td>🏺 陶匠</td><td>市舶新政</td><td>14 金币</td><td>青瓷器</td></tr>
+      <tr><td>🧴 香料师</td><td>万国通商</td><td>18 金币</td><td>蕃香脂（唯一来源）</td></tr>
+      <tr><td>📿 珠宝匠</td><td>万国通商</td><td>24 金币</td><td>珠链（唯一来源）</td></tr>
+    </table>
+
+    <h4>⚓ 新增港口</h4>
+    <table>
+      <tr><th>港口</th><th>解锁批次</th><th>特色</th></tr>
+      <tr><td>福州港</td><td>市舶新政</td><td>瓷土与青瓷器的重要产地</td></tr>
+      <tr><td>高丽港</td><td>市舶新政</td><td>跨海贸易枢纽，铜矿的主要来源</td></tr>
+      <tr><td>三佛齐港</td><td>万国通商</td><td>南洋香料与珍珠的转运枢纽</td></tr>
+      <tr><td>大食港</td><td>万国通商</td><td>遥远的西方市场，香料与珍珠制品的高价买家</td></tr>
+    </table>
+
+    <h4>🌬️ 新增季风（贸易风）</h4>
+    <p>除原有的「春潮顺流」「盛夏季风」「秋汛乱流」「冬海封锁」外，新增 4 种季风状态。第 3 程起，每个"季节"（每 2 回合一变）将从<strong>当时已解锁的季风池中随机抽取</strong>，不再是固定的四季循环——但第 1-2 程仍固定为「春潮顺流」，与最初版本完全一致。</p>
+    <table>
+      <tr><th>季风</th><th>解锁批次</th><th>效果概要</th></tr>
+      <tr><td>🌫️ 闽江窑烟</td><td>市舶新政</td><td>福州港、泉州港订单报酬提高；瓷土采购价降低；海盗风险中等</td></tr>
+      <tr><td>🌅 高丽晓航</td><td>市舶新政</td><td>高丽港、广州港订单报酬提高；铜矿采购价降低；海盗风险较高</td></tr>
+      <tr><td>🌴 三佛齐香风</td><td>万国通商</td><td>三佛齐港、大食港订单报酬提高；香料采购价降低；海盗风险较高</td></tr>
+      <tr><td>🌙 大食珠月</td><td>万国通商</td><td>大食港、三佛齐港订单报酬大幅提高；珍珠采购价降低；海盗风险最高</td></tr>
+    </table>
+
+    <h4>🔧 新增战船改装</h4>
+    <table>
+      <tr><th>改装</th><th>解锁批次</th><th>效果</th></tr>
+      <tr><td>🎫 市舶司令牌</td><td>市舶新政</td><td>新航线货品（瓷土、铜矿及其成品）订单收入 +10%</td></tr>
+      <tr><td>🔥 陶土窖</td><td>市舶新政</td><td>瓷土与铜矿采购单价各降低 2 金币</td></tr>
+      <tr><td>📡 远洋通译</td><td>市舶新政</td><td>牙行密语每次额外显示 1 条线索（不增加花费）</td></tr>
+      <tr><td>🪪 蕃坊行会证</td><td>万国通商</td><td>香料与珍珠采购单价各降低 3 金币</td></tr>
+      <tr><td>🧿 波斯穹顶罗盘</td><td>万国通商</td><td>海盗风险降低 30%</td></tr>
+      <tr><td>⛵ 万宝商船</td><td>万国通商</td><td>「蕃香脂」与「珠链」每件运费降低 3 金币</td></tr>
+    </table>
+
+    <div class="pm-banner" style="margin-top:10px">
+      <span class="pm-icon">🗺️</span>
+      <span>这些新内容会在<strong>「启航」</strong>页以横幅公告的形式出现——留意第 3 程与第 5 程开局时的提示！</span>
+    </div>
   `,
   ship: `
     <h4>🚢 商船升级（船坞阶段）</h4>
@@ -3310,7 +3515,84 @@ const manualContentEn = () => ({
       <tr><td>📜 Tax Exemption</td><td>Income tax drops to 5%</td><td>Expecting big profits this round</td></tr>
       <tr><td>🧶 Hemp Monopoly</td><td>Hemp Cloth −2 gold per unit</td><td>Running a garb/tunic production line</td></tr>
       <tr><td>🎓 Apprentice Legacy</td><td>Hiring wages halved</td><td>Expanding the team this round</td></tr>
+      <tr><td>🔮 Farsight<br><span class="muted">New Maritime Edict · Round 3+</span></td><td>Gain 1 free Broker's Whisper clue this round</td><td>Want to lock in a Trade-phase order early</td></tr>
+      <tr><td>🏮 Porcelain & Bronze Consortium<br><span class="muted">New Maritime Edict · Round 3+</span></td><td>Celadon Porcelain and Bronze Mirror orders pay +15% this round</td><td>Stockpiled Celadon Porcelain/Bronze Mirror ready to deliver</td></tr>
+      <tr><td>🧾 Frontier Tariff Relief<br><span class="muted">New Maritime Edict · Round 3+</span></td><td>VAT on finished-goods deliveries is halved this round</td><td>Planning to deliver lots of products this round</td></tr>
+      <tr><td>💎 Treasures from Afar<br><span class="muted">Ten Thousand Kingdoms Trade · Round 5+</span></td><td>Foreign Perfume Oil and Pearl Necklace orders pay +15% this round</td><td>Stockpiled Foreign Perfume Oil/Pearl Necklace ready to deliver</td></tr>
+      <tr><td>🛡️ Deep-Sea Escort Pact<br><span class="muted">Ten Thousand Kingdoms Trade · Round 5+</span></td><td>Escort hiring costs half price and pirate risk is halved this round</td><td>When the trade wind's pirate risk is high</td></tr>
+      <tr><td>🛍️ Merchants Converge<br><span class="muted">Ten Thousand Kingdoms Trade · Round 5+</span></td><td>1 extra order appears in the Trade phase this round</td><td>Want more delivery opportunities</td></tr>
     </table>
+  `,
+  expansion: `
+    <h4>🗺️ Silk Road Charter: Phased Unlocks</h4>
+    <p>Rounds 1-2 play exactly like the original release — 3 raw materials, 4 products, 3 artisan types, 5 ports. From <strong>Round 3</strong>, the "New Maritime Edict" takes effect; from <strong>Round 5</strong>, "Ten Thousand Kingdoms Trade" opens. Each wave adds new resources, products, ports, artisans, fortunes, ship modules and trade winds to the pools you draw from — the later the voyage, the wider the board.</p>
+    <table>
+      <tr><th>Wave</th><th>Unlocks at</th><th>What's added</th></tr>
+      <tr><td>🗺️ New Maritime Edict</td><td>Round 3</td><td>Porcelain Clay, Copper Ore, Bronze Mirror, Celadon Porcelain; Fuzhou, Goryeo; Coppersmith, Potter; 3 Fortunes + 3 ship modules + 2 trade winds</td></tr>
+      <tr><td>🌏 Ten Thousand Kingdoms Trade</td><td>Round 5</td><td>Spices, Pearls, Foreign Perfume Oil, Pearl Necklace; Srivijaya, Dashi; Perfumer, Jeweler; 3 Fortunes + 3 ship modules + 2 trade winds</td></tr>
+    </table>
+
+    <h4>📦 New Resources</h4>
+    <table>
+      <tr><th>Resource</th><th>Unlocked by</th><th>Home ports</th><th>Reference price</th></tr>
+      <tr><td>🧱 Porcelain Clay</td><td>New Maritime Edict</td><td>Quanzhou, Fuzhou</td><td>8 – 12</td></tr>
+      <tr><td>⛏️ Copper Ore</td><td>New Maritime Edict</td><td>Guangzhou, Goryeo</td><td>10 – 15</td></tr>
+      <tr><td>🌶️ Spices</td><td>Ten Thousand Kingdoms Trade</td><td>Srivijaya, Dashi</td><td>14 – 20</td></tr>
+      <tr><td>🦪 Pearls</td><td>Ten Thousand Kingdoms Trade</td><td>Guangzhou, Srivijaya</td><td>16 – 24</td></tr>
+    </table>
+
+    <h4>🏺 New Products</h4>
+    <table>
+      <tr><th>Product</th><th>Unlocked by</th><th>Materials</th><th>Base value</th><th>Market range</th><th>Crafted by</th></tr>
+      <tr><td>🪞 Bronze Mirror</td><td>New Maritime Edict</td><td>Copper Ore ×3</td><td>45</td><td>55 – 72</td><td>Coppersmith</td></tr>
+      <tr><td>🏺 Celadon Porcelain</td><td>New Maritime Edict</td><td>Porcelain Clay ×3</td><td>65</td><td>78 – 100</td><td>Potter</td></tr>
+      <tr><td>🧴 Foreign Perfume Oil</td><td>Ten Thousand Kingdoms Trade</td><td>Spices ×2 + Silk ×1</td><td>85</td><td>100 – 130</td><td>Perfumer</td></tr>
+      <tr><td>📿 Pearl Necklace</td><td>Ten Thousand Kingdoms Trade</td><td>Pearls ×2 + Silk ×1</td><td>105</td><td>125 – 160</td><td>Jeweler</td></tr>
+    </table>
+
+    <h4>👷 New Artisans</h4>
+    <table>
+      <tr><th>Artisan</th><th>Unlocked by</th><th>Wage/round</th><th>Crafts</th></tr>
+      <tr><td>🪞 Coppersmith</td><td>New Maritime Edict</td><td>12 gold</td><td>Bronze Mirror</td></tr>
+      <tr><td>🏺 Potter</td><td>New Maritime Edict</td><td>14 gold</td><td>Celadon Porcelain</td></tr>
+      <tr><td>🧴 Perfumer</td><td>Ten Thousand Kingdoms Trade</td><td>18 gold</td><td>Foreign Perfume Oil (only source)</td></tr>
+      <tr><td>📿 Jeweler</td><td>Ten Thousand Kingdoms Trade</td><td>24 gold</td><td>Pearl Necklace (only source)</td></tr>
+    </table>
+
+    <h4>⚓ New Ports</h4>
+    <table>
+      <tr><th>Port</th><th>Unlocked by</th><th>Specialty</th></tr>
+      <tr><td>Fuzhou</td><td>New Maritime Edict</td><td>A major source of Porcelain Clay and Celadon Porcelain</td></tr>
+      <tr><td>Goryeo</td><td>New Maritime Edict</td><td>A cross-sea trade hub and the chief source of Copper Ore</td></tr>
+      <tr><td>Srivijaya</td><td>Ten Thousand Kingdoms Trade</td><td>The Southeast Asian crossroads for Spices and Pearls</td></tr>
+      <tr><td>Dashi</td><td>Ten Thousand Kingdoms Trade</td><td>A distant western market and a premium buyer of Spice and Pearl goods</td></tr>
+    </table>
+
+    <h4>🌬️ New Trade Winds</h4>
+    <p>Beyond the original Spring Current, Summer Monsoon, Autumn Gales and Winter Blockade, 4 new trade-wind states join the pool. From Round 3 on, each "season" (every 2 rounds) is <strong>drawn at random from the currently unlocked pool</strong> instead of a fixed 4-season cycle — but Rounds 1-2 are still always Spring Current, exactly as before.</p>
+    <table>
+      <tr><th>Trade Wind</th><th>Unlocked by</th><th>Effect summary</th></tr>
+      <tr><td>🌫️ Min River Kiln-Smoke</td><td>New Maritime Edict</td><td>Fuzhou and Quanzhou orders pay more; Porcelain Clay is cheaper; pirate risk is moderate</td></tr>
+      <tr><td>🌅 Goryeo Dawn Route</td><td>New Maritime Edict</td><td>Goryeo and Guangzhou orders pay more; Copper Ore is cheaper; pirate risk is elevated</td></tr>
+      <tr><td>🌴 Srivijaya Spice Breeze</td><td>Ten Thousand Kingdoms Trade</td><td>Srivijaya and Dashi orders pay more; Spices are cheaper; pirate risk is elevated</td></tr>
+      <tr><td>🌙 Dashi Pearl Moon</td><td>Ten Thousand Kingdoms Trade</td><td>Dashi and Srivijaya orders pay much more; Pearls are cheaper; pirate risk is highest</td></tr>
+    </table>
+
+    <h4>🔧 New Ship Modules</h4>
+    <table>
+      <tr><th>Module</th><th>Unlocked by</th><th>Effect</th></tr>
+      <tr><td>🎫 Trade Bureau Token</td><td>New Maritime Edict</td><td>Orders for new trade-route goods (Porcelain Clay, Copper Ore and their products) pay +10%</td></tr>
+      <tr><td>🔥 Kiln Cellar</td><td>New Maritime Edict</td><td>Porcelain Clay and Copper Ore purchase price −2 gold per unit</td></tr>
+      <tr><td>📡 Ocean-Going Interpreter</td><td>New Maritime Edict</td><td>Each Broker's Whisper purchase reveals 1 extra clue at no added cost</td></tr>
+      <tr><td>🪪 Foreign Quarter Guild Pass</td><td>Ten Thousand Kingdoms Trade</td><td>Spices and Pearls purchase price −3 gold per unit</td></tr>
+      <tr><td>🧿 Persian Dome Compass</td><td>Ten Thousand Kingdoms Trade</td><td>Pirate risk reduced by 30%</td></tr>
+      <tr><td>⛵ Fleet of Ten-Thousand Treasures</td><td>Ten Thousand Kingdoms Trade</td><td>Shipping for Foreign Perfume Oil and Pearl Necklace is 3 gold cheaper per item</td></tr>
+    </table>
+
+    <div class="pm-banner" style="margin-top:10px">
+      <span class="pm-icon">🗺️</span>
+      <span>These additions arrive as banner announcements on the <strong>Set Sail</strong> page — watch for them at the start of Round 3 and Round 5!</span>
+    </div>
   `,
   ship: `
     <h4>🚢 Ship Upgrades (Shipyard phase)</h4>

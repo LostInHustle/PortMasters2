@@ -28,12 +28,51 @@ import hashlib
 import secrets
 
 # -------------------- 常量 --------------------
-RESOURCES = ["麻布", "丝绸", "茶叶"]
-PRODUCTS = ["麻衣", "布衣", "绫罗绸缎", "香囊"]
-PORTS = ["泉州港", "广州港", "宁波港", "扬州港", "杭州港"]
+RESOURCES_TIER0 = ["麻布", "丝绸", "茶叶"]
+RESOURCES_TIER1 = ["瓷土", "铜矿"]
+RESOURCES_TIER2 = ["香料", "珍珠"]
+RESOURCES = RESOURCES_TIER0 + RESOURCES_TIER1 + RESOURCES_TIER2
+
+PRODUCTS_TIER0 = ["麻衣", "布衣", "绫罗绸缎", "香囊"]
+PRODUCTS_TIER1 = ["紫铜镜", "青瓷器"]
+PRODUCTS_TIER2 = ["蕃香脂", "珠链"]
+PRODUCTS = PRODUCTS_TIER0 + PRODUCTS_TIER1 + PRODUCTS_TIER2
+
+PORTS_TIER0 = ["泉州港", "广州港", "宁波港", "扬州港", "杭州港"]
+PORTS_TIER1 = ["福州港", "高丽港"]
+PORTS_TIER2 = ["三佛齐港", "大食港"]
+PORTS = PORTS_TIER0 + PORTS_TIER1 + PORTS_TIER2
+
 ESCORT_COST = 10
 
-MONSOON_STATES = [
+
+def unlocked(tier0, tier1, tier2, round_no):
+    """按当前回合解锁内容池：第3回合解锁Tier1（市舶新政），第5回合解锁Tier2（万国通商）"""
+    items = tier0[:]
+    if round_no >= 3:
+        items += tier1
+    if round_no >= 5:
+        items += tier2
+    return items
+
+
+# 丝路特许（Silk Road Charter）：在 Set Sail 页面提示新一批内容解锁
+CHARTER_EVENTS = {
+    3: {
+        "id": "tier1",
+        "icon": "🗺️",
+        "name": "市舶新政",
+        "desc": "福建市舶司新政颁布！瓷土、铜矿、青瓷器、紫铜镜加入行情；福州港、高丽港正式开埠；陶匠与铜匠加入劳务市场；新的福缘与战船改装随之而来。",
+    },
+    5: {
+        "id": "tier2",
+        "icon": "🌏",
+        "name": "万国通商",
+        "desc": "万国通商盛况空前！香料、珍珠、蕃香脂、珠链加入行情；三佛齐港、大食港正式开埠；香料师与珠宝匠加入劳务市场；更多福缘与战船改装随之而来。",
+    },
+}
+
+MONSOON_TIER0 = [
     {
         "id": "spring_current",
         "name": "春潮顺流",
@@ -84,28 +123,109 @@ MONSOON_STATES = [
     },
 ]
 
+MONSOON_TIER1 = [
+    {
+        "id": "fujian_kiln_smoke",
+        "name": "闽江窑烟",
+        "icon": "🌫️",
+        "desc": "福州港与泉州港订单报酬提高18%，瓷土采购价降低12%。海盗风险中等。",
+        "rewardPorts": ["福州港", "泉州港"],
+        "rewardMultiplier": 1.18,
+        "resource": "瓷土",
+        "purchaseMultiplier": 0.88,
+        "pirateRisk": 0.15,
+        "pirateLoss": 10,
+    },
+    {
+        "id": "goryeo_dawn_route",
+        "name": "高丽晓航",
+        "icon": "🌅",
+        "desc": "高丽港与广州港订单报酬提高20%，铜矿采购价降低10%。海盗风险较高。",
+        "rewardPorts": ["高丽港", "广州港"],
+        "rewardMultiplier": 1.20,
+        "resource": "铜矿",
+        "purchaseMultiplier": 0.90,
+        "pirateRisk": 0.20,
+        "pirateLoss": 12,
+    },
+]
+
+MONSOON_TIER2 = [
+    {
+        "id": "srivijaya_spice_breeze",
+        "name": "三佛齐香风",
+        "icon": "🌴",
+        "desc": "三佛齐港与大食港订单报酬提高22%，香料采购价降低15%。海盗风险较高。",
+        "rewardPorts": ["三佛齐港", "大食港"],
+        "rewardMultiplier": 1.22,
+        "resource": "香料",
+        "purchaseMultiplier": 0.85,
+        "pirateRisk": 0.22,
+        "pirateLoss": 14,
+    },
+    {
+        "id": "dashi_pearl_moon",
+        "name": "大食珠月",
+        "icon": "🌙",
+        "desc": "大食港与三佛齐港订单报酬提高25%，珍珠采购价降低15%。海盗风险最高。",
+        "rewardPorts": ["大食港", "三佛齐港"],
+        "rewardMultiplier": 1.25,
+        "resource": "珍珠",
+        "purchaseMultiplier": 0.85,
+        "pirateRisk": 0.25,
+        "pirateLoss": 16,
+    },
+]
+
+MONSOON_STATES = MONSOON_TIER0 + MONSOON_TIER1 + MONSOON_TIER2
+
 RECIPES = {
     "麻衣": {"materials": {"麻布": 2}, "value": 15, "worker_type": "weaver"},
     "布衣": {"materials": {"麻布": 2, "丝绸": 1}, "value": 35, "worker_type": "weaver"},
     "绫罗绸缎": {"materials": {"丝绸": 3}, "value": 60, "worker_type": "master"},
-    "香囊": {"materials": {"丝绸": 1, "茶叶": 2}, "value": 80, "worker_type": "sachet_maker"}
+    "香囊": {"materials": {"丝绸": 1, "茶叶": 2}, "value": 80, "worker_type": "sachet_maker"},
+    "紫铜镜": {"materials": {"铜矿": 3}, "value": 45, "worker_type": "coppersmith"},
+    "青瓷器": {"materials": {"瓷土": 3}, "value": 65, "worker_type": "potter"},
+    "蕃香脂": {"materials": {"香料": 2, "丝绸": 1}, "value": 85, "worker_type": "perfumer"},
+    "珠链": {"materials": {"珍珠": 2, "丝绸": 1}, "value": 105, "worker_type": "jeweler"}
 }
 
 COMMODITIES = {
     "麻布": {"ports": ["泉州港", "宁波港"], "basePrice": (3, 6)},
     "丝绸": {"ports": ["杭州港", "扬州港"], "basePrice": (6, 10)},
-    "茶叶": {"ports": ["广州港", "泉州港"], "basePrice": (10, 14)}
+    "茶叶": {"ports": ["广州港", "泉州港"], "basePrice": (10, 14)},
+    "瓷土": {"ports": ["泉州港", "福州港"], "basePrice": (8, 12)},
+    "铜矿": {"ports": ["广州港", "高丽港"], "basePrice": (10, 15)},
+    "香料": {"ports": ["三佛齐港", "大食港"], "basePrice": (14, 20)},
+    "珍珠": {"ports": ["广州港", "三佛齐港"], "basePrice": (16, 24)}
 }
 
 PRODUCT_PRICES = {
     "麻衣": (30, 42), "布衣": (50, 65),
-    "绫罗绸缎": (70, 90), "香囊": (95, 120)
+    "绫罗绸缎": (70, 90), "香囊": (95, 120),
+    "紫铜镜": (55, 72), "青瓷器": (78, 100),
+    "蕃香脂": (100, 130), "珠链": (125, 160)
 }
 
-RESOURCE_PROBS = {"麻布": 0.4, "丝绸": 0.35, "茶叶": 0.25}
-WAGES = {"weaver": 8, "master": 12, "sachet_maker": 20}
+RESOURCE_PROBS = {"麻布": 0.30, "丝绸": 0.26, "茶叶": 0.18, "瓷土": 0.14, "铜矿": 0.12, "香料": 0.08, "珍珠": 0.06}
+WAGES = {"weaver": 8, "master": 12, "sachet_maker": 20, "coppersmith": 12, "potter": 14, "perfumer": 18, "jeweler": 24}
 
-BOONS = [
+# 工种存储：每个工种对应 PlayerGame 上的一个工人列表属性名
+WORKER_TYPES_BACKEND = [
+    {"id": "weaver", "attr": "weavers"},
+    {"id": "master", "attr": "masterWeavers"},
+    {"id": "sachet_maker", "attr": "sachetMakers"},
+    {"id": "coppersmith", "attr": "coppersmiths"},
+    {"id": "potter", "attr": "potters"},
+    {"id": "perfumer", "attr": "perfumers"},
+    {"id": "jeweler", "attr": "jewelers"},
+]
+WORKER_ATTR = {w["id"]: w["attr"] for w in WORKER_TYPES_BACKEND}
+WORKER_IDS_TIER0 = ["weaver", "master", "sachet_maker"]
+WORKER_IDS_TIER1 = ["coppersmith", "potter"]
+WORKER_IDS_TIER2 = ["perfumer", "jeweler"]
+
+BOONS_TIER0 = [
     {"id": "silk_wind", "name": "丝路顺风", "icon": "🌬️", "desc": "本回合丝绸及成品运费减半。", "modifiers": {"transport_silk_discount": 0.5}},
     {"id": "favorable_tides", "name": "顺风顺水", "icon": "🌊", "desc": "本回合基础运费减4金币。", "modifiers": {"transport_flat_discount": 4}},
     {"id": "merchant_charm", "name": "商贾魅力", "icon": "✨", "desc": "本回合采购85折优惠。", "modifiers": {"purchase_discount": 0.15}},
@@ -116,7 +236,21 @@ BOONS = [
     {"id": "master_apprentice", "name": "学徒传承", "icon": "🎓", "desc": "本回合雇佣工资减半。", "modifiers": {"hire_discount": 0.5}}
 ]
 
-MODULES = [
+BOONS_TIER1 = [
+    {"id": "farsight", "name": "千里眼", "icon": "🔮", "desc": "本回合免费获得1条牙行密语线索。", "modifiers": {"free_intel": 1}},
+    {"id": "porcelain_bronze_guild", "name": "陶铜联号", "icon": "🏮", "desc": "本回合「青瓷器」与「紫铜镜」订单报酬提高15%。", "modifiers": {"product_order_bonus": {"products": ["青瓷器", "紫铜镜"], "pct": 0.15}}},
+    {"id": "frontier_tariff_relief", "name": "拓商减负", "icon": "🧾", "desc": "本回合交付成品订单的增值税减半。", "modifiers": {"vat_discount": 0.5}},
+]
+
+BOONS_TIER2 = [
+    {"id": "exotic_treasures", "name": "蕃国奇珍", "icon": "💎", "desc": "本回合「蕃香脂」与「珠链」订单报酬提高15%。", "modifiers": {"product_order_bonus": {"products": ["蕃香脂", "珠链"], "pct": 0.15}}},
+    {"id": "deep_sea_escort_pact", "name": "远洋护航", "icon": "🛡️", "desc": "本回合雇佣护航费用减半，海盗风险减半。", "modifiers": {"escort_discount": 0.5, "pirate_risk_discount": 0.5}},
+    {"id": "merchants_converge", "name": "万商云集", "icon": "🛍️", "desc": "本回合贸易阶段额外出现1张订单。", "modifiers": {"extra_order": 1}},
+]
+
+BOONS = BOONS_TIER0 + BOONS_TIER1 + BOONS_TIER2
+
+MODULES_TIER0 = [
     {"id": "smugglers_hold", "name": "走私暗舱", "icon": "🏴‍☠️", "desc": "采购成本-15%。所得税+20%。"},
     {"id": "bulk_hauler", "name": "散货索具", "icon": "🏗️", "desc": "每件货物运费-1。船坞升级费用+15金币。"},
     {"id": "artisans_workshop", "name": "工匠工坊", "icon": "🛠️", "desc": "工人产量+1。工资+20%。"},
@@ -126,6 +260,32 @@ MODULES = [
     {"id": "salvage_crane", "name": "打捞起重机", "icon": "♻️", "desc": "30%概率在订单完成时退还运费。"},
     {"id": "overdrive_engine", "name": "超载引擎", "icon": "⚡", "desc": "运费-5金币。维护费+10金币。"}
 ]
+
+MODULES_TIER1 = [
+    {"id": "bureau_token", "name": "市舶司令牌", "icon": "🎫", "desc": "新航线货品（瓷土、铜矿及其成品）订单收入+10%。"},
+    {"id": "kiln_cellar", "name": "陶土窖", "icon": "🔥", "desc": "瓷土与铜矿采购单价各降低2金币。"},
+    {"id": "ocean_relay", "name": "远洋通译", "icon": "📡", "desc": "牙行密语每次额外显示1条线索（不增加花费）。"},
+]
+
+MODULES_TIER2 = [
+    {"id": "foreign_quarter_pass", "name": "蕃坊行会证", "icon": "🪪", "desc": "香料与珍珠采购单价各降低3金币。"},
+    {"id": "persian_dome_compass", "name": "波斯穹顶罗盘", "icon": "🧿", "desc": "海盗风险降低30%。"},
+    {"id": "fleet_of_treasures", "name": "万宝商船", "icon": "⛵", "desc": "「蕃香脂」与「珠链」每件运费降低3金币。"},
+]
+
+MODULES = MODULES_TIER0 + MODULES_TIER1 + MODULES_TIER2
+
+
+def boon_pool(round_no):
+    return unlocked(BOONS_TIER0, BOONS_TIER1, BOONS_TIER2, round_no)
+
+
+def module_pool(round_no):
+    return unlocked(MODULES_TIER0, MODULES_TIER1, MODULES_TIER2, round_no)
+
+
+def monsoon_pool(round_no):
+    return unlocked(MONSOON_TIER0, MONSOON_TIER1, MONSOON_TIER2, round_no)
 
 INVITE_COOLDOWN = 60          # 邀请冷却 / 超时时间（秒）
 CHAT_HISTORY_LIMIT = 200      # 每个会话保留的聊天记录条数
@@ -149,7 +309,8 @@ def weighted_choice(items):
 # -------------------- PlayerGame 类 --------------------
 class PlayerGame:
     def __init__(self):
-        self.inventory = {"麻布": 8, "丝绸": 5, "茶叶": 3, "麻衣": 0, "布衣": 0, "绫罗绸缎": 0, "香囊": 0}
+        self.inventory = {item: 0 for item in RESOURCES + PRODUCTS}
+        self.inventory.update({"麻布": 8, "丝绸": 5, "茶叶": 3})
         self.money = 100
         self.score = 0
         self.currentRound = 1
@@ -163,9 +324,8 @@ class PlayerGame:
         self.incomeTaxPaid = 0
         self.roundRevenue = 0
         self.roundCosts = 0
-        self.weavers = []
-        self.masterWeavers = []
-        self.sachetMakers = []
+        for w in WORKER_TYPES_BACKEND:
+            setattr(self, w["attr"], [])
         self.fixedCost = 15
         self.shipLevel = 0
         self.shipUpgradeCost = [15, 25, 40]
@@ -200,8 +360,21 @@ class PlayerGame:
         if len(self.lastLogs) > 100:
             self.lastLogs.pop(0)
 
+    # ---------- 丝路特许：内容解锁 ----------
+    def unlocked_resources(self):
+        return unlocked(RESOURCES_TIER0, RESOURCES_TIER1, RESOURCES_TIER2, self.currentRound)
+
+    def unlocked_products(self):
+        return unlocked(PRODUCTS_TIER0, PRODUCTS_TIER1, PRODUCTS_TIER2, self.currentRound)
+
+    def unlocked_ports(self):
+        return unlocked(PORTS_TIER0, PORTS_TIER1, PORTS_TIER2, self.currentRound)
+
+    def unlocked_worker_types(self):
+        return unlocked(WORKER_IDS_TIER0, WORKER_IDS_TIER1, WORKER_IDS_TIER2, self.currentRound)
+
     # ---------- 费用计算 ----------
-    def calc_transport_cost(self, total_items, has_silk=False):
+    def calc_transport_cost(self, total_items, has_silk=False, resources=None):
         base = total_items * 2
         discount = self.shipLevel * 5
         if self.modifierFlags.get("transport_flat_discount"):
@@ -212,6 +385,9 @@ class PlayerGame:
         if self.has_module("bulk_hauler"): cost = max(0, cost - total_items)
         if self.has_module("overdrive_engine"): cost = max(0, cost - 5)
         if self.has_module("silk_monopoly") and has_silk: cost = 0
+        if self.has_module("fleet_of_treasures") and resources:
+            treasure_qty = sum(r["required"] for r in resources if r["type"] in ("蕃香脂", "珠链"))
+            cost = max(0, cost - 3 * treasure_qty)
         return max(0, cost)
 
     def calc_vat(self, product, selling_price):
@@ -225,6 +401,7 @@ class PlayerGame:
         if taxable > 0:
             vat = int(taxable * 0.05)
             if self.has_module("tax_evasion"): vat = int(vat * 0.5)
+            if self.modifierFlags.get("vat_discount"): vat = int(vat * (1 - self.modifierFlags["vat_discount"]))
             return vat
         return 0
 
@@ -247,6 +424,14 @@ class PlayerGame:
             for r in card["resources"]:
                 if r["type"] == "麻布":
                     cost -= r["quantity"] * self.modifierFlags["hemp_price_reduction"]
+        if self.has_module("kiln_cellar"):
+            for r in card["resources"]:
+                if r["type"] in ("瓷土", "铜矿"):
+                    cost -= r["quantity"] * 2
+        if self.has_module("foreign_quarter_pass"):
+            for r in card["resources"]:
+                if r["type"] in ("香料", "珍珠"):
+                    cost -= r["quantity"] * 3
         if self.has_module("smugglers_hold"):
             cost = int(cost * 0.85)
         return max(0, cost)
@@ -310,10 +495,11 @@ class PlayerGame:
     def gen_raw_order(self, filter=None):
         num = rand(1, 3)
         resources = []
-        available = RESOURCES[:]
-        port = choice(PORTS)
+        unlocked_res = self.unlocked_resources()
+        available = unlocked_res[:]
+        port = choice(self.unlocked_ports())
         total = 0
-        if filter and filter in RESOURCES:
+        if filter and filter in unlocked_res:
             req = rand(2, 5)
             total += req
             resources.append({"type": filter, "required": req})
@@ -330,9 +516,10 @@ class PlayerGame:
         return {"demandPort": port, "resources": resources, "reward": reward, "totalItems": total, "isProductOrder": False}
 
     def gen_product_order(self, filter=None):
-        product = filter if (filter in PRODUCTS) else choice(PRODUCTS)
+        unlocked_prod = self.unlocked_products()
+        product = filter if (filter in unlocked_prod) else choice(unlocked_prod)
         req = rand(1, 3)
-        port = choice(PORTS)
+        port = choice(self.unlocked_ports())
         base_price = rand(*PRODUCT_PRICES[product])
         return {"demandPort": port, "resources": [{"type": product, "required": req}], "reward": self.env_reward(port, base_price * req), "totalItems": req, "isProductOrder": True}
 
@@ -355,9 +542,10 @@ class PlayerGame:
             return self.gen_product_purchase_card()
         num = rand(1, 3)
         resources = []
-        available = list(RESOURCE_PROBS.keys())
-        probs = list(RESOURCE_PROBS.values())
-        port = choice(PORTS)
+        unlocked_res = self.unlocked_resources()
+        available = [r for r in RESOURCE_PROBS if r in unlocked_res]
+        probs = [RESOURCE_PROBS[r] for r in available]
+        port = choice(self.unlocked_ports())
         for _ in range(num):
             if not available: break
             chosen = weighted_choice(list(zip(available, probs)))
@@ -374,9 +562,9 @@ class PlayerGame:
         return {"port": port, "resources": resources, "totalCost": total, "isProductCard": False}
 
     def gen_product_purchase_card(self):
-        product = choice(PRODUCTS)
+        product = choice(self.unlocked_products())
         qty = rand(1, 2)
-        port = choice(PORTS)
+        port = choice(self.unlocked_ports())
         recipe = RECIPES[product]
         mat_cost = 0
         details = []
@@ -426,7 +614,7 @@ class PlayerGame:
                 self.log(f"❌ 库存不足：{r['type']}×{r['required']}")
                 return False
         has_silk = any(r["type"] in ["丝绸", "绫罗绸缎", "香囊", "布衣"] for r in order["resources"])
-        transport = self.calc_transport_cost(order["totalItems"], has_silk)
+        transport = self.calc_transport_cost(order["totalItems"], has_silk, order["resources"])
         for r in order["resources"]:
             self.inventory[r["type"]] -= r["required"]
         reward = order["reward"]
@@ -442,6 +630,11 @@ class PlayerGame:
         self.totalCosts += transport
         if self.has_module("silk_monopoly") and has_silk:
             reward = int(reward * 1.2)
+        bonus = self.modifierFlags.get("product_order_bonus")
+        if bonus and order["resources"][0]["type"] in bonus["products"]:
+            reward = int(reward * (1 + bonus["pct"]))
+        if self.has_module("bureau_token") and order["resources"][0]["type"] in (PRODUCTS_TIER1 + PRODUCTS_TIER2):
+            reward = int(reward * 1.1)
         if self.has_module("salvage_crane") and random.random() < 0.3:
             self.money += transport
             self.log(f"♻️ 打捞起重机退还{transport}金币")
@@ -462,8 +655,9 @@ class PlayerGame:
         if self.shipLevel == 0:
             self.log("❌ 旗舰尚无模块槽位，请先升级船坞")
             return False
-        available = [m for m in MODULES if not self.has_module(m["id"])]
-        pool = available if len(available) >= 3 else MODULES
+        tier_pool = module_pool(self.currentRound)
+        available = [m for m in tier_pool if not self.has_module(m["id"])]
+        pool = available if len(available) >= 3 else tier_pool
         copy = pool[:]
         random.shuffle(copy)
         self.draftChoices = copy[:3]
@@ -492,6 +686,19 @@ class PlayerGame:
         self.draftChoices = []
         return True
 
+    def _reveal_intel(self, count):
+        revealed = 0
+        for _ in range(count):
+            if not self.phase2DemandTags:
+                break
+            item = choice(self.phase2DemandTags)
+            self.phase2DemandTags.remove(item)
+            port = choice(self.unlocked_ports())
+            self.revealedIntel.append({"item": item, "port": port, "used": False})
+            self.log(f"🗣️ 牙行密语：'来自{port}的消息，对{item}的需求很大！'")
+            revealed += 1
+        return revealed
+
     def purchase_intel(self):
         if not self.phase2DemandTags:
             self.log("🔮 牙行已无更多密语...")
@@ -499,31 +706,29 @@ class PlayerGame:
         if self.money < self.intelCost:
             self.log(f"❌ 需要{self.intelCost}金币才能购买消息")
             return False
-        # 每次购买只收一次费用；装备「牙行网络」时一次揭示2条线索
+        # 每次购买只收一次费用；装备「牙行网络」时一次揭示2条线索，「远洋通译」再额外+1条
         count = 2 if self.has_module("brokers_network") else 1
+        if self.has_module("ocean_relay"):
+            count += 1
         self.money -= self.intelCost
-        for _ in range(count):
-            if not self.phase2DemandTags:
-                break
-            item = choice(self.phase2DemandTags)
-            self.phase2DemandTags.remove(item)
-            port = choice(PORTS)
-            self.revealedIntel.append({"item": item, "port": port, "used": False})
-            self.log(f"🗣️ 牙行密语：'来自{port}的消息，对{item}的需求很大！'")
+        self._reveal_intel(count)
         return True
 
     def hire_worker(self, wtype):
+        if wtype not in self.unlocked_worker_types():
+            self.log("❌ 该工种尚未开放")
+            return False
         wage = self.get_hire_cost(wtype)
         if self.money < wage:
             self.log("❌ 资金不足，无法雇佣")
             return False
-        lst = {"weaver": self.weavers, "master": self.masterWeavers, "sachet_maker": self.sachetMakers}[wtype]
+        lst = getattr(self, WORKER_ATTR[wtype])
         lst.append({"task": None, "progress": 0, "producedCount": 0, "isSkilled": False})
         self.log(f"👥 雇佣了新工匠（{wtype}）")
         return True
 
     def fire_worker(self, wtype, idx):
-        lst = {"weaver": self.weavers, "master": self.masterWeavers, "sachet_maker": self.sachetMakers}[wtype]
+        lst = getattr(self, WORKER_ATTR[wtype])
         if idx < 0 or idx >= len(lst):
             return False
         wage = WAGES[wtype]
@@ -536,7 +741,7 @@ class PlayerGame:
         return True
 
     def assign_task(self, wtype, task):
-        lst = {"weaver": self.weavers, "master": self.masterWeavers, "sachet_maker": self.sachetMakers}[wtype]
+        lst = getattr(self, WORKER_ATTR[wtype])
         recipe = RECIPES[task]
         for worker in lst:
             if worker["task"] is None:
@@ -555,12 +760,8 @@ class PlayerGame:
 
     def process_production(self):
         bonus = self.modifierFlags.get("worker_bonus_production", 0)
-        all_lists = [
-            (self.weavers, "weaver"),
-            (self.masterWeavers, "master"),
-            (self.sachetMakers, "sachet_maker")
-        ]
-        for lst, wtype in all_lists:
+        for w_def in WORKER_TYPES_BACKEND:
+            lst = getattr(self, w_def["attr"])
             for w in lst:
                 if w["task"]:
                     base = 2 if w["isSkilled"] else 1
@@ -576,7 +777,9 @@ class PlayerGame:
 
     def pay_wages(self):
         total = 0
-        for lst, wtype in [(self.weavers, "weaver"), (self.masterWeavers, "master"), (self.sachetMakers, "sachet_maker")]:
+        for w_def in WORKER_TYPES_BACKEND:
+            lst = getattr(self, w_def["attr"])
+            wtype = w_def["id"]
             for _ in lst:
                 wage = WAGES[wtype]
                 if self.has_module("artisans_workshop"):
@@ -611,14 +814,17 @@ class PlayerGame:
         if self.pirate_immunity:
             self.log("🛡️ 护航舰队已就位")
             return False
-        if self.money < self.escortCost:
-            self.log(f"❌ 需要{self.escortCost}金币才能雇佣护航")
+        cost = self.escortCost
+        if self.modifierFlags.get("escort_discount"):
+            cost = int(cost * (1 - self.modifierFlags["escort_discount"]))
+        if self.money < cost:
+            self.log(f"❌ 需要{cost}金币才能雇佣护航")
             return False
-        self.money -= self.escortCost
-        self.roundCosts += self.escortCost
-        self.totalCosts += self.escortCost
+        self.money -= cost
+        self.roundCosts += cost
+        self.totalCosts += cost
         self.pirate_immunity = True
-        self.log(f"🛡️ 雇佣护航，花费{self.escortCost}金币")
+        self.log(f"🛡️ 雇佣护航，花费{cost}金币")
         return True
 
     def resolve_pirate_hazard(self):
@@ -629,6 +835,10 @@ class PlayerGame:
         if self.pirate_immunity:
             self.log("🛡️ 护航舰队震慑海盗，本程无损")
             return
+        if self.modifierFlags.get("pirate_risk_discount"):
+            risk *= (1 - self.modifierFlags["pirate_risk_discount"])
+        if self.has_module("persian_dome_compass"):
+            risk *= 0.7
         if random.random() < risk:
             loss = min(self.money, state.get("pirateLoss", 10))
             self.money -= loss
@@ -686,6 +896,11 @@ class PlayerGame:
             "score": self.score,
             "currentRound": self.currentRound,
             "maxRounds": self.maxRounds,
+            "charterEvent": CHARTER_EVENTS.get(self.currentRound),
+            "unlockedResources": self.unlocked_resources(),
+            "unlockedProducts": self.unlocked_products(),
+            "unlockedPorts": self.unlocked_ports(),
+            "unlockedWorkerTypes": self.unlocked_worker_types(),
             "shipLevel": self.shipLevel,
             "equippedModules": self.equippedModules,
             "draftChoices": self.draftChoices,
@@ -699,6 +914,10 @@ class PlayerGame:
             "weavers": self.weavers,
             "masterWeavers": self.masterWeavers,
             "sachetMakers": self.sachetMakers,
+            "coppersmiths": self.coppersmiths,
+            "potters": self.potters,
+            "perfumers": self.perfumers,
+            "jewelers": self.jewelers,
             "modifierFlags": self.modifierFlags,
             "monsoon_state": self.monsoon_state,
             "pirate_immunity": self.pirate_immunity,
@@ -785,6 +1004,7 @@ class SharedSession:
         self.ready = set()                  # 当前阶段已点击“继续”的槽位
         self.chat_history = []
         self.monsoon_state = MONSOON_STATES[0].copy()
+        self.monsoon_cycle_cache = {}
         self.sync_monsoon_state()
 
     # ---------- 身份 ----------
@@ -810,7 +1030,15 @@ class SharedSession:
     def sync_monsoon_state(self):
         active_game = next((g for g in self.games if not g.gameOver), self.games[0])
         active_round = max(1, min(active_game.currentRound, active_game.maxRounds))
-        self.monsoon_state = MONSOON_STATES[((active_round - 1) // 2) % len(MONSOON_STATES)].copy()
+        cycle = (active_round - 1) // 2
+        if cycle == 0:
+            # 第1-2程：维持原有「春潮顺流」开局，与现有行为完全一致
+            state = MONSOON_TIER0[0]
+        else:
+            if cycle not in self.monsoon_cycle_cache:
+                self.monsoon_cycle_cache[cycle] = random.choice(monsoon_pool(active_round))
+            state = self.monsoon_cycle_cache[cycle]
+        self.monsoon_state = state.copy()
         for g in self.games:
             g.set_monsoon_state(self.monsoon_state)
 
@@ -835,7 +1063,7 @@ class SharedSession:
             # 每位玩家从福缘池中独立随机抽取4张，互不可见、互不相同
             for g in self.games:
                 if not g.gameOver:
-                    g.boonChoices = random.sample(BOONS, 4)
+                    g.boonChoices = random.sample(boon_pool(g.currentRound), 4)
         elif phase == 5:
             self._set_phase(1)
             for g in self.games:
@@ -846,8 +1074,11 @@ class SharedSession:
                     c = g.gen_resource_card()
                     c["id"] = i
                     g.resourceCards.append(c)
-                g.phase2DemandTags = random.sample(RESOURCES + PRODUCTS, 5)
+                g.phase2DemandTags = random.sample(g.unlocked_resources() + g.unlocked_products(), 5)
                 g.revealedIntel = []
+                free_intel = g.modifierFlags.get("free_intel", 0)
+                if free_intel:
+                    g._reveal_intel(free_intel)
         elif phase == 1:
             self._set_phase("trade")
             self.trade_ready = [False, False]
@@ -864,7 +1095,8 @@ class SharedSession:
                     o["id"] = next_id
                     g.customerCards.append(o)
                     next_id += 1
-                for i in range(next_id, 5):
+                order_count = 5 + g.modifierFlags.get("extra_order", 0)
+                for i in range(next_id, order_count):
                     o = g.gen_mixed_order()
                     o["id"] = i
                     g.customerCards.append(o)
@@ -904,6 +1136,7 @@ class SharedSession:
         self.trade_orders = []
         self.trade_ready = [False, False]
         self.ready.clear()
+        self.monsoon_cycle_cache = {}
         self.sync_monsoon_state()
 
     # ---------- 等待提示 ----------

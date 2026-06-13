@@ -15,6 +15,7 @@ What's new since PortMasters 1:
 - 🔧 Ship modules: draft and install up to 3 of them, from the Smuggler's Hold to the Overdrive Engine.
 - 👀 A spectator window, so a bankrupt captain can still watch the partner finish the voyage.
 - 🌍 The whole interface is available in English (the default) and Simplified Chinese. Switch any time with the 🌐 button.
+- 🗺️ The Silk Road Charter: at Round 3 ("New Maritime Edict") and Round 5 ("Ten Thousand Kingdoms Trade"), the trade network expands in two waves — 4 new resources, 4 new products, 4 new artisan types, 4 new ports (9 total), 6 new Fortunes, 6 new ship modules and 4 new Trade Winds (8 total) join the game. Rounds 1-2 play exactly as before.
 
 ---
 
@@ -62,17 +63,29 @@ Raw materials:
 - `Hemp Cloth` 🧶, the everyday fabric for simple clothes.
 - `Silk` 👘, the fine stuff behind the luxury goods.
 - `Tea Leaves` 🍵, what gives a sachet its scent.
+- `Porcelain Clay` 🧱, the fine clay behind celadon ware *(New Maritime Edict, Round 3+)*.
+- `Copper Ore` ⛏️, hammered into mirrors and fittings *(New Maritime Edict, Round 3+)*.
+- `Spices` 🌶️, the fragrant cargo of the southern seas *(Ten Thousand Kingdoms Trade, Round 5+)*.
+- `Pearls` 🦪, lustrous treasures from southern waters *(Ten Thousand Kingdoms Trade, Round 5+)*.
 
 Finished goods:
 - `Hemp Garb` 👔 takes 2 Hemp Cloth (Weaver). Base value 15, sells around 30 to 42.
 - `Cloth Tunic` 👕 takes 2 Hemp Cloth and 1 Silk (Weaver). Base value 35, sells around 50 to 65.
 - `Fine Brocade` 👗 takes 3 Silk (Master Weaver only). Base value 60, sells around 70 to 90.
 - `Scented Sachet` 🌸 takes 1 Silk and 2 Tea (Sachet Maker only). Base value 80, sells around 95 to 120.
+- `Bronze Mirror` 🪞 takes 3 Copper Ore (Coppersmith). Base value 45, sells around 55 to 72 *(New Maritime Edict, Round 3+)*.
+- `Celadon Porcelain` 🏺 takes 3 Porcelain Clay (Potter). Base value 65, sells around 78 to 100 *(New Maritime Edict, Round 3+)*.
+- `Foreign Perfume Oil` 🧴 takes 2 Spices and 1 Silk (Perfumer only). Base value 85, sells around 100 to 130 *(Ten Thousand Kingdoms Trade, Round 5+)*.
+- `Pearl Necklace` 📿 takes 2 Pearls and 1 Silk (Jeweler only). Base value 105, sells around 125 to 160 *(Ten Thousand Kingdoms Trade, Round 5+)*.
 
 ### 👷 Artisan System
 - **Weavers** 👩‍🔧 craft Hemp Garb and Cloth Tunics. Wage: 8 gold a round.
 - **Master Weavers** 👩‍🎨 also craft Fine Brocade. Wage: 12 gold a round.
 - **Sachet Makers** 🌸 are the only ones who can make Sachets. Wage: 20 gold a round.
+- **Coppersmiths** 🪞 craft Bronze Mirrors. Wage: 12 gold a round *(New Maritime Edict, Round 3+)*.
+- **Potters** 🏺 craft Celadon Porcelain. Wage: 14 gold a round *(New Maritime Edict, Round 3+)*.
+- **Perfumers** 🧴 are the only ones who can make Foreign Perfume Oil. Wage: 18 gold a round *(Ten Thousand Kingdoms Trade, Round 5+)*.
+- **Jewelers** 📿 are the only ones who can make Pearl Necklaces. Wage: 24 gold a round *(Ten Thousand Kingdoms Trade, Round 5+)*.
 - Once an artisan has produced 2 items in total, they become **skilled** ⭐ and make 2 per task at the same wage.
 - Hiring costs nothing up front; wages come out automatically at Upkeep. Letting an idle artisan go costs one wage in severance.
 
@@ -87,6 +100,12 @@ Finished goods:
 | 📜 Tax Exemption | Income tax falls to 5% |
 | 🧶 Hemp Monopoly | Hemp Cloth costs 2 gold less per unit |
 | 🎓 Apprentice Legacy | Hiring wages are halved |
+| 🔮 Farsight *(Round 3+)* | Gain 1 free Broker's Whisper clue this round |
+| 🏮 Porcelain & Bronze Consortium *(Round 3+)* | Celadon Porcelain and Bronze Mirror orders pay 15% more this round |
+| 🧾 Frontier Tariff Relief *(Round 3+)* | VAT on finished-goods deliveries is halved this round |
+| 💎 Treasures from Afar *(Round 5+)* | Foreign Perfume Oil and Pearl Necklace orders pay 15% more this round |
+| 🛡️ Deep-Sea Escort Pact *(Round 5+)* | Escort hiring costs half price and pirate risk is halved this round |
+| 🛍️ Merchants Converge *(Round 5+)* | 1 extra order appears in the Trade phase this round |
 
 ### 🔧 Ship Modules (draft 3, install 1; slots equal your ship level)
 | Module | Effect |
@@ -99,6 +118,12 @@ Finished goods:
 | 🕵️ Broker's Network | Whispers cost just 2 gold and reveal 2 clues at a time |
 | ♻️ Salvage Crane | A 30% chance your shipping fee comes back on delivery |
 | ⚡ Overdrive Engine | Shipping costs 5 gold less; upkeep costs 10 gold more |
+| 🎫 Trade Bureau Token *(Round 3+)* | Orders for new trade-route goods (Porcelain Clay, Copper Ore and their products) pay 10% more |
+| 🔥 Kiln Cellar *(Round 3+)* | Porcelain Clay and Copper Ore purchase price −2 gold per unit |
+| 📡 Ocean-Going Interpreter *(Round 3+)* | Each Broker's Whisper purchase reveals 1 extra clue at no added cost |
+| 🪪 Foreign Quarter Guild Pass *(Round 5+)* | Spices and Pearls purchase price −3 gold per unit |
+| 🧿 Persian Dome Compass *(Round 5+)* | Pirate risk reduced by 30% |
+| ⛵ Fleet of Ten-Thousand Treasures *(Round 5+)* | Shipping for Foreign Perfume Oil and Pearl Necklace is 3 gold cheaper per item |
 
 ### 💰 Taxes & Finance
 - **VAT**: about 5% of the profit on finished goods, taken automatically when you deliver.
