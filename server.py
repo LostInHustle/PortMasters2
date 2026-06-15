@@ -1,16 +1,16 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-PortMasters 多人联机服务器 v4（账号版）
-- 账号系统：注册 / 登录（用户名+密码，按用户分别持久化存储于 users.json）
-- 在线大厅：登录即在线，实时广播在线玩家列表；断线即离线
-- 邀请系统：每位玩家每分钟只能发出一次邀请，60 秒未响应自动超时；
-  对方可接受（双方进入共享会话）或拒绝（发起方收到拒绝提示）
-- 共享会话：8 回合 × 每回合 4 个阶段，双方始终处于同一回合同一阶段，
-  通过“继续 (n / 2)”机制同步推进
-- 互市阶段需双方都点击“准备就绪”才同步进入工匠管理
-- 聊天系统：会话双方在线时可互发消息，离线时禁止发送
-- 网页与 WebSocket 共用同一端口 8080（便于单条 ngrok 隧道穿透并支持 wss）
+PortMasters multiplayer online server v4 (account edition)
+- Account system: register / log in (username + password, persisted per user in users.json)
+- Online lobby: logging in puts you online, with the online player list broadcast live; disconnecting takes you offline
+- Invite system: each player can send at most one invite per minute, which auto-expires after 60 seconds with no response;
+  the other player can accept (both enter a shared session) or decline (the sender gets a decline notice)
+- Shared session: 8 rounds x 4 phases per round, with both players always on the same round and phase,
+  advancing in sync via a "Continue (n/2)" mechanism
+- The barter phase requires both players to click "Ready" before moving on to artisan management
+- Chat system: both players in a session can message each other while online; sending is disabled while offline
+- The web page and WebSocket share the same port 8080 (so a single ngrok tunnel can expose both, with wss support)
 """
 
 import asyncio
@@ -27,33 +27,205 @@ import time
 import hashlib
 import secrets
 
-# -------------------- 常量 --------------------
-RESOURCES = ["麻布", "丝绸", "茶叶"]
-PRODUCTS = ["麻衣", "布衣", "绫罗绸缎", "香囊"]
-PORTS = ["泉州港", "广州港", "宁波港", "扬州港", "杭州港"]
+# -------------------- Constants --------------------
+RESOURCES_TIER0 = ["麻布", "丝绸", "茶叶"]
+RESOURCES_TIER1 = ["瓷土", "铜矿"]
+RESOURCES_TIER2 = ["香料", "珍珠"]
+RESOURCES = RESOURCES_TIER0 + RESOURCES_TIER1 + RESOURCES_TIER2
+
+PRODUCTS_TIER0 = ["麻衣", "布衣", "绫罗绸缎", "香囊"]
+PRODUCTS_TIER1 = ["紫铜镜", "青瓷器"]
+PRODUCTS_TIER2 = ["蕃香脂", "珠链"]
+PRODUCTS = PRODUCTS_TIER0 + PRODUCTS_TIER1 + PRODUCTS_TIER2
+
+PORTS_TIER0 = ["泉州港", "广州港", "宁波港", "扬州港", "杭州港"]
+PORTS_TIER1 = ["福州港", "高丽港"]
+PORTS_TIER2 = ["三佛齐港", "大食港"]
+PORTS = PORTS_TIER0 + PORTS_TIER1 + PORTS_TIER2
+
+ESCORT_COST = 10
+
+
+def unlocked(tier0, tier1, tier2, round_no):
+    """Unlock content pools based on the current round: round 3 unlocks Tier 1 (New Maritime Edict), round 5 unlocks Tier 2 (Ten Thousand Kingdoms Trade)"""
+    items = tier0[:]
+    if round_no >= 3:
+        items += tier1
+    if round_no >= 5:
+        items += tier2
+    return items
+
+
+# Silk Road Charter: announces newly unlocked content on the Set Sail page
+CHARTER_EVENTS = {
+    3: {
+        "id": "tier1",
+        "icon": "🗺️",
+        "name": "市舶新政",
+        "desc": "福建市舶司新政颁布！瓷土、铜矿、青瓷器、紫铜镜加入行情；福州港、高丽港正式开埠；陶匠与铜匠加入劳务市场；新的福缘与战船改装随之而来。",
+    },
+    5: {
+        "id": "tier2",
+        "icon": "🌏",
+        "name": "万国通商",
+        "desc": "万国通商盛况空前！香料、珍珠、蕃香脂、珠链加入行情；三佛齐港、大食港正式开埠；香料师与珠宝匠加入劳务市场；更多福缘与战船改装随之而来。",
+    },
+}
+
+MONSOON_TIER0 = [
+    {
+        "id": "spring_current",
+        "name": "春潮顺流",
+        "icon": "🌦️",
+        "desc": "泉州港与广州港订单报酬提高15%，茶叶采购价降低10%。海盗风险较低。",
+        "rewardPorts": ["泉州港", "广州港"],
+        "rewardMultiplier": 1.15,
+        "resource": "茶叶",
+        "purchaseMultiplier": 0.90,
+        "pirateRisk": 0.10,
+        "pirateLoss": 8,
+    },
+    {
+        "id": "summer_monsoon",
+        "name": "盛夏季风",
+        "icon": "⛈️",
+        "desc": "杭州港与扬州港订单报酬提高20%，丝绸采购价提高15%。海盗风险升高。",
+        "rewardPorts": ["杭州港", "扬州港"],
+        "rewardMultiplier": 1.20,
+        "resource": "丝绸",
+        "purchaseMultiplier": 1.15,
+        "pirateRisk": 0.25,
+        "pirateLoss": 14,
+    },
+    {
+        "id": "autumn_gales",
+        "name": "秋汛乱流",
+        "icon": "🍂",
+        "desc": "宁波港与泉州港订单报酬提高18%，麻布采购价降低15%。海盗风险中等。",
+        "rewardPorts": ["宁波港", "泉州港"],
+        "rewardMultiplier": 1.18,
+        "resource": "麻布",
+        "purchaseMultiplier": 0.85,
+        "pirateRisk": 0.18,
+        "pirateLoss": 11,
+    },
+    {
+        "id": "winter_blockade",
+        "name": "冬海封锁",
+        "icon": "❄️",
+        "desc": "广州港与杭州港订单报酬提高25%，茶叶采购价提高15%。海盗风险最高。",
+        "rewardPorts": ["广州港", "杭州港"],
+        "rewardMultiplier": 1.25,
+        "resource": "茶叶",
+        "purchaseMultiplier": 1.15,
+        "pirateRisk": 0.30,
+        "pirateLoss": 18,
+    },
+]
+
+MONSOON_TIER1 = [
+    {
+        "id": "fujian_kiln_smoke",
+        "name": "闽江窑烟",
+        "icon": "🌫️",
+        "desc": "福州港与泉州港订单报酬提高18%，瓷土采购价降低12%。海盗风险中等。",
+        "rewardPorts": ["福州港", "泉州港"],
+        "rewardMultiplier": 1.18,
+        "resource": "瓷土",
+        "purchaseMultiplier": 0.88,
+        "pirateRisk": 0.15,
+        "pirateLoss": 10,
+    },
+    {
+        "id": "goryeo_dawn_route",
+        "name": "高丽晓航",
+        "icon": "🌅",
+        "desc": "高丽港与广州港订单报酬提高20%，铜矿采购价降低10%。海盗风险较高。",
+        "rewardPorts": ["高丽港", "广州港"],
+        "rewardMultiplier": 1.20,
+        "resource": "铜矿",
+        "purchaseMultiplier": 0.90,
+        "pirateRisk": 0.20,
+        "pirateLoss": 12,
+    },
+]
+
+MONSOON_TIER2 = [
+    {
+        "id": "srivijaya_spice_breeze",
+        "name": "三佛齐香风",
+        "icon": "🌴",
+        "desc": "三佛齐港与大食港订单报酬提高22%，香料采购价降低15%。海盗风险较高。",
+        "rewardPorts": ["三佛齐港", "大食港"],
+        "rewardMultiplier": 1.22,
+        "resource": "香料",
+        "purchaseMultiplier": 0.85,
+        "pirateRisk": 0.22,
+        "pirateLoss": 14,
+    },
+    {
+        "id": "dashi_pearl_moon",
+        "name": "大食珠月",
+        "icon": "🌙",
+        "desc": "大食港与三佛齐港订单报酬提高25%，珍珠采购价降低15%。海盗风险最高。",
+        "rewardPorts": ["大食港", "三佛齐港"],
+        "rewardMultiplier": 1.25,
+        "resource": "珍珠",
+        "purchaseMultiplier": 0.85,
+        "pirateRisk": 0.25,
+        "pirateLoss": 16,
+    },
+]
+
+MONSOON_STATES = MONSOON_TIER0 + MONSOON_TIER1 + MONSOON_TIER2
 
 RECIPES = {
     "麻衣": {"materials": {"麻布": 2}, "value": 15, "worker_type": "weaver"},
     "布衣": {"materials": {"麻布": 2, "丝绸": 1}, "value": 35, "worker_type": "weaver"},
     "绫罗绸缎": {"materials": {"丝绸": 3}, "value": 60, "worker_type": "master"},
-    "香囊": {"materials": {"丝绸": 1, "茶叶": 2}, "value": 80, "worker_type": "sachet_maker"}
+    "香囊": {"materials": {"丝绸": 1, "茶叶": 2}, "value": 80, "worker_type": "sachet_maker"},
+    "紫铜镜": {"materials": {"铜矿": 3}, "value": 45, "worker_type": "coppersmith"},
+    "青瓷器": {"materials": {"瓷土": 3}, "value": 65, "worker_type": "potter"},
+    "蕃香脂": {"materials": {"香料": 2, "丝绸": 1}, "value": 85, "worker_type": "perfumer"},
+    "珠链": {"materials": {"珍珠": 2, "丝绸": 1}, "value": 105, "worker_type": "jeweler"}
 }
 
 COMMODITIES = {
     "麻布": {"ports": ["泉州港", "宁波港"], "basePrice": (3, 6)},
     "丝绸": {"ports": ["杭州港", "扬州港"], "basePrice": (6, 10)},
-    "茶叶": {"ports": ["广州港", "泉州港"], "basePrice": (10, 14)}
+    "茶叶": {"ports": ["广州港", "泉州港"], "basePrice": (10, 14)},
+    "瓷土": {"ports": ["泉州港", "福州港"], "basePrice": (8, 12)},
+    "铜矿": {"ports": ["广州港", "高丽港"], "basePrice": (10, 15)},
+    "香料": {"ports": ["三佛齐港", "大食港"], "basePrice": (14, 20)},
+    "珍珠": {"ports": ["广州港", "三佛齐港"], "basePrice": (16, 24)}
 }
 
 PRODUCT_PRICES = {
     "麻衣": (30, 42), "布衣": (50, 65),
-    "绫罗绸缎": (70, 90), "香囊": (95, 120)
+    "绫罗绸缎": (70, 90), "香囊": (95, 120),
+    "紫铜镜": (55, 72), "青瓷器": (78, 100),
+    "蕃香脂": (100, 130), "珠链": (125, 160)
 }
 
-RESOURCE_PROBS = {"麻布": 0.4, "丝绸": 0.35, "茶叶": 0.25}
-WAGES = {"weaver": 8, "master": 12, "sachet_maker": 20}
+RESOURCE_PROBS = {"麻布": 0.30, "丝绸": 0.26, "茶叶": 0.18, "瓷土": 0.14, "铜矿": 0.12, "香料": 0.08, "珍珠": 0.06}
+WAGES = {"weaver": 8, "master": 12, "sachet_maker": 20, "coppersmith": 12, "potter": 14, "perfumer": 18, "jeweler": 24}
 
-BOONS = [
+# Worker-type storage: each worker type maps to a worker-list attribute name on PlayerGame
+WORKER_TYPES_BACKEND = [
+    {"id": "weaver", "attr": "weavers"},
+    {"id": "master", "attr": "masterWeavers"},
+    {"id": "sachet_maker", "attr": "sachetMakers"},
+    {"id": "coppersmith", "attr": "coppersmiths"},
+    {"id": "potter", "attr": "potters"},
+    {"id": "perfumer", "attr": "perfumers"},
+    {"id": "jeweler", "attr": "jewelers"},
+]
+WORKER_ATTR = {w["id"]: w["attr"] for w in WORKER_TYPES_BACKEND}
+WORKER_IDS_TIER0 = ["weaver", "master", "sachet_maker"]
+WORKER_IDS_TIER1 = ["coppersmith", "potter"]
+WORKER_IDS_TIER2 = ["perfumer", "jeweler"]
+
+BOONS_TIER0 = [
     {"id": "silk_wind", "name": "丝路顺风", "icon": "🌬️", "desc": "本回合丝绸及成品运费减半。", "modifiers": {"transport_silk_discount": 0.5}},
     {"id": "favorable_tides", "name": "顺风顺水", "icon": "🌊", "desc": "本回合基础运费减4金币。", "modifiers": {"transport_flat_discount": 4}},
     {"id": "merchant_charm", "name": "商贾魅力", "icon": "✨", "desc": "本回合采购85折优惠。", "modifiers": {"purchase_discount": 0.15}},
@@ -64,7 +236,21 @@ BOONS = [
     {"id": "master_apprentice", "name": "学徒传承", "icon": "🎓", "desc": "本回合雇佣工资减半。", "modifiers": {"hire_discount": 0.5}}
 ]
 
-MODULES = [
+BOONS_TIER1 = [
+    {"id": "farsight", "name": "千里眼", "icon": "🔮", "desc": "本回合免费获得1条牙行密语线索。", "modifiers": {"free_intel": 1}},
+    {"id": "porcelain_bronze_guild", "name": "陶铜联号", "icon": "🏮", "desc": "本回合「青瓷器」与「紫铜镜」订单报酬提高15%。", "modifiers": {"product_order_bonus": {"products": ["青瓷器", "紫铜镜"], "pct": 0.15}}},
+    {"id": "frontier_tariff_relief", "name": "拓商减负", "icon": "🧾", "desc": "本回合交付成品订单的增值税减半。", "modifiers": {"vat_discount": 0.5}},
+]
+
+BOONS_TIER2 = [
+    {"id": "exotic_treasures", "name": "蕃国奇珍", "icon": "💎", "desc": "本回合「蕃香脂」与「珠链」订单报酬提高15%。", "modifiers": {"product_order_bonus": {"products": ["蕃香脂", "珠链"], "pct": 0.15}}},
+    {"id": "deep_sea_escort_pact", "name": "远洋护航", "icon": "🛡️", "desc": "本回合雇佣护航费用减半，海盗风险减半。", "modifiers": {"escort_discount": 0.5, "pirate_risk_discount": 0.5}},
+    {"id": "merchants_converge", "name": "万商云集", "icon": "🛍️", "desc": "本回合贸易阶段额外出现1张订单。", "modifiers": {"extra_order": 1}},
+]
+
+BOONS = BOONS_TIER0 + BOONS_TIER1 + BOONS_TIER2
+
+MODULES_TIER0 = [
     {"id": "smugglers_hold", "name": "走私暗舱", "icon": "🏴‍☠️", "desc": "采购成本-15%。所得税+20%。"},
     {"id": "bulk_hauler", "name": "散货索具", "icon": "🏗️", "desc": "每件货物运费-1。船坞升级费用+15金币。"},
     {"id": "artisans_workshop", "name": "工匠工坊", "icon": "🛠️", "desc": "工人产量+1。工资+20%。"},
@@ -75,10 +261,36 @@ MODULES = [
     {"id": "overdrive_engine", "name": "超载引擎", "icon": "⚡", "desc": "运费-5金币。维护费+10金币。"}
 ]
 
-INVITE_COOLDOWN = 60          # 邀请冷却 / 超时时间（秒）
-CHAT_HISTORY_LIMIT = 200      # 每个会话保留的聊天记录条数
+MODULES_TIER1 = [
+    {"id": "bureau_token", "name": "市舶司令牌", "icon": "🎫", "desc": "新航线货品（瓷土、铜矿及其成品）订单收入+10%。"},
+    {"id": "kiln_cellar", "name": "陶土窖", "icon": "🔥", "desc": "瓷土与铜矿采购单价各降低2金币。"},
+    {"id": "ocean_relay", "name": "远洋通译", "icon": "📡", "desc": "牙行密语每次额外显示1条线索（不增加花费）。"},
+]
 
-# -------------------- 工具函数 --------------------
+MODULES_TIER2 = [
+    {"id": "foreign_quarter_pass", "name": "蕃坊行会证", "icon": "🪪", "desc": "香料与珍珠采购单价各降低3金币。"},
+    {"id": "persian_dome_compass", "name": "波斯穹顶罗盘", "icon": "🧿", "desc": "海盗风险降低30%。"},
+    {"id": "fleet_of_treasures", "name": "万宝商船", "icon": "⛵", "desc": "「蕃香脂」与「珠链」每件运费降低3金币。"},
+]
+
+MODULES = MODULES_TIER0 + MODULES_TIER1 + MODULES_TIER2
+
+
+def boon_pool(round_no):
+    return unlocked(BOONS_TIER0, BOONS_TIER1, BOONS_TIER2, round_no)
+
+
+def module_pool(round_no):
+    return unlocked(MODULES_TIER0, MODULES_TIER1, MODULES_TIER2, round_no)
+
+
+def monsoon_pool(round_no):
+    return unlocked(MONSOON_TIER0, MONSOON_TIER1, MONSOON_TIER2, round_no)
+
+INVITE_COOLDOWN = 60          # invite cooldown / expiry (seconds)
+CHAT_HISTORY_LIMIT = 200      # number of chat messages kept per session
+
+# -------------------- Utility functions --------------------
 def rand(a, b):
     return random.randint(a, b)
 
@@ -94,10 +306,11 @@ def weighted_choice(items):
             return item
     return items[0][0]
 
-# -------------------- PlayerGame 类 --------------------
+# -------------------- PlayerGame class --------------------
 class PlayerGame:
     def __init__(self):
-        self.inventory = {"麻布": 8, "丝绸": 5, "茶叶": 3, "麻衣": 0, "布衣": 0, "绫罗绸缎": 0, "香囊": 0}
+        self.inventory = {item: 0 for item in RESOURCES + PRODUCTS}
+        self.inventory.update({"麻布": 8, "丝绸": 5, "茶叶": 3})
         self.money = 100
         self.score = 0
         self.currentRound = 1
@@ -111,15 +324,14 @@ class PlayerGame:
         self.incomeTaxPaid = 0
         self.roundRevenue = 0
         self.roundCosts = 0
-        self.weavers = []
-        self.masterWeavers = []
-        self.sachetMakers = []
+        for w in WORKER_TYPES_BACKEND:
+            setattr(self, w["attr"], [])
         self.fixedCost = 15
         self.shipLevel = 0
         self.shipUpgradeCost = [15, 25, 40]
         self.shipUpgradePenalty = 0
         self.maintenancePenalty = 0
-        self.phase = 0          # 0:welcome, 5:boon, 1:purchase, 'trade':互市, 'worker_mgmt':工匠, 2:贸易, 3:维护, 4:船坞
+        self.phase = 0          # 0:welcome, 5:boon, 1:purchase, 'trade':barter, 'worker_mgmt':artisans, 2:trade, 3:upkeep, 4:shipyard
         self.resourceCards = []
         self.customerCards = []
         self.purchasedCards = set()
@@ -129,6 +341,9 @@ class PlayerGame:
         self.gameOver = False
         self.bankrupt = False
         self.modifierFlags = {}
+        self.monsoon_state = MONSOON_STATES[0].copy()
+        self.pirate_immunity = False
+        self.escortCost = ESCORT_COST
         self.phase2DemandTags = []
         self.revealedIntel = []
         self.intelCost = 5
@@ -137,7 +352,7 @@ class PlayerGame:
         self.draftChoices = []
         self.lastRoundSummary = None
         self.lastLogs = []
-        # 注入 slot 信息（由 SharedSession 设置）
+        # Slot info, injected by SharedSession
         self.slot = None
 
     def log(self, msg):
@@ -145,8 +360,21 @@ class PlayerGame:
         if len(self.lastLogs) > 100:
             self.lastLogs.pop(0)
 
-    # ---------- 费用计算 ----------
-    def calc_transport_cost(self, total_items, has_silk=False):
+    # ---------- Silk Road Charter: content unlocks ----------
+    def unlocked_resources(self):
+        return unlocked(RESOURCES_TIER0, RESOURCES_TIER1, RESOURCES_TIER2, self.currentRound)
+
+    def unlocked_products(self):
+        return unlocked(PRODUCTS_TIER0, PRODUCTS_TIER1, PRODUCTS_TIER2, self.currentRound)
+
+    def unlocked_ports(self):
+        return unlocked(PORTS_TIER0, PORTS_TIER1, PORTS_TIER2, self.currentRound)
+
+    def unlocked_worker_types(self):
+        return unlocked(WORKER_IDS_TIER0, WORKER_IDS_TIER1, WORKER_IDS_TIER2, self.currentRound)
+
+    # ---------- Cost calculations ----------
+    def calc_transport_cost(self, total_items, has_silk=False, resources=None):
         base = total_items * 2
         discount = self.shipLevel * 5
         if self.modifierFlags.get("transport_flat_discount"):
@@ -157,6 +385,9 @@ class PlayerGame:
         if self.has_module("bulk_hauler"): cost = max(0, cost - total_items)
         if self.has_module("overdrive_engine"): cost = max(0, cost - 5)
         if self.has_module("silk_monopoly") and has_silk: cost = 0
+        if self.has_module("fleet_of_treasures") and resources:
+            treasure_qty = sum(r["required"] for r in resources if r["type"] in ("蕃香脂", "珠链"))
+            cost = max(0, cost - 3 * treasure_qty)
         return max(0, cost)
 
     def calc_vat(self, product, selling_price):
@@ -170,6 +401,7 @@ class PlayerGame:
         if taxable > 0:
             vat = int(taxable * 0.05)
             if self.has_module("tax_evasion"): vat = int(vat * 0.5)
+            if self.modifierFlags.get("vat_discount"): vat = int(vat * (1 - self.modifierFlags["vat_discount"]))
             return vat
         return 0
 
@@ -192,6 +424,14 @@ class PlayerGame:
             for r in card["resources"]:
                 if r["type"] == "麻布":
                     cost -= r["quantity"] * self.modifierFlags["hemp_price_reduction"]
+        if self.has_module("kiln_cellar"):
+            for r in card["resources"]:
+                if r["type"] in ("瓷土", "铜矿"):
+                    cost -= r["quantity"] * 2
+        if self.has_module("foreign_quarter_pass"):
+            for r in card["resources"]:
+                if r["type"] in ("香料", "珍珠"):
+                    cost -= r["quantity"] * 3
         if self.has_module("smugglers_hold"):
             cost = int(cost * 0.85)
         return max(0, cost)
@@ -202,14 +442,64 @@ class PlayerGame:
             wage = int(wage * 0.5)
         return wage
 
-    # ---------- 卡牌生成 ----------
+    def set_monsoon_state(self, state):
+        self.monsoon_state = state.copy()
+
+    def env_purchase_price(self, item, price):
+        state = self.monsoon_state or {}
+        if item == state.get("resource"):
+            return max(1, int(round(price * state.get("purchaseMultiplier", 1))))
+        return price
+
+    def env_reward(self, port, reward):
+        state = self.monsoon_state or {}
+        if port in state.get("rewardPorts", []):
+            return max(1, int(round(reward * state.get("rewardMultiplier", 1))))
+        return reward
+
+    def gen_emperor_mandate_order(self):
+        round_no = self.currentRound
+        if round_no >= 8:
+            resources = [
+                {"type": "布衣", "required": 2},
+                {"type": "绫罗绸缎", "required": 2},
+                {"type": "香囊", "required": 2},
+            ]
+            reward = 420
+            port = "杭州港"
+        elif round_no >= 6:
+            resources = [
+                {"type": "绫罗绸缎", "required": 2},
+                {"type": "香囊", "required": 1},
+            ]
+            reward = 260
+            port = "扬州港"
+        else:
+            resources = [
+                {"type": "丝绸", "required": 4},
+                {"type": "茶叶", "required": 3},
+            ]
+            reward = 135
+            port = "泉州港"
+        total = sum(r["required"] for r in resources)
+        return {
+            "kind": "EmperorMandate",
+            "demandPort": port,
+            "resources": resources,
+            "reward": self.env_reward(port, reward),
+            "totalItems": total,
+            "isProductOrder": any(r["type"] in PRODUCTS for r in resources),
+        }
+
+    # ---------- Card generation ----------
     def gen_raw_order(self, filter=None):
         num = rand(1, 3)
         resources = []
-        available = RESOURCES[:]
-        port = choice(PORTS)
+        unlocked_res = self.unlocked_resources()
+        available = unlocked_res[:]
+        port = choice(self.unlocked_ports())
         total = 0
-        if filter and filter in RESOURCES:
+        if filter and filter in unlocked_res:
             req = rand(2, 5)
             total += req
             resources.append({"type": filter, "required": req})
@@ -222,18 +512,19 @@ class PlayerGame:
                 total += req
                 resources.append({"type": r, "required": req})
         base = sum(r["required"] * 5 for r in resources)
-        reward = base + rand(10, 25)
+        reward = self.env_reward(port, base + rand(10, 25))
         return {"demandPort": port, "resources": resources, "reward": reward, "totalItems": total, "isProductOrder": False}
 
     def gen_product_order(self, filter=None):
-        product = filter if (filter in PRODUCTS) else choice(PRODUCTS)
+        unlocked_prod = self.unlocked_products()
+        product = filter if (filter in unlocked_prod) else choice(unlocked_prod)
         req = rand(1, 3)
-        port = choice(PORTS)
+        port = choice(self.unlocked_ports())
         base_price = rand(*PRODUCT_PRICES[product])
-        return {"demandPort": port, "resources": [{"type": product, "required": req}], "reward": base_price * req, "totalItems": req, "isProductOrder": True}
+        return {"demandPort": port, "resources": [{"type": product, "required": req}], "reward": self.env_reward(port, base_price * req), "totalItems": req, "isProductOrder": True}
 
     def gen_mixed_order(self):
-        # 每条已购密语精确兑现为一张订单：货品与港口都与密语一致
+        # Each purchased clue resolves into exactly one order, with matching good and port
         intel = next((i for i in self.revealedIntel if not i.get("used")), None)
         if intel:
             intel["used"] = True
@@ -251,9 +542,10 @@ class PlayerGame:
             return self.gen_product_purchase_card()
         num = rand(1, 3)
         resources = []
-        available = list(RESOURCE_PROBS.keys())
-        probs = list(RESOURCE_PROBS.values())
-        port = choice(PORTS)
+        unlocked_res = self.unlocked_resources()
+        available = [r for r in RESOURCE_PROBS if r in unlocked_res]
+        probs = [RESOURCE_PROBS[r] for r in available]
+        port = choice(self.unlocked_ports())
         for _ in range(num):
             if not available: break
             chosen = weighted_choice(list(zip(available, probs)))
@@ -264,14 +556,15 @@ class PlayerGame:
             minP, maxP = COMMODITIES[chosen]["basePrice"]
             base = rand(minP, maxP)
             price = base - 1 if port in COMMODITIES[chosen]["ports"] else base + 1
+            price = self.env_purchase_price(chosen, price)
             resources.append({"type": chosen, "quantity": qty, "price": price})
         total = sum(r["quantity"] * r["price"] for r in resources)
         return {"port": port, "resources": resources, "totalCost": total, "isProductCard": False}
 
     def gen_product_purchase_card(self):
-        product = choice(PRODUCTS)
+        product = choice(self.unlocked_products())
         qty = rand(1, 2)
-        port = choice(PORTS)
+        port = choice(self.unlocked_ports())
         recipe = RECIPES[product]
         mat_cost = 0
         details = []
@@ -282,6 +575,7 @@ class PlayerGame:
         markup = 1.4 + random.random() * 0.4
         unit_price = int(mat_cost * markup)
         unit_price = max(PRODUCT_PRICES[product][0], min(unit_price, PRODUCT_PRICES[product][1]))
+        unit_price = self.env_purchase_price(product, unit_price)
         return {
             "port": port,
             "resources": [{
@@ -292,7 +586,7 @@ class PlayerGame:
             "isProductCard": True
         }
 
-    # ---------- 核心动作 ----------
+    # ---------- Core actions ----------
     def apply_boon(self, boon):
         self.modifierFlags = boon["modifiers"]
         if boon["modifiers"].get("instant_gold"):
@@ -320,7 +614,7 @@ class PlayerGame:
                 self.log(f"❌ 库存不足：{r['type']}×{r['required']}")
                 return False
         has_silk = any(r["type"] in ["丝绸", "绫罗绸缎", "香囊", "布衣"] for r in order["resources"])
-        transport = self.calc_transport_cost(order["totalItems"], has_silk)
+        transport = self.calc_transport_cost(order["totalItems"], has_silk, order["resources"])
         for r in order["resources"]:
             self.inventory[r["type"]] -= r["required"]
         reward = order["reward"]
@@ -336,6 +630,11 @@ class PlayerGame:
         self.totalCosts += transport
         if self.has_module("silk_monopoly") and has_silk:
             reward = int(reward * 1.2)
+        bonus = self.modifierFlags.get("product_order_bonus")
+        if bonus and order["resources"][0]["type"] in bonus["products"]:
+            reward = int(reward * (1 + bonus["pct"]))
+        if self.has_module("bureau_token") and order["resources"][0]["type"] in (PRODUCTS_TIER1 + PRODUCTS_TIER2):
+            reward = int(reward * 1.1)
         if self.has_module("salvage_crane") and random.random() < 0.3:
             self.money += transport
             self.log(f"♻️ 打捞起重机退还{transport}金币")
@@ -351,13 +650,14 @@ class PlayerGame:
         self.log(f"📦 订单完成，净利润{reward - transport}金币")
         return True
 
-    # ---------- 船坞模块 ----------
+    # ---------- Shipyard modules ----------
     def start_module_draft(self):
         if self.shipLevel == 0:
             self.log("❌ 旗舰尚无模块槽位，请先升级船坞")
             return False
-        available = [m for m in MODULES if not self.has_module(m["id"])]
-        pool = available if len(available) >= 3 else MODULES
+        tier_pool = module_pool(self.currentRound)
+        available = [m for m in tier_pool if not self.has_module(m["id"])]
+        pool = available if len(available) >= 3 else tier_pool
         copy = pool[:]
         random.shuffle(copy)
         self.draftChoices = copy[:3]
@@ -386,6 +686,19 @@ class PlayerGame:
         self.draftChoices = []
         return True
 
+    def _reveal_intel(self, count):
+        revealed = 0
+        for _ in range(count):
+            if not self.phase2DemandTags:
+                break
+            item = choice(self.phase2DemandTags)
+            self.phase2DemandTags.remove(item)
+            port = choice(self.unlocked_ports())
+            self.revealedIntel.append({"item": item, "port": port, "used": False})
+            self.log(f"🗣️ 牙行密语：'来自{port}的消息，对{item}的需求很大！'")
+            revealed += 1
+        return revealed
+
     def purchase_intel(self):
         if not self.phase2DemandTags:
             self.log("🔮 牙行已无更多密语...")
@@ -393,31 +706,29 @@ class PlayerGame:
         if self.money < self.intelCost:
             self.log(f"❌ 需要{self.intelCost}金币才能购买消息")
             return False
-        # 每次购买只收一次费用；装备「牙行网络」时一次揭示2条线索
+        # Each purchase costs gold only once; with Broker's Network equipped it reveals 2 clues at a time, and Ocean-Going Interpreter reveals 1 more on top of that
         count = 2 if self.has_module("brokers_network") else 1
+        if self.has_module("ocean_relay"):
+            count += 1
         self.money -= self.intelCost
-        for _ in range(count):
-            if not self.phase2DemandTags:
-                break
-            item = choice(self.phase2DemandTags)
-            self.phase2DemandTags.remove(item)
-            port = choice(PORTS)
-            self.revealedIntel.append({"item": item, "port": port, "used": False})
-            self.log(f"🗣️ 牙行密语：'来自{port}的消息，对{item}的需求很大！'")
+        self._reveal_intel(count)
         return True
 
     def hire_worker(self, wtype):
+        if wtype not in self.unlocked_worker_types():
+            self.log("❌ 该工种尚未开放")
+            return False
         wage = self.get_hire_cost(wtype)
         if self.money < wage:
             self.log("❌ 资金不足，无法雇佣")
             return False
-        lst = {"weaver": self.weavers, "master": self.masterWeavers, "sachet_maker": self.sachetMakers}[wtype]
+        lst = getattr(self, WORKER_ATTR[wtype])
         lst.append({"task": None, "progress": 0, "producedCount": 0, "isSkilled": False})
         self.log(f"👥 雇佣了新工匠（{wtype}）")
         return True
 
     def fire_worker(self, wtype, idx):
-        lst = {"weaver": self.weavers, "master": self.masterWeavers, "sachet_maker": self.sachetMakers}[wtype]
+        lst = getattr(self, WORKER_ATTR[wtype])
         if idx < 0 or idx >= len(lst):
             return False
         wage = WAGES[wtype]
@@ -430,7 +741,7 @@ class PlayerGame:
         return True
 
     def assign_task(self, wtype, task):
-        lst = {"weaver": self.weavers, "master": self.masterWeavers, "sachet_maker": self.sachetMakers}[wtype]
+        lst = getattr(self, WORKER_ATTR[wtype])
         recipe = RECIPES[task]
         for worker in lst:
             if worker["task"] is None:
@@ -449,12 +760,8 @@ class PlayerGame:
 
     def process_production(self):
         bonus = self.modifierFlags.get("worker_bonus_production", 0)
-        all_lists = [
-            (self.weavers, "weaver"),
-            (self.masterWeavers, "master"),
-            (self.sachetMakers, "sachet_maker")
-        ]
-        for lst, wtype in all_lists:
+        for w_def in WORKER_TYPES_BACKEND:
+            lst = getattr(self, w_def["attr"])
             for w in lst:
                 if w["task"]:
                     base = 2 if w["isSkilled"] else 1
@@ -470,7 +777,9 @@ class PlayerGame:
 
     def pay_wages(self):
         total = 0
-        for lst, wtype in [(self.weavers, "weaver"), (self.masterWeavers, "master"), (self.sachetMakers, "sachet_maker")]:
+        for w_def in WORKER_TYPES_BACKEND:
+            lst = getattr(self, w_def["attr"])
+            wtype = w_def["id"]
             for _ in lst:
                 wage = WAGES[wtype]
                 if self.has_module("artisans_workshop"):
@@ -489,6 +798,7 @@ class PlayerGame:
 
     def pay_maintenance(self):
         cost = self.fixedCost + self.maintenancePenalty
+        self.resolve_pirate_hazard()
         if self.money >= cost:
             self.money -= cost
             self.maintenanceCosts += cost
@@ -499,6 +809,42 @@ class PlayerGame:
             self.money = 0
             self.log("⚠️ 维护费不足，破产")
             return False
+
+    def hire_escort(self):
+        if self.pirate_immunity:
+            self.log("🛡️ 护航舰队已就位")
+            return False
+        cost = self.escortCost
+        if self.modifierFlags.get("escort_discount"):
+            cost = int(cost * (1 - self.modifierFlags["escort_discount"]))
+        if self.money < cost:
+            self.log(f"❌ 需要{cost}金币才能雇佣护航")
+            return False
+        self.money -= cost
+        self.roundCosts += cost
+        self.totalCosts += cost
+        self.pirate_immunity = True
+        self.log(f"🛡️ 雇佣护航，花费{cost}金币")
+        return True
+
+    def resolve_pirate_hazard(self):
+        state = self.monsoon_state or {}
+        risk = state.get("pirateRisk", 0)
+        if risk <= 0:
+            return
+        if self.pirate_immunity:
+            self.log("🛡️ 护航舰队震慑海盗，本程无损")
+            return
+        if self.modifierFlags.get("pirate_risk_discount"):
+            risk *= (1 - self.modifierFlags["pirate_risk_discount"])
+        if self.has_module("persian_dome_compass"):
+            risk *= 0.7
+        if random.random() < risk:
+            loss = min(self.money, state.get("pirateLoss", 10))
+            self.money -= loss
+            self.roundCosts += loss
+            self.totalCosts += loss
+            self.log(f"🏴‍☠️ 海盗袭扰，损失{loss}金币")
 
     def end_round(self):
         pre_tax = self.roundRevenue - self.roundCosts - self.maintenanceCosts - self.workerWages
@@ -512,7 +858,7 @@ class PlayerGame:
             paid_tax = self.money
             self.incomeTaxPaid += self.money
             self.money = 0
-        # 在清零回合计数前留存本程结算回顾，供下一程「启航」过渡页展示
+        # Save this round's settlement summary before resetting round counters, for display on the next round's Set Sail transition page
         self.lastRoundSummary = {
             "round": self.currentRound,
             "revenue": self.roundRevenue,
@@ -522,6 +868,7 @@ class PlayerGame:
             "score": self.score,
         }
         self.modifierFlags = {}
+        self.pirate_immunity = False
         self.phase2DemandTags = []
         self.revealedIntel = []
         self.boonChoices = []
@@ -549,6 +896,11 @@ class PlayerGame:
             "score": self.score,
             "currentRound": self.currentRound,
             "maxRounds": self.maxRounds,
+            "charterEvent": CHARTER_EVENTS.get(self.currentRound),
+            "unlockedResources": self.unlocked_resources(),
+            "unlockedProducts": self.unlocked_products(),
+            "unlockedPorts": self.unlocked_ports(),
+            "unlockedWorkerTypes": self.unlocked_worker_types(),
             "shipLevel": self.shipLevel,
             "equippedModules": self.equippedModules,
             "draftChoices": self.draftChoices,
@@ -562,7 +914,14 @@ class PlayerGame:
             "weavers": self.weavers,
             "masterWeavers": self.masterWeavers,
             "sachetMakers": self.sachetMakers,
+            "coppersmiths": self.coppersmiths,
+            "potters": self.potters,
+            "perfumers": self.perfumers,
+            "jewelers": self.jewelers,
             "modifierFlags": self.modifierFlags,
+            "monsoon_state": self.monsoon_state,
+            "pirate_immunity": self.pirate_immunity,
+            "escortCost": self.escortCost,
             "intelCost": self.intelCost,
             "revealedIntel": self.revealedIntel,
             "intelRemaining": len(self.phase2DemandTags),
@@ -578,14 +937,14 @@ class PlayerGame:
             "shipUpgradeCost": self.shipUpgradeCost,
             "shipUpgradePenalty": self.shipUpgradePenalty,
             "logs": self.lastLogs[-10:],
-            "slot": self.slot          # 身份槽位
+            "slot": self.slot          # identity slot
         }
 
-# -------------------- 账号存储 --------------------
+# -------------------- Account storage --------------------
 USERS_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "users.json")
 
 class UserStore:
-    """用户名 + 密码账号库。每个用户一条独立记录，PBKDF2 加盐存储。"""
+    """Username + password account store. Each user has its own record, salted and hashed with PBKDF2."""
     def __init__(self, path):
         self.path = path
         self.users = {}
@@ -631,9 +990,9 @@ class UserStore:
             return False, "用户名或密码错误"
         return True, "登录成功"
 
-# -------------------- 共享游戏会话 --------------------
+# -------------------- Shared game session --------------------
 class SharedSession:
-    """两名玩家的共享会话：双方始终同步处于同一回合同一阶段。"""
+    """Shared session for two players: both stay in sync on the same round and phase."""
     def __init__(self, user_a, user_b):
         self.players = [user_a, user_b]
         self.games = [PlayerGame(), PlayerGame()]
@@ -641,18 +1000,21 @@ class SharedSession:
         self.games[1].slot = 2
         self.trade_orders = []
         self.trade_id_counter = 0
-        self.trade_ready = [False, False]   # 互市阶段双方是否点了准备
-        self.ready = set()                  # 当前阶段已点击“继续”的槽位
+        self.trade_ready = [False, False]   # whether each player has clicked ready during the barter phase
+        self.ready = set()                  # slots that have clicked "continue" in the current phase
         self.chat_history = []
+        self.monsoon_state = MONSOON_STATES[0].copy()
+        self.monsoon_cycle_cache = {}
+        self.sync_monsoon_state()
 
-    # ---------- 身份 ----------
+    # ---------- Identity ----------
     def slot_of(self, username):
         return self.players.index(username)
 
     def partner_of(self, username):
         return self.players[1 - self.slot_of(username)]
 
-    # ---------- 同步推进 ----------
+    # ---------- Synchronized progression ----------
     def _active_phase(self):
         for i in (0, 1):
             if not self.games[i].gameOver:
@@ -660,13 +1022,28 @@ class SharedSession:
         return self.games[0].phase
 
     def _set_phase(self, phase):
-        # 终局状态（破产/完赛）的玩家停留在各自的终局页面，不再跟随会话阶段推进
+        # Players in an end state (bankrupt/finished) stay on their own end-game page and no longer follow the session's phase progression
         for g in self.games:
             if not g.gameOver:
                 g.phase = phase
 
+    def sync_monsoon_state(self):
+        active_game = next((g for g in self.games if not g.gameOver), self.games[0])
+        active_round = max(1, min(active_game.currentRound, active_game.maxRounds))
+        cycle = (active_round - 1) // 2
+        if cycle == 0:
+            # Rounds 1-2: keep the original Spring Current opening, identical to existing behavior
+            state = MONSOON_TIER0[0]
+        else:
+            if cycle not in self.monsoon_cycle_cache:
+                self.monsoon_cycle_cache[cycle] = random.choice(monsoon_pool(active_round))
+            state = self.monsoon_cycle_cache[cycle]
+        self.monsoon_state = state.copy()
+        for g in self.games:
+            g.set_monsoon_state(self.monsoon_state)
+
     def gate_complete(self):
-        # 已破产/已结束的玩家视为自动准备，避免阻塞对方
+        # Bankrupt/finished players count as auto-ready so they never block their partner
         return all((i in self.ready) or self.games[i].gameOver for i in (0, 1))
 
     def trade_gate_complete(self):
@@ -678,14 +1055,15 @@ class SharedSession:
         return sum(1 for i in (0, 1) if (i in self.ready) or self.games[i].gameOver)
 
     def advance(self):
-        """双方都准备好后，整个会话同步进入下一阶段。"""
+        """Once both players are ready, the whole session advances to the next phase together."""
         phase = self._active_phase()
         if phase == 0:
+            self.sync_monsoon_state()
             self._set_phase(5)
-            # 每位玩家从福缘池中独立随机抽取4张，互不可见、互不相同
+            # Each player independently draws 4 random Fortunes from the pool; draws are hidden from and different between players
             for g in self.games:
                 if not g.gameOver:
-                    g.boonChoices = random.sample(BOONS, 4)
+                    g.boonChoices = random.sample(boon_pool(g.currentRound), 4)
         elif phase == 5:
             self._set_phase(1)
             for g in self.games:
@@ -696,8 +1074,11 @@ class SharedSession:
                     c = g.gen_resource_card()
                     c["id"] = i
                     g.resourceCards.append(c)
-                g.phase2DemandTags = random.sample(RESOURCES + PRODUCTS, 5)
+                g.phase2DemandTags = random.sample(g.unlocked_resources() + g.unlocked_products(), 5)
                 g.revealedIntel = []
+                free_intel = g.modifierFlags.get("free_intel", 0)
+                if free_intel:
+                    g._reveal_intel(free_intel)
         elif phase == 1:
             self._set_phase("trade")
             self.trade_ready = [False, False]
@@ -708,7 +1089,14 @@ class SharedSession:
                 if g.gameOver:
                     continue
                 g.customerCards = []
-                for i in range(5):
+                next_id = 0
+                if g.currentRound in (3, 6, 8):
+                    o = g.gen_emperor_mandate_order()
+                    o["id"] = next_id
+                    g.customerCards.append(o)
+                    next_id += 1
+                order_count = 5 + g.modifierFlags.get("extra_order", 0)
+                for i in range(next_id, order_count):
                     o = g.gen_mixed_order()
                     o["id"] = i
                     g.customerCards.append(o)
@@ -748,8 +1136,10 @@ class SharedSession:
         self.trade_orders = []
         self.trade_ready = [False, False]
         self.ready.clear()
+        self.monsoon_cycle_cache = {}
+        self.sync_monsoon_state()
 
-    # ---------- 等待提示 ----------
+    # ---------- Waiting hints ----------
     def waiting_message(self, slot):
         game = self.games[slot]
         if game.phase == "trade":
@@ -762,7 +1152,7 @@ class SharedSession:
             return "已准备，等待对方点击继续..."
         return None
 
-    # ---------- 互市订单 ----------
+    # ---------- Barter trades ----------
     def create_trade_order(self, seller_slot, sell_items, buy_items):
         self.trade_id_counter += 1
         order = {
@@ -782,7 +1172,7 @@ class SharedSession:
         buyer_game = self.games[buyer_slot]
         if not seller_game or not buyer_game:
             return False
-        # 检查卖方资源
+        # Check the seller's resources
         for item in order["sell"]:
             if item["type"] == "金币":
                 if seller_game.money < item["quantity"]:
@@ -790,7 +1180,7 @@ class SharedSession:
             else:
                 if seller_game.inventory.get(item["type"], 0) < item["quantity"]:
                     return False
-        # 检查买方资源
+        # Check the buyer's resources
         for item in order["buy"]:
             if item["type"] == "金币":
                 if buyer_game.money < item["quantity"]:
@@ -798,7 +1188,7 @@ class SharedSession:
             else:
                 if buyer_game.inventory.get(item["type"], 0) < item["quantity"]:
                     return False
-        # 执行交换
+        # Execute the swap
         for item in order["sell"]:
             if item["type"] == "金币":
                 seller_game.money -= item["quantity"]
@@ -824,13 +1214,13 @@ class SharedSession:
             self.trade_orders.remove(order)
         return order
 
-    # ---------- 聊天 ----------
+    # ---------- Chat ----------
     def add_chat(self, sender, message):
         self.chat_history.append({"from": sender, "message": message})
         if len(self.chat_history) > CHAT_HISTORY_LIMIT:
             self.chat_history.pop(0)
 
-    # ---------- 状态广播 ----------
+    # ---------- State broadcast ----------
     async def broadcast_state(self):
         for slot in (0, 1):
             uname = self.players[slot]
@@ -853,14 +1243,14 @@ class SharedSession:
             }
             await send_json(ws, {"type": "state", "data": state})
 
-# -------------------- 全局状态 --------------------
+# -------------------- Global state --------------------
 USERS = UserStore(USERS_FILE)
 ONLINE = {}            # username -> websocket
-SESSIONS = {}          # username -> SharedSession（两名玩家指向同一会话）
+SESSIONS = {}          # username -> SharedSession (both players point to the same session)
 PENDING_INVITES = {}   # sender -> {"to": target, "task": asyncio.Task}
-LAST_INVITE_AT = {}    # sender -> time.monotonic() 时间戳
+LAST_INVITE_AT = {}    # sender -> time.monotonic() timestamp
 
-# -------------------- 发送工具 --------------------
+# -------------------- Send helpers --------------------
 async def send_json(ws, obj):
     try:
         await ws.send(json.dumps(obj))
@@ -877,7 +1267,7 @@ async def broadcast_online_users():
     for uname, ws in list(ONLINE.items()):
         await send_json(ws, {"type": "online_users_update", "users": [n for n in names if n != uname]})
 
-# -------------------- 邀请系统 --------------------
+# -------------------- Invite system --------------------
 async def invite_timeout_task(sender, target):
     try:
         await asyncio.sleep(INVITE_COOLDOWN)
@@ -942,7 +1332,7 @@ async def handle_respond_invite(responder, sender, accept):
     await broadcast_online_users()
     await sess.broadcast_state()
 
-# -------------------- 聊天系统 --------------------
+# -------------------- Chat system --------------------
 async def handle_send_chat(sender, message):
     sess = SESSIONS.get(sender)
     if sess is None:
@@ -958,7 +1348,7 @@ async def handle_send_chat(sender, message):
     sess.add_chat(sender, message)
     await send_to_user(partner, {"type": "chat_message", "from": sender, "message": message})
 
-# -------------------- 游戏内动作 --------------------
+# -------------------- In-game actions --------------------
 async def handle_game_action(username, data):
     action = data.get("action")
     sess = SESSIONS.get(username)
@@ -969,7 +1359,7 @@ async def handle_game_action(username, data):
     phase = game.phase
     changed = False
 
-    # 终局玩家（破产/完赛）只允许观战相关的只读操作与重开
+    # Players in an end state (bankrupt/finished) may only perform read-only spectator actions and restart
     if game.gameOver and action not in ("join_game", "restart"):
         return
 
@@ -983,7 +1373,7 @@ async def handle_game_action(username, data):
                 sess.advance()
     elif action == "selectBoon":
         if phase == 5 and slot not in sess.ready:
-            # 只能从本回合发给该玩家的4张福缘中选择
+            # Can only select from the 4 Fortunes dealt to this player this round
             pool = game.boonChoices or BOONS
             boon = next((b for b in pool if b["id"] == data.get("boonId")), None)
             if boon:
@@ -1065,6 +1455,10 @@ async def handle_game_action(username, data):
             changed = True
             if sess.gate_complete():
                 sess.advance()
+    elif action == "hireEscort":
+        if phase == 3 and slot not in sess.ready:
+            game.hire_escort()
+            changed = True
     elif action == "upgradeShip":
         if phase == 4 and game.shipLevel < 3:
             cost = game.shipUpgradeCost[game.shipLevel] + game.shipUpgradePenalty
@@ -1091,7 +1485,7 @@ async def handle_game_action(username, data):
             game.draftChoices = []
             changed = True
     elif action == "restart":
-        # 仅当对方也已结束（结算完毕或破产）时才允许重置整个会话，保证双方同步
+        # Only allow resetting the whole session once the partner has also finished (settled or bankrupt), keeping both players in sync
         if sess.games[1 - slot].gameOver:
             sess.restart()
             partner = sess.partner_of(username)
@@ -1103,7 +1497,7 @@ async def handle_game_action(username, data):
     if changed:
         await sess.broadcast_state()
 
-# -------------------- WebSocket 处理 --------------------
+# -------------------- WebSocket handling --------------------
 async def handler(websocket):
     username = None
     try:
@@ -1114,7 +1508,7 @@ async def handler(websocket):
                 continue
             action = data.get("action")
 
-            # ---------- 未登录：只接受注册 / 登录 ----------
+            # ---------- Not logged in: only accept register / login ----------
             if username is None:
                 if action == "register":
                     ok, msg = USERS.register(str(data.get("username", "")).strip(), str(data.get("password", "")))
@@ -1141,7 +1535,7 @@ async def handler(websocket):
                     await send_json(websocket, {"type": "error", "message": "请先登录"})
                 continue
 
-            # ---------- 已登录：大厅 / 邀请 / 聊天 / 游戏 ----------
+            # ---------- Logged in: lobby / invites / chat / game ----------
             if action == "get_online_users":
                 await send_json(websocket, {"type": "online_users", "users": [n for n in ONLINE if n != username]})
             elif action == "send_invite":
@@ -1160,13 +1554,13 @@ async def handler(websocket):
     finally:
         if username is not None and ONLINE.get(username) is websocket:
             del ONLINE[username]
-            # 取消该用户发出的待处理邀请
+            # Cancel this user's pending outgoing invites
             inv = PENDING_INVITES.pop(username, None)
             if inv:
                 inv["task"].cancel()
                 await send_to_user(inv["to"], {"type": "invite_cancelled", "from": username})
             await broadcast_online_users()
-            # 通知会话伙伴；若双方都已离线则回收会话
+            # Notify the session partner; recycle the session if both players are offline
             sess = SESSIONS.get(username)
             if sess is not None:
                 partner = sess.partner_of(username)
@@ -1177,13 +1571,14 @@ async def handler(websocket):
                     SESSIONS.pop(username, None)
                     SESSIONS.pop(partner, None)
 
-# -------------------- HTTP 静态文件服务（与 WebSocket 共用同一端口） --------------------
-# 说明：将静态文件服务并入 WebSocket 端口，便于通过单条 ngrok 隧道（如 ngrok http 8080）
-# 同时穿透网页与 WebSocket，并自动适配 https/wss，避免浏览器混合内容限制。
+# -------------------- HTTP static file serving (shares the WebSocket port) --------------------
+# Serving static files on the same port as the WebSocket server lets a single ngrok tunnel
+# (e.g. ngrok http 8080) expose both the web page and the WebSocket, with automatic
+# https/wss adaptation, avoiding browser mixed-content restrictions.
 WEB_ROOT = os.path.dirname(os.path.abspath(__file__))
 
 async def process_request(connection, request):
-    # WebSocket 升级请求放行，交由 handler 处理
+    # Let WebSocket upgrade requests through, to be handled by handler
     if request.headers.get("Upgrade", "").lower() == "websocket":
         return None
 
@@ -1209,11 +1604,11 @@ async def process_request(connection, request):
 
 async def main():
     async with websockets.serve(handler, "0.0.0.0", 8080, process_request=process_request):
-        print(f"✅ 服务器启动：网页 http://0.0.0.0:8080 ，WebSocket ws://0.0.0.0:8080")
+        print(f"✅ Server started: web http://0.0.0.0:8080, WebSocket ws://0.0.0.0:8080")
         await asyncio.Future()
 
 if __name__ == "__main__":
     try:
         asyncio.run(main())
     except KeyboardInterrupt:
-        print("服务器关闭")
+        print("Server shut down")

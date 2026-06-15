@@ -7,8 +7,8 @@
 <style>
 /* ============================================================
    PortMasters 2 — Design System
-   明亮自然 · 海洋玻璃质感 · 平滑渐变 · 近未来（~2030）审美
-   层级体系（由低到高）：背景装饰 < 聊天窗 < 全屏覆盖层 < 对话框 < 通知
+   Bright and natural, ocean-glass feel, smooth gradients, near-future (~2030) aesthetic
+   Layer hierarchy (low to high): background decor < chat window < fullscreen overlay < dialogs < notifications
    ============================================================ */
 :root {
   --z-chat: 900;
@@ -16,7 +16,7 @@
   --z-modal: 2000;
   --z-toast: 3000;
 
-  /* 海上丝路色板 */
+  /* Maritime Silk Road color palette */
   --ocean-950: #082f49;
   --ocean-900: #0c4a6e;
   --ocean-700: #0369a1;
@@ -66,7 +66,7 @@ body {
   overflow-x: hidden;
 }
 
-/* ---- 背景流光（缓慢漂浮的自然光斑） ---- */
+/* ---- Background ambient glow (slowly drifting light patches) ---- */
 .bg-orb {
   position: fixed;
   border-radius: 50%;
@@ -87,7 +87,7 @@ a { color: var(--ocean-700); }
 
 ::selection { background: rgba(56, 189, 248, .30); }
 
-/* ---- 主布局：左我方 / 中舞台 / 右伙伴 ---- */
+/* ---- Main layout: left = me, center = stage, right = partner ---- */
 #app {
   max-width: 1720px;
   margin: 0 auto;
@@ -113,7 +113,7 @@ a { color: var(--ocean-700); }
   box-shadow: var(--shadow-soft);
 }
 
-/* ---- 顶栏 ---- */
+/* ---- Header ---- */
 .header {
   grid-area: header;
   background: var(--grad-deep);
@@ -171,7 +171,7 @@ a { color: var(--ocean-700); }
   font-weight: 600;
 }
 
-/* ---- 侧栏（双方商队状态） ---- */
+/* ---- Sidebars (both players' fleet status) ---- */
 .side-panel {
   padding: 14px;
   overflow-y: auto;
@@ -269,14 +269,28 @@ a { color: var(--ocean-700); }
 }
 .muted { color: var(--ink-faint); font-size: 11px; }
 
-/* ---- 工具提示（识别优于记忆：把解释带到眼前） ---- */
-.tip { position: relative; cursor: help; border-bottom: 1px dashed rgba(100, 116, 139, .55); }
-.tip::after {
-  content: attr(data-tip);
-  position: absolute;
-  left: 50%;
-  bottom: calc(100% + 9px);
-  transform: translateX(-50%) translateY(4px);
+/* ---- Tooltips (recognition over recall: bring the explanation to the user) ----
+   One shared bubble is appended to <body> and positioned by JS (see initTooltips).
+   The old `.tip::after` pseudo-element was structurally trapped, which is why hints
+   were cut off no matter how the copy was tuned:
+     • clipped by every scrolling/clipping ancestor — .side-panel, .phase-panel and
+       .card all set `overflow` other than visible, and an absolutely-positioned
+       descendant cannot escape an ancestor's overflow box (no z-index fixes this);
+     • pinned beneath ancestor stacking contexts (.phase-view animation, .card:hover
+       transform), so even where it wasn't clipped it could render behind siblings;
+     • hard-centered (left:50%) with a fixed max-width and no edge detection, so a
+       hint near any viewport edge overflowed — and a width that fit English spilled
+       over in 中文 (and vice-versa), which is the "works in one language only" symptom.
+   A body-level position:fixed bubble is measured against the viewport instead: no
+   ancestor can clip it or trap its stacking, and runtime collision detection
+   (flip above/below + horizontal clamp) keeps every hint fully on-screen in both
+   languages. Markup is unchanged — any current/future [data-tip] is covered. */
+.tip { cursor: help; border-bottom: 1px dashed rgba(100, 116, 139, .55); }
+
+.tip-bubble {
+  position: fixed;
+  top: 0; left: 0;
+  max-width: min(280px, calc(100vw - 20px));
   background: rgba(15, 23, 42, .94);
   color: #f0f9ff;
   font-size: 11px;
@@ -284,18 +298,30 @@ a { color: var(--ocean-700); }
   line-height: 1.55;
   border-radius: 10px;
   padding: 8px 11px;
-  width: max-content;
-  max-width: 250px;
   white-space: normal;
-  opacity: 0;
-  pointer-events: none;
-  transition: opacity .18s ease, transform .18s ease;
-  z-index: 60;
+  overflow-wrap: break-word;
   box-shadow: 0 8px 24px rgba(0,0,0,.25);
+  opacity: 0;
+  transform: translateY(4px);
+  transition: opacity .16s ease, transform .16s ease;
+  pointer-events: none;     /* never steal hover from the element underneath */
+  z-index: 4000;            /* above every overlay (--z-toast: 3000) */
 }
-.tip:hover::after { opacity: 1; transform: translateX(-50%) translateY(0); }
+.tip-bubble.tip-hidden { display: none; }
+.tip-bubble.tip-show { opacity: 1; transform: translateY(0); }
+.tip-bubble::after {        /* caret points back at the hovered element */
+  content: "";
+  position: absolute;
+  left: var(--tip-caret, 50%);
+  margin-left: -5px;
+  width: 10px; height: 10px;
+  background: rgba(15, 23, 42, .94);
+  transform: rotate(45deg);
+}
+.tip-bubble[data-placement="above"]::after { bottom: -4px; }
+.tip-bubble[data-placement="below"]::after { top: -4px; }
 
-/* ---- 中央舞台 ---- */
+/* ---- Center stage ---- */
 .phase-panel {
   grid-area: main;
   padding: 18px 20px;
@@ -309,7 +335,7 @@ a { color: var(--ocean-700); }
   to   { opacity: 1; transform: translateY(0); }
 }
 
-/* ---- 阶段进度（流程一目了然） ---- */
+/* ---- Phase progress (the flow at a glance) ---- */
 .stepper {
   display: flex;
   align-items: flex-start;
@@ -357,7 +383,7 @@ a { color: var(--ocean-700); }
 .step.current .lbl { color: var(--ocean-700); }
 .step.done .lbl { color: #0f766e; }
 
-/* ---- 阶段说明卡（这一步是什么 / 该做什么） ---- */
+/* ---- Phase info card (what this step is / what to do) ---- */
 .phase-brief {
   display: flex;
   gap: 14px;
@@ -375,7 +401,7 @@ a { color: var(--ocean-700); }
 .phase-brief p { font-size: 12.5px; color: var(--ink-soft); line-height: 1.65; }
 .phase-brief .pb-sync { display: flex; flex-direction: column; align-items: flex-end; gap: 4px; }
 
-/* ---- 按钮 ---- */
+/* ---- Buttons ---- */
 .btn {
   --btn-bg: var(--grad-primary);
   --btn-shadow: rgba(2, 132, 199, .28);
@@ -401,10 +427,10 @@ a { color: var(--ocean-700); }
 .btn-danger  { --btn-bg: var(--grad-danger);  --btn-shadow: rgba(225, 29, 72, .3); }
 .btn-gold    { --btn-bg: var(--grad-gold);    --btn-shadow: rgba(245, 158, 11, .35); color: #451a03; }
 .btn-grey    { --btn-bg: var(--grad-grey);    --btn-shadow: rgba(100, 116, 139, .25); color: #334155; }
-/* 幽灵按钮按所处表面自适应配色：
-   默认（浅色玻璃面板）→ 海洋色文字 + 海洋色描边；
-   深色容器（顶栏 / 底部操作栏）→ 白色文字 + 白色描边。
-   任何按钮变体都不得假设自己只会出现在某一种背景上。 */
+/* Ghost buttons adapt their color to the surface they sit on:
+   default (light glass panel) -> ocean-colored text + ocean-colored outline;
+   dark containers (header / bottom action bar) -> white text + white outline.
+   No button variant should assume it will only ever appear on one kind of background. */
 .btn-ghost {
   --btn-bg: rgba(255, 255, 255, .55);
   background: rgba(255, 255, 255, .55);
@@ -424,8 +450,12 @@ a { color: var(--ocean-700); }
 .btn-lg { padding: 12px 26px; font-size: 14px; border-radius: 14px; }
 .btn-xl { padding: 15px 34px; font-size: 16px; border-radius: 16px; }
 .btn-sub { display: block; font-size: 10px; font-weight: 500; opacity: .85; margin-top: 2px; }
+.btn-shield {
+  background: linear-gradient(135deg, #0f766e, #0ea5e9);
+  color: #fff;
+}
 
-/* ---- 卡牌 ---- */
+/* ---- Cards ---- */
 .card-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
@@ -443,6 +473,49 @@ a { color: var(--ocean-700); }
   transition: transform .2s ease, box-shadow .2s ease;
 }
 .card:hover { transform: translateY(-3px); box-shadow: var(--shadow-float); }
+.golden-order-card {
+  position: relative;
+  border: 1px solid rgba(245, 158, 11, .75);
+  background:
+    radial-gradient(circle at 12% 0%, rgba(253, 230, 138, .38), transparent 34%),
+    linear-gradient(135deg, rgba(255, 251, 235, .96), rgba(254, 243, 199, .94) 48%, rgba(255, 255, 255, .92));
+  box-shadow: 0 18px 48px rgba(146, 64, 14, .18);
+}
+.golden-order-card.final-mandate { grid-column: 1 / -1; }
+.golden-order-card::before,
+.golden-order-card::after {
+  content: '';
+  position: absolute;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: rgba(245, 158, 11, .78);
+  box-shadow: 0 0 18px rgba(245, 158, 11, .9);
+  animation: mandateSpark 2.8s ease-in-out infinite;
+  pointer-events: none;
+}
+.golden-order-card::before { top: 12px; right: 18px; }
+.golden-order-card::after { bottom: 14px; left: 20px; animation-delay: -1.4s; }
+.golden-order-card .card-header {
+  background: linear-gradient(135deg, #451a03, #b45309 52%, #f59e0b);
+  color: #fff7ed;
+  border-bottom-color: rgba(245, 158, 11, .55);
+  font-family: Georgia, "Times New Roman", "Noto Serif SC", serif;
+  letter-spacing: 0;
+}
+.golden-order-card .card-total {
+  color: #78350f;
+  border-top-color: rgba(180, 83, 9, .35);
+}
+.card-tag.golden {
+  background: linear-gradient(135deg, #fde68a, #f59e0b);
+  color: #451a03;
+  box-shadow: 0 2px 8px rgba(245, 158, 11, .28);
+}
+@keyframes mandateSpark {
+  0%, 100% { opacity: .28; transform: translateY(0) scale(.82); }
+  50% { opacity: 1; transform: translateY(-8px) scale(1.16); }
+}
 .card-header {
   background: linear-gradient(135deg, rgba(56, 189, 248, .14), rgba(20, 184, 166, .12));
   padding: 10px 14px;
@@ -485,7 +558,7 @@ a { color: var(--ocean-700); }
 .resource-row .price { color: var(--ink-faint); margin-left: auto; font-size: 11.5px; }
 .resource-row .inv-status { margin-left: 8px; font-size: 11px; font-weight: 700; }
 
-/* ---- 标题 ---- */
+/* ---- Titles ---- */
 .hero-title {
   font-size: 30px;
   font-weight: 900;
@@ -499,7 +572,7 @@ a { color: var(--ocean-700); }
 .subtitle-text { font-size: 14px; color: var(--ink-soft); text-align: center; margin-bottom: 18px; }
 .center-block { max-width: 960px; margin: 0 auto; padding: 10px 6px; }
 
-/* ---- PortMasters 2 / 前作提示 ---- */
+/* ---- PortMasters 2 / previous-game hint ---- */
 .pm-banner {
   background: linear-gradient(135deg, #fffbeb, #fef3c7);
   border: 1px solid rgba(245, 158, 11, .45);
@@ -525,7 +598,7 @@ a { color: var(--ocean-700); }
   flex: none;
 }
 
-/* ---- 通用区块 ---- */
+/* ---- Generic sections ---- */
 .section-box {
   background: var(--glass-strong);
   border: 1px solid rgba(14, 165, 233, .16);
@@ -536,13 +609,29 @@ a { color: var(--ocean-700); }
 }
 .section-box h3 { color: var(--ocean-900); font-size: 15px; margin-bottom: 8px; display: flex; align-items: center; gap: 6px; }
 .section-hint { font-size: 11.5px; color: var(--ink-faint); margin-bottom: 10px; line-height: 1.6; }
+.environment-banner {
+  background: linear-gradient(135deg, rgba(224, 242, 254, .82), rgba(204, 251, 241, .7));
+  border: 1px solid rgba(14, 165, 233, .28);
+  border-radius: var(--radius-md);
+  padding: 13px 16px;
+  margin: 0 0 16px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  box-shadow: var(--shadow-soft);
+}
+.environment-banner .env-icon { font-size: 32px; line-height: 1; }
+.environment-banner .env-copy { flex: 1; min-width: 180px; }
+.environment-banner .env-title { font-size: 14px; font-weight: 900; color: var(--ocean-900); }
+.environment-banner .env-desc { font-size: 12px; color: var(--ink-soft); line-height: 1.55; margin-top: 2px; }
+.environment-banner .env-tags { display: flex; gap: 6px; flex-wrap: wrap; justify-content: flex-end; }
 
 .separator { height: 1px; background: linear-gradient(90deg, transparent, rgba(14, 165, 233, .4), transparent); margin: 16px 0; border: none; }
 
 .profit-positive { color: #059669; font-weight: 800; }
 .profit-negative { color: #e11d48; font-weight: 800; }
 
-/* ---- 福缘卡 ---- */
+/* ---- Fortune cards ---- */
 .boon-card {
   background: var(--glass-strong);
   border: 1px solid rgba(14, 165, 233, .2);
@@ -557,7 +646,7 @@ a { color: var(--ocean-700); }
 .boon-name { font-size: 15px; font-weight: 800; color: var(--ocean-900); margin: 6px 0; }
 .boon-desc { font-size: 12px; color: var(--ink-soft); margin: 8px 0 12px; min-height: 48px; line-height: 1.6; }
 
-/* ---- 工匠 ---- */
+/* ---- Artisans ---- */
 .worker-row {
   display: flex;
   align-items: center;
@@ -574,7 +663,7 @@ a { color: var(--ocean-700); }
 .worker-row .w-state .busy { color: #b45309; font-weight: 700; }
 .worker-row .w-state .idle { color: #059669; font-weight: 700; }
 
-/* ---- 牙行密语（可折叠面板） ---- */
+/* ---- Broker's Whisper (collapsible panel) ---- */
 .whisper-panel {
   background: linear-gradient(135deg, rgba(254, 243, 199, .6), rgba(255, 251, 235, .85));
   border: 1px solid rgba(245, 158, 11, .45);
@@ -620,7 +709,7 @@ a { color: var(--ocean-700); }
   gap: 8px;
 }
 
-/* ---- 互市 ---- */
+/* ---- Barter ---- */
 .trade-section {
   background: linear-gradient(135deg, rgba(254, 243, 199, .55), rgba(255, 251, 235, .8));
   border: 1px solid rgba(245, 158, 11, .35);
@@ -651,7 +740,7 @@ a { color: var(--ocean-700); }
 }
 .trade-create select:focus, .trade-create input:focus { outline: 2px solid rgba(14, 165, 233, .4); }
 
-/* ---- 底部操作栏 ---- */
+/* ---- Bottom action bar ---- */
 .control-panel {
   grid-area: actions;
   background: var(--grad-deep);
@@ -678,7 +767,7 @@ a { color: var(--ocean-700); }
 .control-spacer { flex: 1; }
 .control-hint { color: rgba(224, 242, 254, .8); font-size: 11.5px; }
 
-/* ---- 日志 ---- */
+/* ---- Log ---- */
 .log-panel {
   grid-area: log;
   padding: 10px 14px;
@@ -701,7 +790,7 @@ a { color: var(--ocean-700); }
 .log-entry { padding: 3px 6px; border-bottom: 1px dotted rgba(148, 163, 184, .3); color: var(--ink-soft); }
 .log-entry:last-child { border-bottom: none; }
 
-/* ---- 对话框 ---- */
+/* ---- Dialogs ---- */
 .modal-overlay {
   position: fixed;
   inset: 0;
@@ -745,7 +834,7 @@ a { color: var(--ocean-700); }
 }
 .modal .modal-x:hover { background: rgba(148, 163, 184, .3); }
 
-/* ---- 手册 ---- */
+/* ---- Manual ---- */
 .manual-tabs { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 14px; justify-content: center; }
 .mtab {
   border: none;
@@ -771,7 +860,7 @@ a { color: var(--ocean-700); }
 .manual-body th { background: rgba(224, 242, 254, .8); color: var(--ocean-900); }
 .kbd { background: #0f172a; color: #fff; border-radius: 6px; padding: 1px 8px; font-size: 11px; font-weight: 700; }
 
-/* ---- 登录 / 大厅 ---- */
+/* ---- Login / Lobby ---- */
 #login-overlay, #lobby-overlay {
   position: fixed; inset: 0;
   background:
@@ -844,7 +933,7 @@ a { color: var(--ocean-700); }
 .online-user-item:hover { transform: translateY(-2px); box-shadow: var(--shadow-soft); }
 .online-user-item .u-name { font-weight: 700; color: var(--ocean-900); display: flex; align-items: center; gap: 8px; }
 
-/* ---- 聊天 ---- */
+/* ---- Chat ---- */
 #chat-window {
   position: fixed;
   bottom: 22px;
@@ -906,7 +995,7 @@ a { color: var(--ocean-700); }
 }
 #chat-input:focus { outline: none; border-color: var(--ocean-500); box-shadow: 0 0 0 3px rgba(14, 165, 233, .15); }
 
-/* ---- 通知 ---- */
+/* ---- Notifications ---- */
 .notification {
   position: fixed;
   top: 20px;
@@ -930,7 +1019,7 @@ a { color: var(--ocean-700); }
   to   { transform: translateX(0); opacity: 1; }
 }
 
-/* ---- 观战窗口（独立悬浮窗，不占用主舞台） ---- */
+/* ---- Spectator window (a separate floating window, doesn't take up the main stage) ---- */
 .spectate-overlay {
   position: fixed;
   inset: 0;
@@ -939,7 +1028,7 @@ a { color: var(--ocean-700); }
   display: flex;
   justify-content: center;
   align-items: center;
-  z-index: 1500;             /* 高于游戏界面，低于手册等对话框 */
+  z-index: 1500;             /* above the game UI, below dialogs like the manual */
   padding: 24px;
   animation: fadeIn .2s ease;
 }
@@ -1025,7 +1114,7 @@ a { color: var(--ocean-700); }
   .spectate-body { grid-template-columns: 1fr; }
 }
 
-/* ---- 响应式 ---- */
+/* ---- Responsive ---- */
 @media (max-width: 1280px) {
   #app { grid-template-columns: 260px minmax(0, 1fr) 260px; }
 }
@@ -1136,20 +1225,23 @@ a { color: var(--ocean-700); }
 
 <script>
 /* ============================================================
-   国际化（i18n）核心
-   架构约定：联机协议与服务器状态一律使用「中文规范键」标识物品/
-   港口等数据（改键会破坏协议与存档兼容）；语言只属于表现层——
-   每个客户端在渲染时各自翻译，因此同一会话中两名玩家可使用不同
-   语言。默认语言为英文，玩家可随时切换并持久化到 localStorage。
+   Internationalization (i18n) core
+   Architecture convention: the online protocol and server state always identify
+   items, ports and similar data using "canonical Chinese keys" (changing these
+   keys would break protocol and save compatibility); language belongs only to the
+   presentation layer — each client translates independently when rendering, so
+   the two players in a session can use different languages. The default language
+   is English, and players can switch at any time, with the choice persisted to
+   localStorage.
    ============================================================ */
 let LANG = localStorage.getItem('pm2_lang') || 'en';
 
-/* 行内双语文案：tr('中文', 'English') */
+/* Inline bilingual text: tr('Chinese', 'English') */
 const tr = (zh, en) => (LANG === 'en' ? en : zh);
-/* 从 {zh, en} 对象中按当前语言取值 */
+/* Pick a value from a {zh, en} object based on the current language */
 const pf = o => (o ? (o[LANG] !== undefined ? o[LANG] : o.zh) : '');
 
-/* PortMasters 1 链接按语言区分 */
+/* PortMasters 1 link, varies by language */
 const PM1_URLS = {
   zh: 'https://lostinhustle.github.io/PortMasters/PortMasters_Web_Edition/PortMasters_MandarinEdition_v1.4.0',
   en: 'https://lostinhustle.github.io/PortMasters/PortMasters_Web_Edition/PortMasters_v1.4.0'
@@ -1157,35 +1249,49 @@ const PM1_URLS = {
 const pm1Url = () => PM1_URLS[LANG];
 const pm1Label = () => tr('PortMasters 1（中文版）→', 'PortMasters 1 →');
 
-/* 规范键（中文）→ 英文显示名。覆盖物品、港口、模块、福缘与工匠，
-   既用于界面渲染，也用于翻译服务器下发的日志文本。 */
+/* Canonical keys (Chinese) -> English display names. Covers items, ports, modules,
+   Fortunes and artisans; used both for UI rendering and for translating log text
+   sent by the server. */
 const EN_NAMES = {
   "麻布": "Hemp Cloth", "丝绸": "Silk", "茶叶": "Tea Leaves",
+  "瓷土": "Porcelain Clay", "铜矿": "Copper Ore", "香料": "Spices", "珍珠": "Pearls",
   "麻衣": "Hemp Garb", "布衣": "Cloth Tunic", "绫罗绸缎": "Fine Brocade", "香囊": "Scented Sachet",
+  "紫铜镜": "Bronze Mirror", "青瓷器": "Celadon Porcelain", "蕃香脂": "Foreign Perfume Oil", "珠链": "Pearl Necklace",
   "金币": "Gold",
   "泉州港": "Quanzhou", "广州港": "Guangzhou", "宁波港": "Ningbo", "扬州港": "Yangzhou", "杭州港": "Hangzhou",
+  "福州港": "Fuzhou", "高丽港": "Goryeo", "三佛齐港": "Srivijaya", "大食港": "Dashi",
   "走私暗舱": "Smuggler's Hold", "散货索具": "Bulk Rigging", "工匠工坊": "Artisan's Workshop",
   "避税账本": "Hidden Ledger", "丝路垂断": "Silk Monopoly", "牙行网络": "Broker's Network",
   "打捞起重机": "Salvage Crane", "超载引擎": "Overdrive Engine",
+  "市舶司令牌": "Trade Bureau Token", "陶土窖": "Kiln Cellar", "远洋通译": "Ocean-Going Interpreter",
+  "蕃坊行会证": "Foreign Quarter Guild Pass", "波斯穹顶罗盘": "Persian Dome Compass", "万宝商船": "Fleet of Ten-Thousand Treasures",
   "丝路顺风": "Silk Road Tailwind", "顺风顺水": "Favorable Tides", "商贾魅力": "Merchant's Charm",
   "匠人灵感": "Artisan's Inspiration", "紧急钱庄": "Emergency Loan", "免税令": "Tax Exemption",
   "麻布专营": "Hemp Monopoly", "学徒传承": "Apprentice Legacy",
-  "织女": "Weaver", "纺织大师": "Master Weaver", "香囊师": "Sachet Maker"
+  "千里眼": "Farsight", "陶铜联号": "Porcelain & Bronze Consortium", "拓商减负": "Frontier Tariff Relief",
+  "蕃国奇珍": "Treasures from Afar", "远洋护航": "Deep-Sea Escort Pact", "万商云集": "Merchants Converge",
+  "织女": "Weaver", "纺织大师": "Master Weaver", "香囊师": "Sachet Maker",
+  "铜匠": "Coppersmith", "陶匠": "Potter", "香料师": "Perfumer", "珠宝匠": "Jeweler"
 };
-/* 翻译单个规范名（物品/港口/模块等） */
+/* Translate a single canonical name (item/port/module/etc.) */
 const tn = name => (LANG === 'en' ? (EN_NAMES[name] || name) : name);
 
 const ICONS = {
   "麻布": "🧶", "丝绸": "👘", "茶叶": "🍵",
-  "麻衣": "👔", "布衣": "👕", "绫罗绸缎": "👗", "香囊": "🌸", "金币": "💰"
+  "瓷土": "🧱", "铜矿": "⛏️", "香料": "🌶️", "珍珠": "🦪",
+  "麻衣": "👔", "布衣": "👕", "绫罗绸缎": "👗", "香囊": "🌸",
+  "紫铜镜": "🪞", "青瓷器": "🏺", "蕃香脂": "🧴", "珠链": "📿",
+  "金币": "💰"
 };
 const COLORS = {
   "麻布": "#8B7355", "丝绸": "#DC143C", "茶叶": "#228B22",
-  "麻衣": "#D2691E", "布衣": "#4169E1", "绫罗绸缎": "#8B008B", "香囊": "#FF1493"
+  "瓷土": "#A0826D", "铜矿": "#B87333", "香料": "#E25822", "珍珠": "#7B6F8E",
+  "麻衣": "#D2691E", "布衣": "#4169E1", "绫罗绸缎": "#8B008B", "香囊": "#FF1493",
+  "紫铜镜": "#8C5E3C", "青瓷器": "#6B8E7F", "蕃香脂": "#BA55D3", "珠链": "#D4AF37"
 };
-const RESOURCES = ["麻布", "丝绸", "茶叶"];
-const PRODUCTS = ["麻衣", "布衣", "绫罗绸缎", "香囊"];
-const WAGES = { weaver: 8, master: 12, sachet_maker: 20 };
+const RESOURCES = ["麻布", "丝绸", "茶叶", "瓷土", "铜矿", "香料", "珍珠"];
+const PRODUCTS = ["麻衣", "布衣", "绫罗绸缎", "香囊", "紫铜镜", "青瓷器", "蕃香脂", "珠链"];
+const WAGES = { weaver: 8, master: 12, sachet_maker: 20, coppersmith: 12, potter: 14, perfumer: 18, jeweler: 24 };
 
 const ITEM_TIPS = {
   "麻布": { zh: "基础原料。可由织女制成麻衣（×2）或布衣（×2，另需丝绸×1）",
@@ -1201,12 +1307,29 @@ const ITEM_TIPS = {
   "绫罗绸缎": { zh: "高级成品 · 基准产值 60。仅纺织大师可制作（丝绸×3）",
             en: "Premium product · base value 60. Master Weavers only (Silk ×3)" },
   "香囊": { zh: "顶级成品 · 基准产值 80。仅香囊师可制作（丝绸×1 + 茶叶×2）",
-            en: "Top-tier product · base value 80. Sachet Makers only (Silk ×1 + Tea ×2)" }
+            en: "Top-tier product · base value 80. Sachet Makers only (Silk ×1 + Tea ×2)" },
+  "瓷土": { zh: "基础原料。可由陶匠制成青瓷器（×3）",
+            en: "Basic material. Potters turn it into Celadon Porcelain (×3)" },
+  "铜矿": { zh: "基础原料。可由铜匠制成紫铜镜（×3）",
+            en: "Basic material. Coppersmiths turn it into Bronze Mirror (×3)" },
+  "香料": { zh: "高级原料。用于蕃香脂（×2，另需丝绸×1）",
+            en: "Premium material. Used in Foreign Perfume Oil (×2, plus Silk ×1)" },
+  "珍珠": { zh: "高级原料。用于珠链（×2，另需丝绸×1）",
+            en: "Premium material. Used in Pearl Necklace (×2, plus Silk ×1)" },
+  "紫铜镜": { zh: "成品 · 基准产值 45。由铜匠制作（铜矿×3）",
+            en: "Product · base value 45. Made by Coppersmiths (Copper Ore ×3)" },
+  "青瓷器": { zh: "成品 · 基准产值 65。由陶匠制作（瓷土×3）",
+            en: "Product · base value 65. Made by Potters (Porcelain Clay ×3)" },
+  "蕃香脂": { zh: "顶级成品 · 基准产值 85。仅香料师可制作（香料×2 + 丝绸×1）",
+            en: "Top-tier product · base value 85. Perfumers only (Spices ×2 + Silk ×1)" },
+  "珠链": { zh: "顶级成品 · 基准产值 105。仅珠宝匠可制作（珍珠×2 + 丝绸×1）",
+            en: "Top-tier product · base value 105. Jewelers only (Pearls ×2 + Silk ×1)" }
 };
 const itemTip = r => pf(ITEM_TIPS[r]) || '';
 
-/* 福缘 / 模块的展示文案以 id 为键、按语言取文：
-   服务器照常下发中文 name/desc，客户端渲染时按 id 覆盖。 */
+/* Display text for Fortunes / modules is keyed by id and looked up per language:
+   the server still sends the Chinese name/desc as usual, and the client overrides
+   it by id when rendering. */
 const BOON_TEXT = {
   silk_wind:           { name: { zh: "丝路顺风", en: "Silk Road Tailwind" },   desc: { zh: "本回合丝绸及成品运费减半。", en: "Shipping for silk and finished goods is halved this round." } },
   favorable_tides:     { name: { zh: "顺风顺水", en: "Favorable Tides" },      desc: { zh: "本回合基础运费减4金币。", en: "Base shipping cost −4 gold this round." } },
@@ -1215,16 +1338,62 @@ const BOON_TEXT = {
   emergency_loan:      { name: { zh: "紧急钱庄", en: "Emergency Loan" },       desc: { zh: "立即获得40金币。", en: "Gain 40 gold immediately." } },
   tax_shelter:         { name: { zh: "免税令", en: "Tax Exemption" },          desc: { zh: "本回合所得税率降至5%。", en: "Income tax rate drops to 5% this round." } },
   hemp_monopoly:       { name: { zh: "麻布专营", en: "Hemp Monopoly" },        desc: { zh: "麻布采购单价降低2金币。", en: "Hemp Cloth purchase price −2 gold per unit." } },
-  master_apprentice:   { name: { zh: "学徒传承", en: "Apprentice Legacy" },    desc: { zh: "本回合雇佣工资减半。", en: "Hiring wages halved this round." } }
+  master_apprentice:   { name: { zh: "学徒传承", en: "Apprentice Legacy" },    desc: { zh: "本回合雇佣工资减半。", en: "Hiring wages halved this round." } },
+  farsight:                 { name: { zh: "千里眼", en: "Farsight" },                              desc: { zh: "本回合免费获得1条牙行密语线索。", en: "Gain 1 free Broker's Whisper clue this round." } },
+  porcelain_bronze_guild:   { name: { zh: "陶铜联号", en: "Porcelain & Bronze Consortium" },       desc: { zh: "本回合「青瓷器」与「紫铜镜」订单报酬提高15%。", en: "Celadon Porcelain and Bronze Mirror orders pay 15% more this round." } },
+  frontier_tariff_relief:   { name: { zh: "拓商减负", en: "Frontier Tariff Relief" },              desc: { zh: "本回合交付成品订单的增值税减半。", en: "VAT on finished-goods deliveries is halved this round." } },
+  exotic_treasures:         { name: { zh: "蕃国奇珍", en: "Treasures from Afar" },                 desc: { zh: "本回合「蕃香脂」与「珠链」订单报酬提高15%。", en: "Foreign Perfume Oil and Pearl Necklace orders pay 15% more this round." } },
+  deep_sea_escort_pact:     { name: { zh: "远洋护航", en: "Deep-Sea Escort Pact" },                 desc: { zh: "本回合雇佣护航费用减半，海盗风险减半。", en: "Escort hiring costs half price and pirate risk is halved this round." } },
+  merchants_converge:       { name: { zh: "万商云集", en: "Merchants Converge" },                  desc: { zh: "本回合贸易阶段额外出现1张订单。", en: "1 extra order appears in the Trade phase this round." } }
 };
 const BOONS = [
   { id: "silk_wind", icon: "🌬️" }, { id: "favorable_tides", icon: "🌊" },
   { id: "merchant_charm", icon: "✨" }, { id: "artisan_inspiration", icon: "🔨" },
   { id: "emergency_loan", icon: "💰" }, { id: "tax_shelter", icon: "📜" },
-  { id: "hemp_monopoly", icon: "🧶" }, { id: "master_apprentice", icon: "🎓" }
+  { id: "hemp_monopoly", icon: "🧶" }, { id: "master_apprentice", icon: "🎓" },
+  { id: "farsight", icon: "🔮" }, { id: "porcelain_bronze_guild", icon: "🏮" },
+  { id: "frontier_tariff_relief", icon: "🧾" }, { id: "exotic_treasures", icon: "💎" },
+  { id: "deep_sea_escort_pact", icon: "🛡️" }, { id: "merchants_converge", icon: "🛍️" }
 ];
 const boonName = b => (BOON_TEXT[b.id] ? pf(BOON_TEXT[b.id].name) : (b.name || b.id));
 const boonDesc = b => (BOON_TEXT[b.id] ? pf(BOON_TEXT[b.id].desc) : (b.desc || ''));
+
+const MONSOON_TEXT = {
+  spring_current: {
+    name: { zh: "春潮顺流", en: "Spring Current" },
+    desc: { zh: "泉州港与广州港订单报酬提高，茶叶采购价降低。海盗风险较低。", en: "Quanzhou and Guangzhou orders pay more, Tea is cheaper, and pirate risk is low." }
+  },
+  summer_monsoon: {
+    name: { zh: "盛夏季风", en: "Summer Monsoon" },
+    desc: { zh: "杭州港与扬州港订单报酬提高，丝绸采购价上升。海盗风险升高。", en: "Hangzhou and Yangzhou orders pay more, Silk is pricier, and pirate risk rises." }
+  },
+  autumn_gales: {
+    name: { zh: "秋汛乱流", en: "Autumn Gales" },
+    desc: { zh: "宁波港与泉州港订单报酬提高，麻布采购价降低。海盗风险中等。", en: "Ningbo and Quanzhou orders pay more, Hemp Cloth is cheaper, and pirate risk is moderate." }
+  },
+  winter_blockade: {
+    name: { zh: "冬海封锁", en: "Winter Blockade" },
+    desc: { zh: "广州港与杭州港订单报酬大幅提高，茶叶采购价上升。海盗风险最高。", en: "Guangzhou and Hangzhou orders pay much more, Tea is pricier, and pirate risk is highest." }
+  },
+  fujian_kiln_smoke: {
+    name: { zh: "闽江窑烟", en: "Min River Kiln-Smoke" },
+    desc: { zh: "福州港与泉州港订单报酬提高，瓷土采购价降低。海盗风险中等。", en: "Fuzhou and Quanzhou orders pay more, Porcelain Clay is cheaper, and pirate risk is moderate." }
+  },
+  goryeo_dawn_route: {
+    name: { zh: "高丽晓航", en: "Goryeo Dawn Route" },
+    desc: { zh: "高丽港与广州港订单报酬提高，铜矿采购价降低。海盗风险较高。", en: "Goryeo and Guangzhou orders pay more, Copper Ore is cheaper, and pirate risk is elevated." }
+  },
+  srivijaya_spice_breeze: {
+    name: { zh: "三佛齐香风", en: "Srivijaya Spice Breeze" },
+    desc: { zh: "三佛齐港与大食港订单报酬提高，香料采购价降低。海盗风险较高。", en: "Srivijaya and Dashi orders pay more, Spices are cheaper, and pirate risk is elevated." }
+  },
+  dashi_pearl_moon: {
+    name: { zh: "大食珠月", en: "Dashi Pearl Moon" },
+    desc: { zh: "大食港与三佛齐港订单报酬大幅提高，珍珠采购价降低。海盗风险最高。", en: "Dashi and Srivijaya orders pay much more, Pearls are cheaper, and pirate risk is highest." }
+  }
+};
+const monsoonName = m => (MONSOON_TEXT[m && m.id] ? pf(MONSOON_TEXT[m.id].name) : ((m && m.name) || ''));
+const monsoonDesc = m => (MONSOON_TEXT[m && m.id] ? pf(MONSOON_TEXT[m.id].desc) : ((m && m.desc) || ''));
 
 const MODULE_TEXT = {
   smugglers_hold:    { name: { zh: "走私暗舱", en: "Smuggler's Hold" },    desc: { zh: "采购成本-15%。所得税+20%。", en: "Purchase costs −15%. Income tax +20%." } },
@@ -1234,12 +1403,34 @@ const MODULE_TEXT = {
   silk_monopoly:     { name: { zh: "丝路垄断", en: "Silk Monopoly" },      desc: { zh: "丝绸运费为0。丝绸产品订单收入+20%。", en: "Silk ships free. Silk-product order income +20%." } },
   brokers_network:   { name: { zh: "牙行网络", en: "Broker's Network" },   desc: { zh: "每次花费2金币。每次购买密语显示2条线索。", en: "Whispers cost only 2 gold and reveal 2 clues per purchase." } },
   salvage_crane:     { name: { zh: "打捞起重机", en: "Salvage Crane" },    desc: { zh: "30%概率在订单完成时退还运费。", en: "30% chance to refund shipping when an order completes." } },
-  overdrive_engine:  { name: { zh: "超载引擎", en: "Overdrive Engine" },   desc: { zh: "运费-5金币。维护费+10金币。", en: "Shipping −5 gold. Maintenance +10 gold." } }
+  overdrive_engine:  { name: { zh: "超载引擎", en: "Overdrive Engine" },   desc: { zh: "运费-5金币。维护费+10金币。", en: "Shipping −5 gold. Maintenance +10 gold." } },
+  bureau_token:          { name: { zh: "市舶司令牌", en: "Trade Bureau Token" },             desc: { zh: "新航线货品（瓷土、铜矿及其成品）订单收入+10%。", en: "Orders for new trade-route goods (Porcelain Clay, Copper Ore and their products) pay +10%." } },
+  kiln_cellar:           { name: { zh: "陶土窖", en: "Kiln Cellar" },                        desc: { zh: "瓷土与铜矿采购单价各降低2金币。", en: "Porcelain Clay and Copper Ore purchase price −2 gold per unit." } },
+  ocean_relay:           { name: { zh: "远洋通译", en: "Ocean-Going Interpreter" },          desc: { zh: "牙行密语每次额外显示1条线索（不增加花费）。", en: "Each Broker's Whisper purchase reveals 1 extra clue at no added cost." } },
+  foreign_quarter_pass:  { name: { zh: "蕃坊行会证", en: "Foreign Quarter Guild Pass" },     desc: { zh: "香料与珍珠采购单价各降低3金币。", en: "Spices and Pearls purchase price −3 gold per unit." } },
+  persian_dome_compass:  { name: { zh: "波斯穹顶罗盘", en: "Persian Dome Compass" },         desc: { zh: "海盗风险降低30%。", en: "Pirate risk reduced by 30%." } },
+  fleet_of_treasures:    { name: { zh: "万宝商船", en: "Fleet of Ten-Thousand Treasures" },  desc: { zh: "「蕃香脂」与「珠链」每件运费降低3金币。", en: "Shipping for Foreign Perfume Oil and Pearl Necklace is 3 gold cheaper per item." } }
 };
 const modName = m => (MODULE_TEXT[m.id] ? pf(MODULE_TEXT[m.id].name) : (m.name || m.id));
 const modDesc = m => (MODULE_TEXT[m.id] ? pf(MODULE_TEXT[m.id].desc) : (m.desc || ''));
 
-/* 服务器把所选福缘以 modifierFlags 形式下发；这里反查出名称用于展示增益 */
+/* Silk Road Charter: the unlock announcement shown at the start of rounds 3/5, sent by the server as charterEvent={id,icon,name,desc} */
+const CHARTER_TEXT = {
+  tier1: {
+    name: { zh: "市舶新政", en: "New Maritime Edict" },
+    desc: { zh: "福建市舶司新政颁布！瓷土、铜矿、青瓷器、紫铜镜加入行情；福州港、高丽港正式开埠；陶匠与铜匠加入劳务市场；新的福缘与战船改装随之而来。",
+            en: "A new edict from the Fujian Maritime Trade Bureau! Porcelain Clay, Copper Ore, Celadon Porcelain and Bronze Mirror enter the market; Fuzhou and Goryeo ports open; Potters and Coppersmiths join the labor market; new Fortunes and ship modules become available." }
+  },
+  tier2: {
+    name: { zh: "万国通商", en: "Ten Thousand Kingdoms Trade" },
+    desc: { zh: "万国通商盛况空前！香料、珍珠、蕃香脂、珠链加入行情；三佛齐港、大食港正式开埠；香料师与珠宝匠加入劳务市场；更多福缘与战船改装随之而来。",
+            en: "Trade opens with ten thousand kingdoms! Spices, Pearls, Foreign Perfume Oil and Pearl Necklaces enter the market; Srivijaya and Dashi ports open; Perfumers and Jewelers join the labor market; more Fortunes and ship modules arrive." }
+  }
+};
+const charterName = c => (CHARTER_TEXT[c && c.id] ? pf(CHARTER_TEXT[c.id].name) : ((c && c.name) || ''));
+const charterDesc = c => (CHARTER_TEXT[c && c.id] ? pf(CHARTER_TEXT[c.id].desc) : ((c && c.desc) || ''));
+
+/* The server sends the chosen Fortune as modifierFlags; this looks the name back up to display the buff */
 const FLAG_LABELS = {
   transport_silk_discount: { icon: "🌬️", id: "silk_wind" },
   transport_flat_discount: { icon: "🌊", id: "favorable_tides" },
@@ -1248,7 +1439,11 @@ const FLAG_LABELS = {
   instant_gold:            { icon: "💰", id: "emergency_loan" },
   income_tax_override:     { icon: "📜", id: "tax_shelter" },
   hemp_price_reduction:    { icon: "🧶", id: "hemp_monopoly" },
-  hire_discount:           { icon: "🎓", id: "master_apprentice" }
+  hire_discount:           { icon: "🎓", id: "master_apprentice" },
+  free_intel:              { icon: "🔮", id: "farsight" },
+  vat_discount:            { icon: "🧾", id: "frontier_tariff_relief" },
+  escort_discount:         { icon: "🛡️", id: "deep_sea_escort_pact" },
+  extra_order:             { icon: "🛍️", id: "merchants_converge" }
 };
 
 const WORKER_TYPES = [
@@ -1260,7 +1455,19 @@ const WORKER_TYPES = [
     tip: { zh: "工资12金币/回合，额外可制作绫罗绸缎", en: "Wage 12 gold/round. Additionally crafts Fine Brocade" } },
   { key: "sachet_maker", icon: "🌸", listKey: "sachetMakers", can: ["香囊"],
     name: { zh: "香囊师", en: "Sachet Maker" },
-    tip: { zh: "工资20金币/回合，唯一可制作香囊的工匠", en: "Wage 20 gold/round. The only artisan who can craft Sachets" } }
+    tip: { zh: "工资20金币/回合，唯一可制作香囊的工匠", en: "Wage 20 gold/round. The only artisan who can craft Sachets" } },
+  { key: "coppersmith", icon: "🪞", listKey: "coppersmiths", can: ["紫铜镜"],
+    name: { zh: "铜匠", en: "Coppersmith" },
+    tip: { zh: "工资12金币/回合，可制作紫铜镜", en: "Wage 12 gold/round. Crafts Bronze Mirrors" } },
+  { key: "potter", icon: "🏺", listKey: "potters", can: ["青瓷器"],
+    name: { zh: "陶匠", en: "Potter" },
+    tip: { zh: "工资14金币/回合，可制作青瓷器", en: "Wage 14 gold/round. Crafts Celadon Porcelain" } },
+  { key: "perfumer", icon: "🧴", listKey: "perfumers", can: ["蕃香脂"],
+    name: { zh: "香料师", en: "Perfumer" },
+    tip: { zh: "工资18金币/回合，唯一可制作蕃香脂的工匠", en: "Wage 18 gold/round. The only artisan who can craft Foreign Perfume Oil" } },
+  { key: "jeweler", icon: "📿", listKey: "jewelers", can: ["珠链"],
+    name: { zh: "珠宝匠", en: "Jeweler" },
+    tip: { zh: "工资24金币/回合，唯一可制作珠链的工匠", en: "Wage 24 gold/round. The only artisan who can craft Pearl Necklaces" } }
 ];
 const wName = key => pf((WORKER_TYPES.find(w => w.key === key) || {}).name) || key;
 
@@ -1268,10 +1475,14 @@ const RECIPE_MATS = {
   "麻衣":     [["麻布", 2]],
   "布衣":     [["麻布", 2], ["丝绸", 1]],
   "绫罗绸缎": [["丝绸", 3]],
-  "香囊":     [["丝绸", 1], ["茶叶", 2]]
+  "香囊":     [["丝绸", 1], ["茶叶", 2]],
+  "紫铜镜":   [["铜矿", 3]],
+  "青瓷器":   [["瓷土", 3]],
+  "蕃香脂":   [["香料", 2], ["丝绸", 1]],
+  "珠链":     [["珍珠", 2], ["丝绸", 1]]
 };
 
-/* 回合内 8 个阶段的元信息（识别优于记忆：阶段名 + 目标 + 操作提示一直可见） */
+/* Metadata for the 8 phases of a round (recognition over recall: phase name + goal + action hint are always visible) */
 const PHASE_FLOW = [
   { key: 0, icon: "⚓", name: { zh: "启航", en: "Set Sail" },
     brief: { zh: "新回合开始，双方确认后抽取福缘。",
@@ -1309,10 +1520,12 @@ function phaseName(key) {
 }
 
 /* ============================================================
-   服务器文本适配层
-   服务器对日志/系统消息输出「规范中文」；语言属于表现层，且同一
-   会话的两名玩家可能使用不同语言，因此翻译必须发生在各自客户端。
-   下表按消息模板逐条映射；未命中的字符串退化为逐名词替换。
+   Server text adaptation layer
+   The server outputs log/system messages in "canonical Chinese"; language belongs
+   to the presentation layer, and the two players in a session may use different
+   languages, so translation must happen on each client. The table below maps
+   message templates one by one; any string that doesn't match falls back to
+   per-noun substitution.
    ============================================================ */
 const SERVER_TEXT_RULES = [
   [/^💰 福缘：获得 (\d+) 金币$/, m => `💰 Fortune: gained ${m[1]} gold`],
@@ -1338,12 +1551,17 @@ const SERVER_TEXT_RULES = [
   [/^❌ 所有工匠都在忙$/, () => `❌ All artisans are busy`],
   [/^⚠️ 工资不足，(\d+)金币$/, m => `⚠️ Cannot cover wages of ${m[1]} gold`],
   [/^⚠️ 维护费不足，破产$/, () => `⚠️ Cannot cover upkeep — bankrupt`],
+  [/^🛡️ 护航舰队已就位$/, () => `🛡️ Escort fleet is already in position`],
+  [/^❌ 需要(\d+)金币才能雇佣护航$/, m => `❌ You need ${m[1]} gold to hire an escort`],
+  [/^🛡️ 雇佣护航，花费(\d+)金币$/, m => `🛡️ Hired an escort for ${m[1]} gold`],
+  [/^🛡️ 护航舰队震慑海盗，本程无损$/, () => `🛡️ Escort fleet deterred pirates — no losses this voyage`],
+  [/^🏴‍☠️ 海盗袭扰，损失(\d+)金币$/, m => `🏴‍☠️ Pirate raid — lost ${m[1]} gold`],
   [/^🤝 互市成功！$/, () => `🤝 Barter complete!`],
-  /* 同步等待提示 */
+  /* Sync waiting hints */
   [/^请点击“准备就绪”以进入工匠管理$/, () => `Click "Ready" to proceed to artisan management`],
   [/^等待对方也点击准备就绪\.\.\.$/, () => `Waiting for your partner to click Ready...`],
   [/^已准备，等待对方点击继续\.\.\.$/, () => `Ready — waiting for your partner to continue...`],
-  /* 系统消息 */
+  /* System messages */
   [/^对方重新开始了游戏，双方进度已重置$/, () => `Your partner restarted the game — both voyages have been reset`],
   [/^需等待对方完成本局后才能重新起航$/, () => `You can set sail again once your partner finishes this game`],
   [/^❌ 对方拒绝了你的互市提案（出 (.+) ⇄ 换 (.+)）$/, m => `❌ Your partner declined your barter offer (give ${lstNames(m[1])} ⇄ get ${lstNames(m[2])})`],
@@ -1352,7 +1570,7 @@ const SERVER_TEXT_RULES = [
   [/^无法建立会话：其中一方已在游戏中$/, () => `Cannot start a session: one of you is already in a game`],
   [/^你还没有游戏伙伴，无法发送消息$/, () => `You don't have a partner yet, so messages can't be sent`],
   [/^对方已离线，无法发送消息$/, () => `Your partner is offline — message not sent`],
-  /* 邀请结果 */
+  /* Invite results */
   [/^无效的邀请对象$/, () => `Invalid invitation target`],
   [/^你已在游戏会话中，无法发出邀请$/, () => `You're already in a game session and can't send invitations`],
   [/^你已向 (.+) 发出邀请，请等待对方回应或超时$/, m => `You've already invited ${m[1]} — wait for a response or timeout`],
@@ -1360,7 +1578,7 @@ const SERVER_TEXT_RULES = [
   [/^(.+) 不在线，无法邀请$/, m => `${m[1]} is offline and can't be invited`],
   [/^(.+) 正在游戏中，无法邀请$/, m => `${m[1]} is in a game and can't be invited`],
   [/^邀请已发送给 (.+)，等待回应（(\d+) 秒内有效）$/, m => `Invitation sent to ${m[1]} — awaiting response (valid for ${m[2]}s)`],
-  /* 注册 / 登录 */
+  /* Register / Login */
   [/^用户名需为 3-20 个字符$/, () => `Username must be 3–20 characters`],
   [/^密码至少 6 位$/, () => `Password must be at least 6 characters`],
   [/^该用户名已被注册$/, () => `That username is already taken`],
@@ -1371,13 +1589,13 @@ const SERVER_TEXT_RULES = [
   [/^请先登录$/, () => `Please log in first`]
 ];
 
-/* 把字符串中的规范名逐一替换为英文（兜底通道） */
+/* Replace canonical names in a string one by one with English (fallback path) */
 function lstNames(s) {
   const out = Object.keys(EN_NAMES).reduce((acc, k) => acc.split(k).join(EN_NAMES[k]), String(s));
   return out.split('、').join(', ');
 }
 
-/* localize server text：英文界面下翻译服务器下发的展示文本 */
+/* localize server text: translates display text sent by the server when the UI is in English */
 function lst(s) {
   if (LANG !== 'en' || !s) return s;
   for (const [re, fn] of SERVER_TEXT_RULES) {
@@ -1386,12 +1604,13 @@ function lst(s) {
   }
   return lstNames(String(s));
 }
-/* 服务器卡片里的复合名词串（如「麻布×2 + 丝绸×1」）按名词逐一翻译 */
+/* Translate compound noun strings from server cards (e.g. "Hemp Cloth×2 + Silk×1") noun by noun */
 const tnames = s => (LANG === 'en' ? lstNames(s) : s);
 
 /* ============================================================
-   语言切换：applyLanguage() 是登录页/大厅/页头等静态界面文案的
-   唯一归属地；动态视图由各 render 函数内的 tr()/pf() 负责。
+   Language switching: applyLanguage() is the single source of truth for static UI
+   text on the login page / lobby / header etc.; dynamic views are handled by
+   tr()/pf() inside each render function.
    ============================================================ */
 function applyLanguage() {
   document.documentElement.lang = LANG === 'en' ? 'en' : 'zh-CN';
@@ -1406,7 +1625,7 @@ function applyLanguage() {
   const langLabel = LANG === 'en' ? '🌐 中文' : '🌐 English';
   const langTitle = LANG === 'en' ? '切换为中文界面 / Switch to Chinese' : 'Switch to English / 切换为英文界面';
 
-  /* 页头 */
+  /* Header */
   set('hdr-subtitle', tr('海上丝绸之路 · 双人联机贸易战略 — 采购 · 互市 · 生产 · 远航',
                          'Maritime Silk Road · 2-Player Co-op Trading — Procure · Barter · Produce · Voyage'));
   set('btn-lang', langLabel, langTitle);
@@ -1414,7 +1633,7 @@ function applyLanguage() {
   set('btn-chat', tr('💬 聊天', '💬 Chat'), tr('与伙伴聊天', 'Chat with your partner'));
   set('btn-logout', tr('🚪 退出', '🚪 Log Out'), tr('退出登录并返回登录页', 'Log out and return to the login page'));
 
-  /* 登录页 */
+  /* Login page */
   set('lg-tagline', tr('海上丝绸之路 · 双人联机贸易战略', 'Maritime Silk Road · 2-Player Co-op Trading Strategy'));
   setPh('login-username', tr('用户名', 'Username'));
   setPh('login-password', tr('密码', 'Password'));
@@ -1430,7 +1649,7 @@ function applyLanguage() {
     `💡 <strong>本作为 PortMasters 2</strong>，引入了税务、工资、双人同步互市等更复杂的机制，<strong>上手门槛较高</strong>。如果是初次接触本系列，建议先体验上一代 <a href="${pm1Url()}" target="_blank" rel="noopener">${pm1Label()}</a> 熟悉基础玩法。`,
     `💡 <strong>This is PortMasters 2</strong> — it adds taxes, wages and synchronized two-captain bartering, so the learning curve is <strong>steeper than the original</strong>. New to the series? Start with <a href="${pm1Url()}" target="_blank" rel="noopener">${pm1Label()}</a> to learn the basics.`));
 
-  /* 大厅 */
+  /* Lobby */
   set('lb-title', tr('🏠 游戏大厅', '🏠 Game Lobby'));
   set('lb-sub', tr(
     `欢迎，<strong>${escapeHtml(currentUser || '')}</strong>！邀请一名在线玩家即可开始<strong>双人共享航程</strong>：<br>双方将始终处于同一回合、同一阶段，并可在互市阶段自由交易、全程互见彼此经营状况。`,
@@ -1441,7 +1660,7 @@ function applyLanguage() {
     `<strong>新船长须知：</strong>PortMasters 2 的经济系统（增值税 / 所得税 / 工资 / 维护费）比一代更复杂。开局后可随时按 <span class="kbd">F1</span> 查看完整手册；若感到吃力，可先游玩 <a href="${pm1Url()}" target="_blank" rel="noopener">${pm1Label()}</a>`,
     `<strong>Note for new captains:</strong> the economy in PortMasters 2 (VAT / income tax / wages / upkeep) is more complex than the original. Press <span class="kbd">F1</span> any time for the full manual — or warm up with <a href="${pm1Url()}" target="_blank" rel="noopener">${pm1Label()}</a>`));
 
-  /* 聊天窗 */
+  /* Chat window */
   set('chat-title', tr(`💬 与 <span id="chat-partner">${escapeHtml(chatPartner || '')}</span> 的船桥通话`,
                        `💬 Bridge call with <span id="chat-partner">${escapeHtml(chatPartner || '')}</span>`));
   set('chat-close-btn', undefined, tr('关闭聊天窗口（Esc）', 'Close chat (Esc)'));
@@ -1460,7 +1679,7 @@ function toggleLang() {
 }
 
 /* ============================================================
-   全局状态
+   Global state
    ============================================================ */
 let ws = null;
 let serverState = null;
@@ -1473,7 +1692,7 @@ let onlineUsers = [];
 let inviteStatus = {};
 
 /* ============================================================
-   通知 / 登录注册
+   Notifications / Login & Registration
    ============================================================ */
 function showNotification(message, isError = false) {
   const notif = document.createElement('div');
@@ -1541,7 +1760,7 @@ function login() {
         currentUser = msg.username;
         document.getElementById('login-overlay').style.display = 'none';
         document.getElementById('lobby-overlay').style.display = 'flex';
-        applyLanguage();   // 大厅欢迎语包含用户名，需在登录后重填
+        applyLanguage();   // the lobby welcome message includes the username, so it needs refilling after login
         setupWebSocketHandlers();
         ws.send(JSON.stringify({ action: "get_online_users" }));
       } else {
@@ -1560,7 +1779,7 @@ function logout() {
 }
 
 /* ============================================================
-   WebSocket 消息处理（协议与服务器保持一致）
+   WebSocket message handling (kept in sync with the server protocol)
    ============================================================ */
 function setupWebSocketHandlers() {
   ws.onmessage = (e) => {
@@ -1683,7 +1902,7 @@ function enterGameView() {
 }
 
 /* ============================================================
-   大厅 / 邀请
+   Lobby / Invites
    ============================================================ */
 function renderOnlineUsers() {
   const list = document.getElementById('online-users-list');
@@ -1755,7 +1974,7 @@ function respondInvite(accept) {
 }
 
 /* ============================================================
-   聊天
+   Chat
    ============================================================ */
 function updateChatSendState() {
   const btn = document.getElementById('chat-send-btn');
@@ -1800,11 +2019,12 @@ function appendChatMessage(from, message, isSent) {
 }
 
 /* ============================================================
-   渲染入口
-   按需重绘：只有与各面板相关的数据真正变化时才重建对应 DOM。
-   全量 innerHTML 重建会清空滚动位置并打断进行中的点击（mousedown
-   与 mouseup 落在不同 DOM 节点上时 click 不触发）——这正是此前
-   「按钮点不动 / 页面跳回顶部」的根因，因此严禁无差别重绘。
+   Render entry point
+   Re-render on demand: only rebuild the DOM for a panel when its underlying data
+   has actually changed. Wholesale innerHTML rebuilds reset scroll position and
+   break in-progress clicks (a click never fires if mousedown and mouseup land on
+   different DOM nodes) — this was the root cause of the earlier "buttons don't
+   respond / page jumps back to top" bugs, so blanket re-renders are forbidden.
    ============================================================ */
 let _lastMyJson = '';
 let _lastPartnerJson = '';
@@ -1828,25 +2048,73 @@ function renderAll(force = false) {
   }
   if (partnerChanged) renderPartner();
   if (myChanged) renderPhase();
-  /* 观战窗口展示伙伴数据：随伙伴状态实时刷新；
-     会话重开（自己不再是破产态）时自动关闭 */
+  /* The spectator window shows the partner's data, refreshing live with their
+     state; it closes automatically once the session restarts and you're no
+     longer bankrupt */
   if (_spectating) {
     if (serverState.yourGame && !serverState.yourGame.bankrupt) closeSpectate();
     else if (partnerChanged) renderSpectate();
   }
 }
 
-/* ---------- 共用：商队状态卡片（自己与伙伴使用同一套组件，便于对照） ---------- */
+/* ---------- Shared: fleet status card (you and your partner use the same component, for easy comparison) ---------- */
 function buffChipsHTML(g) {
   const flags = g.modifierFlags || {};
   const chips = Object.keys(flags)
-    .map(k => FLAG_LABELS[k])
-    .filter(Boolean)
-    .map(f => {
+    .map(k => {
+      /* product_order_bonus is shared by two Fortunes; the payload contains products/pct and is rendered directly from that */
+      if (k === 'product_order_bonus') {
+        const v = flags[k];
+        if (!v || !v.products || !v.products.length) return null;
+        const names = v.products.map(tn).join(tr('、', ', '));
+        const pct = Math.round((v.pct || 0) * 100);
+        const icon = ICONS[v.products[0]] || '💎';
+        return `<span class="chip tip" data-tip="${tr(`${names}订单报酬提高${pct}%`, `${names} orders pay +${pct}% this round`)}">${icon} ${names} +${pct}%</span>`;
+      }
+      const f = FLAG_LABELS[k];
+      if (!f) return null;
       const t = BOON_TEXT[f.id] || {};
       return `<span class="chip tip" data-tip="${pf(t.desc)}">${f.icon} ${pf(t.name)}</span>`;
-    });
+    })
+    .filter(Boolean);
   return chips.length ? chips.join('') : `<span class="muted">${tr('本回合暂无增益', 'No buffs this round')}</span>`;
+}
+
+function environmentBannerHTML(g) {
+  const m = g && g.monsoon_state;
+  if (!m) return '';
+  const ports = (m.rewardPorts || []).map(tn).join(tr('、', ', '));
+  const resource = m.resource ? tn(m.resource) : '';
+  const rewardPct = Math.round(((m.rewardMultiplier || 1) - 1) * 100);
+  const pricePct = Math.round(Math.abs(((m.purchaseMultiplier || 1) - 1) * 100));
+  const riskPct = Math.round((m.pirateRisk || 0) * 100);
+  const priceWord = (m.purchaseMultiplier || 1) < 1 ? tr('降价', 'cheaper') : tr('涨价', 'pricier');
+  return `
+    <div class="environment-banner">
+      <div class="env-icon">${m.icon || '🌦️'}</div>
+      <div class="env-copy">
+        <div class="env-title">${tr('全球环境：', 'Global Environment: ')}${escapeHtml(monsoonName(m))}</div>
+        <div class="env-desc">${escapeHtml(monsoonDesc(m))}</div>
+      </div>
+      <div class="env-tags">
+        <span class="chip green">${tr(`${ports} 订单 +${rewardPct}%`, `${ports} orders +${rewardPct}%`)}</span>
+        <span class="chip amber">${tr(`${resource} ${priceWord} ${pricePct}%`, `${resource} ${priceWord} ${pricePct}%`)}</span>
+        <span class="chip ${g.pirate_immunity ? 'green' : 'amber'}">${g.pirate_immunity ? tr('🛡️ 已护航', '🛡️ Escorted') : tr(`🏴‍☠️ 海盗 ${riskPct}%`, `🏴‍☠️ Pirates ${riskPct}%`)}</span>
+      </div>
+    </div>`;
+}
+
+/* Silk Road Charter announcement: the server sends charterEvent={id,icon,name,desc} on the Set Sail page for rounds 3/5 */
+function charterBannerHTML(charterEvent) {
+  if (!charterEvent) return '';
+  return `
+    <div class="pm-banner" style="margin:14px auto;max-width:640px;text-align:left">
+      <span class="pm-icon">${charterEvent.icon || '🗺️'}</span>
+      <span>
+        <strong>${tr('丝路特许：', 'Silk Road Charter — ')}${escapeHtml(charterName(charterEvent))}</strong><br>
+        ${escapeHtml(charterDesc(charterEvent))}
+      </span>
+    </div>`;
 }
 
 function modulesHTML(g) {
@@ -1865,9 +2133,9 @@ function invListHTML(g) {
     </div>`;
   return `
     <div class="inv-section-title">${tr('原 材 料', 'MATERIALS')}</div>
-    ${RESOURCES.map(row).join('')}
+    ${(g.unlockedResources || RESOURCES).map(row).join('')}
     <div class="inv-section-title">${tr('成 品', 'PRODUCTS')}</div>
-    ${PRODUCTS.map(row).join('')}
+    ${(g.unlockedProducts || PRODUCTS).map(row).join('')}
   `;
 }
 
@@ -1905,6 +2173,10 @@ function crewSectionsHTML(g) {
       ${buffChipsHTML(g)}
     </div>
     <div class="status-section">
+      <h3>${tr('🌦️ 全球环境', '🌦️ Global Environment')}</h3>
+      <div style="font-size:12px;color:var(--ink-soft);line-height:1.55">${(g.monsoon_state && (g.monsoon_state.icon || '🌦️'))} <strong>${escapeHtml(monsoonName(g.monsoon_state || {}))}</strong><br>${escapeHtml(monsoonDesc(g.monsoon_state || {}))}</div>
+    </div>
+    <div class="status-section">
       <h3>${tr('🚢 旗舰状态', '🚢 Flagship')}</h3>
       <div class="stat-row"><span class="tip" data-tip="${tr('每升1级，每单运费永久减5金币，并解锁1个模块槽位', 'Each level permanently cuts shipping by 5 gold per order and unlocks 1 module slot')}">${tr('商船等级', 'Ship level')}</span><span class="stat-value">Lv.${g.shipLevel}</span></div>
       <div class="stat-row"><span class="tip" data-tip="${tr('运费 = max(5, 货物件数×2 − 船级×5 − 福缘减免)', 'Shipping = max(5, items ×2 − level ×5 − fortune discounts)')}">${tr('运费减免', 'Shipping discount')}</span><span class="stat-value">−${g.shipLevel * 5} ${tr('金币/单', 'gold/order')}</span></div>
@@ -1922,7 +2194,7 @@ function crewSectionsHTML(g) {
   `;
 }
 
-/* ---------- 我方面板 ---------- */
+/* ---------- My panel ---------- */
 function renderStatus() {
   const g = serverState.yourGame;
   if (!g) return;
@@ -1963,7 +2235,7 @@ function renderStatus() {
   p.innerHTML = html;
 }
 
-/* ---------- 伙伴面板（彼此状态完全互见） ---------- */
+/* ---------- Partner panel (both players' states are fully visible to each other) ---------- */
 function renderPartner() {
   const p = document.getElementById('partner-panel');
   if (!p) return;
@@ -2009,7 +2281,7 @@ function renderPartner() {
   `;
 }
 
-/* ---------- 阶段舞台 ---------- */
+/* ---------- Phase stage ---------- */
 function stepperHTML(currentKey) {
   const curIdx = (currentKey === 'endgame' || currentKey === 'bankruptcy')
     ? PHASE_FLOW.length
@@ -2069,7 +2341,7 @@ function renderPhase() {
   const p = document.getElementById('phase-panel');
   const g = serverState.yourGame;
   if (!g) return;
-  /* 防御：破产玩家永远停留在破产页，即使服务器下发了其他阶段值 */
+  /* Defensive: a bankrupt player always stays on the bankruptcy page, even if the server sends a different phase value */
   const phase = g.bankrupt ? 'bankruptcy' : g.phase;
   let inner = '';
   switch (phase) {
@@ -2086,16 +2358,16 @@ function renderPhase() {
     default: inner = `<div class="center-block"><div class="hero-title">${tr('⚓ 准备中...', '⚓ Preparing...')}</div></div>`;
   }
 
-  /* 互市表单在重渲染时保留用户已填写的内容（用户自由与控制） */
+  /* The barter form preserves what the user has typed across re-renders (user freedom and control) */
   const formState = captureTradeForm();
   const scrollPos = p.scrollTop;
   p.innerHTML = `<div class="phase-view">${stepperHTML(phase)}${inner}</div>`;
   restoreTradeForm(formState);
-  p.scrollTop = scrollPos;   // 重绘后保持滚动位置，避免页面跳回顶部
+  p.scrollTop = scrollPos;   // preserve scroll position after re-render so the page doesn't jump back to the top
 }
 
-/* ---------- 各阶段视图 ---------- */
-/* 双方确认启航的主按钮：确认后变为等待态，避免误以为没点上 */
+/* ---------- Per-phase views ---------- */
+/* The main "Set Sail" confirm button for both players: after confirming it switches to a waiting state, making it clear the click registered */
 function setSailButtonHTML() {
   const ready = !!serverState.youReady;
   return `
@@ -2107,8 +2379,9 @@ function setSailButtonHTML() {
 
 function welcomeHTML() {
   const g = serverState.yourGame;
-  /* 阶段 0 既是首航欢迎页，也是每程之间的同步闸门：
-     第 2 程起不再回到首页式欢迎页，而是展示「启航 · 结算回顾」过渡页 */
+  /* Phase 0 is both the first-voyage welcome page and the sync gate between
+     rounds: from round 2 onward it no longer shows the home-page-style welcome,
+     but instead a "Set Sail - Settlement Review" transition page */
   if (g.currentRound > 1) return roundStartHTML(g);
   const dismissed = localStorage.getItem('pm2_banner_dismissed') === '1';
   return `
@@ -2116,6 +2389,7 @@ function welcomeHTML() {
       <div class="hero-title">⚓ PortMasters 2 🚢</div>
       <div class="subtitle-text">${tr('海上丝绸之路 · 八大航程 · 与伙伴同船竞航，成为海上霸主！',
         'The Maritime Silk Road · Eight voyages · Race your partner fleet-to-fleet to rule the seas!')}</div>
+      ${environmentBannerHTML(g)}
       ${!dismissed ? `
       <div class="pm-banner">
         <span class="pm-icon">📣</span>
@@ -2145,7 +2419,7 @@ function welcomeHTML() {
   `;
 }
 
-/* 第 N 程（N≥2）启航过渡页：承接上一程的结算回顾，保持航程连续感 */
+/* Round N (N>=2) Set Sail transition page: carries over the previous round's settlement review, keeping a sense of voyage continuity */
 function roundStartHTML(g) {
   const s = g.lastRoundSummary;
   const net = s ? (s.revenue - s.costs - s.incomeTax) : 0;
@@ -2153,6 +2427,8 @@ function roundStartHTML(g) {
   return `
     ${phaseBriefHTML(0)}
     <div class="center-block" style="text-align:center">
+      ${charterBannerHTML(g.charterEvent)}
+      ${environmentBannerHTML(g)}
       <div style="font-size:54px">🌅</div>
       <div class="hero-title">${tr(`第 ${g.currentRound} 程 · 整装启航`, `Round ${g.currentRound} · Ready to Sail`)}</div>
       <div class="subtitle-text">${tr(`航程进度 ${g.currentRound} / ${g.maxRounds} · 与伙伴确认后抽取本程福缘`,
@@ -2183,7 +2459,7 @@ function dismissPmBanner() {
 
 function boonDraftHTML() {
   const g = serverState.yourGame;
-  /* 航海家的罗盘：服务器为每位玩家独立随机抽取4张，双方看到的组合不同 */
+  /* The Navigator's Compass: the server draws 4 cards independently at random for each player, so the two players see different sets */
   const pool = (g.boonChoices && g.boonChoices.length) ? g.boonChoices : BOONS;
   const locked = !!serverState.youReady;
   return `
@@ -2213,9 +2489,12 @@ function purchaseHTML() {
   const discountChips = [];
   if (flags.purchase_discount) discountChips.push(`<span class="chip green">${tr('✨ 商贾魅力：实付约85折', "✨ Merchant's Charm: ~15% off")}</span>`);
   if (flags.hemp_price_reduction) discountChips.push(`<span class="chip green">${tr('🧶 麻布专营：麻布单价−2', '🧶 Hemp Monopoly: −2/unit on Hemp Cloth')}</span>`);
+  if ((g.equippedModules || []).some(m => m.id === 'kiln_cellar')) discountChips.push(`<span class="chip green">${tr('🔥 陶土窖：瓷土、铜矿单价−2', '🔥 Kiln Cellar: −2/unit on Porcelain Clay & Copper Ore')}</span>`);
+  if ((g.equippedModules || []).some(m => m.id === 'foreign_quarter_pass')) discountChips.push(`<span class="chip green">${tr('🪪 蕃坊行会证：香料、珍珠单价−3', '🪪 Foreign Quarter Guild Pass: −3/unit on Spices & Pearls')}</span>`);
 
   return `
     ${phaseBriefHTML(1, discountChips.join(''))}
+    ${environmentBannerHTML(g)}
     ${brokerWhisperHTML(g)}
     <div class="card-grid">
       ${cards.map(card => {
@@ -2255,7 +2534,7 @@ function purchaseHTML() {
   `;
 }
 
-/* 牙行密语面板的折叠状态跨重绘保留 */
+/* The Broker's Whisper panel's collapsed/expanded state is preserved across re-renders */
 let _whisperOpen = true;
 
 function brokerWhisperHTML(g) {
@@ -2263,6 +2542,7 @@ function brokerWhisperHTML(g) {
   const remaining = g.intelRemaining || 0;
   const canBuy = remaining > 0 && g.money >= g.intelCost;
   const hasNetwork = (g.equippedModules || []).some(m => m.id === 'brokers_network');
+  const hasOceanRelay = (g.equippedModules || []).some(m => m.id === 'ocean_relay');
   return `
     <details class="whisper-panel" ${_whisperOpen ? 'open' : ''} ontoggle="_whisperOpen = this.open">
       <summary>
@@ -2270,6 +2550,7 @@ function brokerWhisperHTML(g) {
         <span class="chip amber">${tr(`🔮 花 ${g.intelCost} 金币打探未来需求`, `🔮 ${g.intelCost} gold buys future-demand intel`)}</span>
         ${revealed.length ? `<span class="chip green">${tr(`📜 已获 ${revealed.length} 条线索`, `📜 ${revealed.length} clue${revealed.length > 1 ? 's' : ''} gathered`)}</span>` : ''}
         ${hasNetwork ? `<span class="chip green">${tr('🕵️ 牙行网络已生效', "🕵️ Broker's Network active")}</span>` : ''}
+        ${hasOceanRelay ? `<span class="chip green">${tr('📡 远洋通译已生效', "📡 Ocean-Going Interpreter active")}</span>` : ''}
       </summary>
       <div class="whisper-body">
         <div class="section-hint">
@@ -2280,6 +2561,10 @@ function brokerWhisperHTML(g) {
                  `<strong>🕵️ Broker's Network</strong> equipped: each purchase costs only ${g.intelCost} gold and reveals <strong>2 clues</strong>.`)
             : tr('提示：在船坞安装 <strong>🕵️ 牙行网络</strong> 模块后，每次仅需 2 金币且一次获得 2 条线索。',
                  "Tip: install the <strong>🕵️ Broker's Network</strong> module at the Shipyard to pay only 2 gold and get 2 clues per purchase.")}
+          ${hasOceanRelay
+            ? tr(` 此外，<strong>📡 远洋通译</strong>已生效：每次额外多获得 <strong>1 条</strong>线索（不增加花费）。`,
+                 ` Additionally, <strong>📡 Ocean-Going Interpreter</strong> is active: each purchase reveals <strong>1 extra clue</strong> at no added cost.`)
+            : ''}
         </div>
         <div style="margin:10px 0">
           <button class="btn btn-gold" ${canBuy ? '' : 'disabled'} onclick="sendAction('purchaseIntel')"
@@ -2296,7 +2581,7 @@ function brokerWhisperHTML(g) {
   `;
 }
 
-/* 互市表单状态在重渲染间保留 */
+/* Barter form state is preserved across re-renders */
 function captureTradeForm() {
   const ids = ['sell-type', 'sell-qty', 'buy-type', 'buy-qty'];
   const state = {};
@@ -2326,7 +2611,7 @@ function tradePhaseHTML() {
   const partner = escapeHtml(serverState.partnerName || chatPartner || tr('对方', 'Partner'));
 
   const stockOf = t => t === '金币' ? g.money : (g.inventory[t] || 0);
-  const optionsHTML = ['金币', ...RESOURCES, ...PRODUCTS]
+  const optionsHTML = ['金币', ...(g.unlockedResources || RESOURCES), ...(g.unlockedProducts || PRODUCTS)]
     .map(t => `<option value="${t}">${ICONS[t] || ''} ${tn(t)}${tr(`（我有 ${stockOf(t)}）`, ` (you have ${stockOf(t)})`)}</option>`).join('');
   const sep = tr('、', ', ');
 
@@ -2424,11 +2709,11 @@ function workerMgmtHTML() {
         <div style="display:grid; grid-template-columns:1fr 1fr; gap:20px">
           <div>
             <div class="inv-section-title">${tr('原 材 料', 'MATERIALS')}</div>
-            ${RESOURCES.map(r => `<div class="inv-item"><span class="icon">${ICONS[r]}</span><span class="name">${tn(r)}</span><span class="count">${g.inventory[r] || 0}</span></div>`).join('')}
+            ${(g.unlockedResources || RESOURCES).map(r => `<div class="inv-item"><span class="icon">${ICONS[r]}</span><span class="name">${tn(r)}</span><span class="count">${g.inventory[r] || 0}</span></div>`).join('')}
           </div>
           <div>
             <div class="inv-section-title">${tr('成 品', 'PRODUCTS')}</div>
-            ${PRODUCTS.map(r => `<div class="inv-item"><span class="icon">${ICONS[r]}</span><span class="name">${tn(r)}</span><span class="count">${g.inventory[r] || 0}</span></div>`).join('')}
+            ${(g.unlockedProducts || PRODUCTS).map(r => `<div class="inv-item"><span class="icon">${ICONS[r]}</span><span class="name">${tn(r)}</span><span class="count">${g.inventory[r] || 0}</span></div>`).join('')}
           </div>
         </div>
       </div>
@@ -2442,7 +2727,7 @@ function workerMgmtHTML() {
         </div>
         <table style="width:100%;border-collapse:collapse;font-size:12px;margin:8px 0">
           <tr style="color:var(--ink-faint);text-align:left"><th style="padding:4px">${tr('工匠', 'Artisan')}</th><th>${tr('工资/回合', 'Wage/round')}</th><th>${tr('可制作', 'Crafts')}</th><th></th></tr>
-          ${WORKER_TYPES.map(wt => `
+          ${WORKER_TYPES.filter(wt => !g.unlockedWorkerTypes || g.unlockedWorkerTypes.includes(wt.key)).map(wt => `
             <tr style="border-top:1px solid rgba(148,163,184,.25)">
               <td style="padding:6px 4px;font-weight:700">${wt.icon} ${pf(wt.name)}</td>
               <td>${costOf(wt.key)} 💰${hireDiscount ? ` <s class="muted">${WAGES[wt.key]}</s>` : ''}</td>
@@ -2453,14 +2738,12 @@ function workerMgmtHTML() {
         </table>
       </div>
 
-      ${(g.weavers.length || g.masterWeavers.length || g.sachetMakers.length) ? `
+      ${WORKER_TYPES.some(wt => (g[wt.listKey] || []).length) ? `
         <div class="section-box">
           <h3>${tr('👥 团队任务分配', '👥 Task Assignments')}</h3>
           <div class="section-hint">${tr('为空闲工匠指派生产任务；产出将在<strong>结算阶段</strong>自动入库。解雇空闲工匠需支付一次工资作遣散费。',
             "Assign tasks to idle artisans; output arrives automatically at <strong>Upkeep</strong>. Dismissing an idle artisan costs one wage as severance.")}</div>
-          ${workerListHTML('weaver', g.weavers, ['麻衣', '布衣'])}
-          ${workerListHTML('master', g.masterWeavers, ['麻衣', '布衣', '绫罗绸缎'])}
-          ${workerListHTML('sachet_maker', g.sachetMakers, ['香囊'])}
+          ${WORKER_TYPES.map(wt => workerListHTML(wt.key, g[wt.listKey] || [], wt.can)).join('')}
         </div>
       ` : ''}
 
@@ -2519,21 +2802,27 @@ function ordersHTML() {
   const cards = g.customerCards || [];
   return `
     ${phaseBriefHTML(2)}
+    ${environmentBannerHTML(g)}
     <div class="card-grid">
       ${cards.map(o => {
         const canComplete = o.resources.every(r => (g.inventory[r.type] || 0) >= r.required);
         const completed = g.completedOrders.includes(o.id);
         const est = estimateTransport(g, o.totalItems);
+        const isGolden = o.kind === 'EmperorMandate';
+        const cardClass = `${isGolden ? 'golden-order-card' : ''} ${isGolden && g.currentRound >= 8 ? 'final-mandate' : ''}`.trim();
         return `
-          <div class="card">
+          <div class="card ${cardClass}">
             <div class="card-header">
-              <span>📍 ${tn(o.demandPort)}</span>
+              <span>${isGolden ? tr('👑 皇命金单', '👑 Emperor Mandate') : '📍'} ${isGolden ? `${tn(o.demandPort)} · ${tr('钦定贡令', 'Imperial Commission')}` : tn(o.demandPort)}</span>
               <span style="display:flex;gap:4px">
+                ${isGolden ? `<span class="card-tag golden" data-particle-hook="golden-order">${tr('⭐ 黄金订单', '⭐ Golden Order')}</span>` : ''}
                 ${o.fromIntel ? `<span class="card-tag" style="background:rgba(245,158,11,.2);color:#92400e" title="${tr('这张订单由你购买的牙行密语兑现而来', "This order materialized from a Broker's Whisper you purchased")}">${tr('🗣️ 密语应验', '🗣️ Whisper Fulfilled')}</span>` : ''}
                 <span class="card-tag ${o.isProductOrder ? 'product' : ''}">${o.isProductOrder ? tr('成品需求', 'Products Wanted') : tr('原料需求', 'Materials Wanted')}</span>
               </span>
             </div>
             <div class="card-body">
+              ${isGolden ? `<div class="section-hint" style="color:#92400e">${tr('帝国使节只在关键航程现身。提前囤好指定货物，可换取足以改写本局的报酬。',
+                'Imperial envoys appear only at milestone voyages. Hoard the requested goods early for a run-defining payout.')}</div>` : ''}
               ${o.resources.map(r => {
                 const has = (g.inventory[r.type] || 0) >= r.required;
                 return `
@@ -2573,8 +2862,13 @@ function maintenanceHTML() {
   const g = serverState.yourGame;
   const cost = g.fixedCost + (g.maintenancePenalty || 0);
   const safe = g.money >= cost;
+  const m = g.monsoon_state || {};
+  const riskPct = Math.round((m.pirateRisk || 0) * 100);
+  const escortCost = g.escortCost || 10;
+  const canEscort = !g.pirate_immunity && g.money >= escortCost;
   return `
     ${phaseBriefHTML(3)}
+    ${environmentBannerHTML(g)}
     <div class="center-block">
       <div class="section-box" style="background:linear-gradient(135deg,rgba(52,211,153,.12),rgba(13,148,136,.08))">
         <h3>${tr('✅ 已自动完成', '✅ Handled Automatically')}</h3>
@@ -2586,6 +2880,18 @@ function maintenanceHTML() {
         <div class="stat-row" style="font-size:14px"><span>${tr('当前现金', 'Gold on hand')}</span><strong style="color:${safe ? '#059669' : '#e11d48'}">${g.money} ${tr('金币', 'gold')}</strong></div>
         ${!safe ? `<div style="background:var(--grad-danger);color:#fff;border-radius:10px;padding:8px 12px;font-size:12px;margin-top:8px;font-weight:700">${tr('🚨 现金不足以支付维护费——支付后将破产出局！', "🚨 You can't cover the upkeep — paying it will bankrupt your fleet!")}</div>` : ''}
         <div class="section-hint" style="margin-top:8px">${tr('支付维护费后还将按本回合净利润缴纳约10%所得税（持「免税令」福缘时为5%）。', "After upkeep, ~10% income tax is levied on this round's net profit (5% with the Tax Exemption fortune).")}</div>
+      </div>
+      <div class="section-box">
+        <h3>${tr('🛡️ 海盗反制：雇佣护航', '🛡️ Pirate Counterplay: Hire Escort')}</h3>
+        <div class="section-hint">
+          ${tr(`当前环境海盗袭扰概率为 <strong>${riskPct}%</strong>，若触发将损失至多 ${m.pirateLoss || 0} 金币。雇佣护航可完全免疫本次结算的海盗 RNG。`,
+               `Current pirate raid chance is <strong>${riskPct}%</strong>; a raid can cost up to ${m.pirateLoss || 0} gold. Hiring an escort fully neutralizes pirate RNG for this upkeep.`)}
+        </div>
+        <button class="btn ${g.pirate_immunity ? 'btn-grey' : 'btn-shield'}" ${g.pirate_immunity || !canEscort ? 'disabled' : ''}
+          onclick="sendAction('hireEscort')"
+          title="${g.pirate_immunity ? tr('本程已获得护航保护', 'Escort protection is already active') : (canEscort ? tr('支付金币，免疫本次结算的海盗事件', 'Pay gold to prevent pirate events this upkeep') : tr('现金不足，无法雇佣护航', 'Not enough gold to hire an escort'))}">
+          ${g.pirate_immunity ? tr('🛡️ 护航已就位', '🛡️ Escort Active') : tr(`🛡️ 雇佣护航（${escortCost}💰）`, `🛡️ Hire Escort (${escortCost}💰)`)}
+        </button>
       </div>
       <div style="text-align:center">
         <button class="btn btn-warning btn-xl" onclick="sendAction('doMaintenance')" title="${tr('支付维护费并结束本回合结算', "Pay the upkeep and finish this round's settlement")}">${tr('💸 支付维护费', '💸 Pay Upkeep')}<span class="btn-sub">${tr('双方完成后进入船坞', 'Shipyard opens when both have paid')}</span></button>
@@ -2669,11 +2975,13 @@ function moduleDraftHTML(g, draft, slotsFull) {
 }
 
 /* ============================================================
-   观战窗口
-   破产玩家的观战不再占用主舞台（原先把侧栏组件拉伸成一条长列表，
-   且必须在「破产页 ⇄ 观战页」之间切换）。现在它是一扇独立的悬浮
-   窗口：手动开关、双栏布局、随伙伴状态实时刷新；破产结算页始终
-   留在主舞台上。
+   Spectator window
+   A bankrupt player's spectating no longer takes over the main stage (previously
+   the sidebar component was stretched into one long list, and players had to
+   toggle between the "bankruptcy page" and "spectator page"). Now it's a separate
+   floating window: manually opened/closed, two-column layout, refreshing live with
+   the partner's state; the bankruptcy settlement page always stays on the main
+   stage.
    ============================================================ */
 let _spectating = false;
 
@@ -2805,7 +3113,7 @@ function confirmRestart() {
   sendAction('restart');
 }
 
-/* ---------- 底部操作栏 ---------- */
+/* ---------- Bottom action bar ---------- */
 function renderControls() {
   const g = serverState && serverState.yourGame;
   const c = document.getElementById('control-panel');
@@ -2882,28 +3190,30 @@ function sendAction(action, payload = {}) {
 }
 
 /* ============================================================
-   游戏手册（分页式详尽文档） & 新手引导
+   Game manual (paginated, in-depth documentation) & onboarding tour
    ============================================================ */
 const MANUAL_TABS_I18N = {
   zh: [
-    { id: 'start',   label: '🚀 快速上手' },
-    { id: 'flow',    label: '🔄 回合流程' },
-    { id: 'economy', label: '💰 经济与税务' },
-    { id: 'workers', label: '👥 工匠与生产' },
-    { id: 'trade',   label: '🤝 互市与联机' },
-    { id: 'boons',   label: '🍀 福缘图鉴' },
-    { id: 'ship',    label: '🚢 船坞升级' },
-    { id: 'faq',     label: '❓ 常见问题' }
+    { id: 'start',     label: '🚀 快速上手' },
+    { id: 'flow',      label: '🔄 回合流程' },
+    { id: 'economy',   label: '💰 经济与税务' },
+    { id: 'workers',   label: '👥 工匠与生产' },
+    { id: 'trade',     label: '🤝 互市与联机' },
+    { id: 'boons',     label: '🍀 福缘图鉴' },
+    { id: 'ship',      label: '🚢 船坞升级' },
+    { id: 'expansion', label: '🗺️ 拓展航线' },
+    { id: 'faq',       label: '❓ 常见问题' }
   ],
   en: [
-    { id: 'start',   label: '🚀 Quick Start' },
-    { id: 'flow',    label: '🔄 Round Flow' },
-    { id: 'economy', label: '💰 Economy & Taxes' },
-    { id: 'workers', label: '👥 Artisans & Crafting' },
-    { id: 'trade',   label: '🤝 Barter & Online' },
-    { id: 'boons',   label: '🍀 Fortune Codex' },
-    { id: 'ship',    label: '🚢 Ship Upgrades' },
-    { id: 'faq',     label: '❓ FAQ' }
+    { id: 'start',     label: '🚀 Quick Start' },
+    { id: 'flow',      label: '🔄 Round Flow' },
+    { id: 'economy',   label: '💰 Economy & Taxes' },
+    { id: 'workers',   label: '👥 Artisans & Crafting' },
+    { id: 'trade',     label: '🤝 Barter & Online' },
+    { id: 'boons',     label: '🍀 Fortune Codex' },
+    { id: 'ship',      label: '🚢 Ship Upgrades' },
+    { id: 'expansion', label: '🗺️ Expansion Routes' },
+    { id: 'faq',       label: '❓ FAQ' }
   ]
 };
 const manualTabs = () => MANUAL_TABS_I18N[LANG] || MANUAL_TABS_I18N.zh;
@@ -2915,7 +3225,7 @@ const manualContentZh = () => ({
     <h4>🧭 第一程怎么玩（推荐路线）</h4>
     <ol>
       <li><strong>福缘</strong>：第一程建议选「紧急钱庄」（+40金币）或「商贾魅力」（采购85折），缓解开局现金压力。</li>
-      <li><strong>采购</strong>：优先买便宜的麻布、丝绸——它们是生产原料。注意给工资和 15 金币维护费留出现金。</li>
+      <li><strong>采购</strong>：优先买便宜的麻布、丝绸，它们是生产原料。注意给工资和 15 金币维护费留出现金。</li>
       <li><strong>互市</strong>：开局可与伙伴互通有无，比如用富余茶叶换对方丝绸。</li>
       <li><strong>工匠</strong>：先雇 1 名织女（8金币/回合）做麻衣或布衣，控制工资规模。</li>
       <li><strong>贸易</strong>：优先交付「✅ 库存齐全」且报酬高于运费的订单。</li>
@@ -2986,7 +3296,7 @@ const manualContentZh = () => ({
     <ul>
       <li>分配任务时<strong>立即扣除材料</strong>；成品在本回合<strong>结算阶段</strong>入库，下回合才能卖。</li>
       <li>每名工匠每回合只能接一个任务；普通工匠产 1 件，<strong>熟练⭐</strong>（累计产出≥2件后自动晋升）产 2 件。</li>
-      <li>工资在结算阶段自动支付——<strong>现金不足直接破产</strong>，扩张团队前先算账。</li>
+      <li>工资在结算阶段自动支付，<strong>现金不足会直接破产</strong>，扩张团队前请先算好账。</li>
       <li>解雇空闲工匠需支付一次工资作遣散费；生产中的工匠不能解雇。</li>
     </ul>
   `,
@@ -2996,7 +3306,7 @@ const manualContentZh = () => ({
       <li>发布订单：「我出售 A×n，换取 B×m」，其中 A、B 可以是任意原料、成品或金币。</li>
       <li>对方可<strong>接受</strong>（双方资源即时互换）或<strong>拒绝</strong>（订单作废）。任一方资源不足时交易不会成立。</li>
       <li>双方都点击「✅ 准备就绪」后进入工匠管理；未成交订单自动作废。</li>
-      <li>右侧伙伴面板实时展示对方的存款、声望、库存、工匠与增益——<strong>看准对方缺什么再开价</strong>。</li>
+      <li>右侧伙伴面板实时展示对方的存款、声望、库存、工匠与增益，<strong>看准对方缺什么再开价</strong>。</li>
     </ul>
     <h4>🌐 联机机制</h4>
     <ul>
@@ -3019,7 +3329,84 @@ const manualContentZh = () => ({
       <tr><td>📜 免税令</td><td>所得税率降至 5%</td><td>预计本回合利润很高</td></tr>
       <tr><td>🧶 麻布专营</td><td>麻布采购单价 −2 金币</td><td>主打麻衣/布衣生产线</td></tr>
       <tr><td>🎓 学徒传承</td><td>雇佣工资减半</td><td>本回合计划扩编工匠团队</td></tr>
+      <tr><td>🔮 千里眼<br><span class="muted">市舶新政 · 第3程起</span></td><td>本回合免费获得 1 条牙行密语线索</td><td>想提前锁定贸易阶段订单</td></tr>
+      <tr><td>🏮 陶铜联号<br><span class="muted">市舶新政 · 第3程起</span></td><td>本回合「青瓷器」与「紫铜镜」订单报酬 +15%</td><td>库存中已有大量青瓷器/紫铜镜待交付</td></tr>
+      <tr><td>🧾 拓商减负<br><span class="muted">市舶新政 · 第3程起</span></td><td>本回合交付成品订单的增值税减半</td><td>本回合计划大量交付成品</td></tr>
+      <tr><td>💎 蕃国奇珍<br><span class="muted">万国通商 · 第5程起</span></td><td>本回合「蕃香脂」与「珠链」订单报酬 +15%</td><td>库存中已有大量蕃香脂/珠链待交付</td></tr>
+      <tr><td>🛡️ 远洋护航<br><span class="muted">万国通商 · 第5程起</span></td><td>本回合雇佣护航费用减半，海盗风险减半</td><td>季风海盗风险较高时</td></tr>
+      <tr><td>🛍️ 万商云集<br><span class="muted">万国通商 · 第5程起</span></td><td>本回合贸易阶段额外出现 1 张订单</td><td>想要更多交付机会</td></tr>
     </table>
+  `,
+  expansion: `
+    <h4>🗺️ 丝路特许：分批解锁</h4>
+    <p>第 1-2 程的玩法与最初版本完全一致，包含 3 种原料、4 种成品、3 类工匠、5 座港口。从<strong>第 3 程</strong>起，「市舶新政」颁布；从<strong>第 5 程</strong>起，「万国通商」开启。两批新内容会分别加入原料、成品、港口、工匠、福缘、战船改装与季风的可选池，航路越往后，棋盘也就越宽。</p>
+    <table>
+      <tr><th>批次</th><th>解锁时机</th><th>新增内容概览</th></tr>
+      <tr><td>🗺️ 市舶新政</td><td>第 3 程起</td><td>瓷土、铜矿、紫铜镜、青瓷器；福州港、高丽港；铜匠、陶匠；3 福缘 + 3 战船改装 + 2 季风</td></tr>
+      <tr><td>🌏 万国通商</td><td>第 5 程起</td><td>香料、珍珠、蕃香脂、珠链；三佛齐港、大食港；香料师、珠宝匠；3 福缘 + 3 战船改装 + 2 季风</td></tr>
+    </table>
+
+    <h4>📦 新增原料</h4>
+    <table>
+      <tr><th>原料</th><th>解锁批次</th><th>特产港</th><th>参考单价</th></tr>
+      <tr><td>🧱 瓷土</td><td>市舶新政</td><td>泉州港、福州港</td><td>8 - 12</td></tr>
+      <tr><td>⛏️ 铜矿</td><td>市舶新政</td><td>广州港、高丽港</td><td>10 - 15</td></tr>
+      <tr><td>🌶️ 香料</td><td>万国通商</td><td>三佛齐港、大食港</td><td>14 - 20</td></tr>
+      <tr><td>🦪 珍珠</td><td>万国通商</td><td>广州港、三佛齐港</td><td>16 - 24</td></tr>
+    </table>
+
+    <h4>🏺 新增成品</h4>
+    <table>
+      <tr><th>成品</th><th>解锁批次</th><th>所需材料</th><th>基准产值</th><th>市价区间</th><th>制作工匠</th></tr>
+      <tr><td>🪞 紫铜镜</td><td>市舶新政</td><td>铜矿×3</td><td>45</td><td>55 - 72</td><td>铜匠</td></tr>
+      <tr><td>🏺 青瓷器</td><td>市舶新政</td><td>瓷土×3</td><td>65</td><td>78 - 100</td><td>陶匠</td></tr>
+      <tr><td>🧴 蕃香脂</td><td>万国通商</td><td>香料×2 + 丝绸×1</td><td>85</td><td>100 - 130</td><td>香料师</td></tr>
+      <tr><td>📿 珠链</td><td>万国通商</td><td>珍珠×2 + 丝绸×1</td><td>105</td><td>125 - 160</td><td>珠宝匠</td></tr>
+    </table>
+
+    <h4>👷 新增工匠</h4>
+    <table>
+      <tr><th>工匠</th><th>解锁批次</th><th>工资/回合</th><th>可制作</th></tr>
+      <tr><td>🪞 铜匠</td><td>市舶新政</td><td>12 金币</td><td>紫铜镜</td></tr>
+      <tr><td>🏺 陶匠</td><td>市舶新政</td><td>14 金币</td><td>青瓷器</td></tr>
+      <tr><td>🧴 香料师</td><td>万国通商</td><td>18 金币</td><td>蕃香脂（唯一来源）</td></tr>
+      <tr><td>📿 珠宝匠</td><td>万国通商</td><td>24 金币</td><td>珠链（唯一来源）</td></tr>
+    </table>
+
+    <h4>⚓ 新增港口</h4>
+    <table>
+      <tr><th>港口</th><th>解锁批次</th><th>特色</th></tr>
+      <tr><td>福州港</td><td>市舶新政</td><td>瓷土与青瓷器的重要产地</td></tr>
+      <tr><td>高丽港</td><td>市舶新政</td><td>跨海贸易枢纽，铜矿的主要来源</td></tr>
+      <tr><td>三佛齐港</td><td>万国通商</td><td>南洋香料与珍珠的转运枢纽</td></tr>
+      <tr><td>大食港</td><td>万国通商</td><td>遥远的西方市场，香料与珍珠制品的高价买家</td></tr>
+    </table>
+
+    <h4>🌬️ 新增季风（贸易风）</h4>
+    <p>除原有的「春潮顺流」「盛夏季风」「秋汛乱流」「冬海封锁」外，新增 4 种季风状态。第 3 程起，每个"季节"（每 2 回合一变）将从<strong>当时已解锁的季风池中随机抽取</strong>，不再是固定的四季循环。不过第 1-2 程仍固定为「春潮顺流」，与最初版本完全一致。</p>
+    <table>
+      <tr><th>季风</th><th>解锁批次</th><th>效果概要</th></tr>
+      <tr><td>🌫️ 闽江窑烟</td><td>市舶新政</td><td>福州港、泉州港订单报酬提高；瓷土采购价降低；海盗风险中等</td></tr>
+      <tr><td>🌅 高丽晓航</td><td>市舶新政</td><td>高丽港、广州港订单报酬提高；铜矿采购价降低；海盗风险较高</td></tr>
+      <tr><td>🌴 三佛齐香风</td><td>万国通商</td><td>三佛齐港、大食港订单报酬提高；香料采购价降低；海盗风险较高</td></tr>
+      <tr><td>🌙 大食珠月</td><td>万国通商</td><td>大食港、三佛齐港订单报酬大幅提高；珍珠采购价降低；海盗风险最高</td></tr>
+    </table>
+
+    <h4>🔧 新增战船改装</h4>
+    <table>
+      <tr><th>改装</th><th>解锁批次</th><th>效果</th></tr>
+      <tr><td>🎫 市舶司令牌</td><td>市舶新政</td><td>新航线货品（瓷土、铜矿及其成品）订单收入 +10%</td></tr>
+      <tr><td>🔥 陶土窖</td><td>市舶新政</td><td>瓷土与铜矿采购单价各降低 2 金币</td></tr>
+      <tr><td>📡 远洋通译</td><td>市舶新政</td><td>牙行密语每次额外显示 1 条线索（不增加花费）</td></tr>
+      <tr><td>🪪 蕃坊行会证</td><td>万国通商</td><td>香料与珍珠采购单价各降低 3 金币</td></tr>
+      <tr><td>🧿 波斯穹顶罗盘</td><td>万国通商</td><td>海盗风险降低 30%</td></tr>
+      <tr><td>⛵ 万宝商船</td><td>万国通商</td><td>「蕃香脂」与「珠链」每件运费降低 3 金币</td></tr>
+    </table>
+
+    <div class="pm-banner" style="margin-top:10px">
+      <span class="pm-icon">🗺️</span>
+      <span>这些新内容会在<strong>「启航」</strong>页以横幅公告的形式出现，记得留意第 3 程与第 5 程开局时的提示！</span>
+    </div>
   `,
   ship: `
     <h4>🚢 商船升级（船坞阶段）</h4>
@@ -3038,12 +3425,12 @@ const manualContentZh = () => ({
   faq: `
     <h4>❓ 常见问题</h4>
     <ul>
-      <li><strong>点了按钮没反应 / 一直在等待？</strong>——大概率在等对方确认。看底部「双方就绪 n/2」，并用 💬 聊天催一下伙伴。</li>
-      <li><strong>材料明明够却无法分配生产？</strong>——可能所有工匠都已有任务；每名工匠每回合仅能接一个任务。</li>
-      <li><strong>为什么突然破产了？</strong>——结算阶段现金不足以支付工资或维护费。扩编工匠前，先看左侧「⚠️ 本回合应付款项」。</li>
-      <li><strong>破产后还能玩吗？</strong>——本局出局，但可点「👀 观战伙伴」实时围观对方航行，也不会阻塞对方；等伙伴结束后点「重新起航」即可同开新局。</li>
-      <li><strong>对方掉线怎么办？</strong>——会话保留在服务器，对方重新登录即恢复；期间无法聊天和互市成交。</li>
-      <li><strong>声望（信誉值）是什么？</strong>——每笔订单「报酬 − 运费」的累计，是最终评级唯一依据，不会被消费扣减。</li>
+      <li><strong>点了按钮没反应，或者一直在等待？</strong> 大概率是在等对方确认。看底部「双方就绪 n/2」，并用 💬 聊天催一下伙伴。</li>
+      <li><strong>材料明明够却无法分配生产？</strong> 可能所有工匠都已经有任务在身，每名工匠每回合只能接一个任务。</li>
+      <li><strong>为什么突然破产了？</strong> 因为结算阶段的现金不够支付工资或维护费。扩编工匠前，先看看左侧「⚠️ 本回合应付款项」。</li>
+      <li><strong>破产后还能玩吗？</strong> 本局确实是出局了，不过可以点「👀 观战伙伴」实时围观对方航行，也不会拖慢对方进度；等伙伴结束后点「重新起航」就能一起开新局。</li>
+      <li><strong>对方掉线怎么办？</strong> 会话会保留在服务器上，对方重新登录就能恢复；期间暂时无法聊天和互市成交。</li>
+      <li><strong>声望（信誉值）是什么？</strong> 它是每笔订单「报酬减去运费」后的累计金额，是最终评级的唯一依据，不会因为花钱而减少。</li>
     </ul>
     <h4>⌨️ 快捷键</h4>
     <ul>
@@ -3063,21 +3450,21 @@ const manualContentEn = () => ({
     <h4>🧭 Your First Voyage (recommended route)</h4>
     <ol>
       <li><strong>Fortune</strong>: in round 1, Emergency Loan (+40 gold) or Merchant's Charm (15% off purchases) eases the early cash crunch.</li>
-      <li><strong>Procure</strong>: buy cheap Hemp Cloth and Silk — they're your crafting inputs. Leave cash for wages and the 15-gold upkeep.</li>
-      <li><strong>Barter</strong>: trade surpluses with your partner early — e.g. spare Tea for their Silk.</li>
+      <li><strong>Procure</strong>: buy cheap Hemp Cloth and Silk, since they're your crafting inputs. Leave cash for wages and the 15-gold upkeep.</li>
+      <li><strong>Barter</strong>: trade surpluses with your partner early, for example spare Tea for their Silk.</li>
       <li><strong>Artisans</strong>: hire 1 Weaver (8 gold/round) for Hemp Garb or Cloth Tunics; keep the payroll small.</li>
       <li><strong>Trade</strong>: deliver orders marked ✅ in-stock whose reward beats the shipping cost.</li>
       <li><strong>Upkeep / Shipyard</strong>: pay upkeep; only upgrade the ship once cash is comfortable.</li>
     </ol>
     <h4>⚖️ Core Principles</h4>
     <ul>
-      <li><strong>Cash flow first</strong>: failing to pay wages + upkeep means instant bankruptcy — far worse than earning a little less.</li>
+      <li><strong>Cash flow first</strong>: failing to pay wages and upkeep means instant bankruptcy, which is far worse than earning a little less.</li>
       <li><strong>Products beat raw goods</strong>: a Sachet has a base value of 80, while flipping raw materials nets single digits.</li>
-      <li><strong>Stay in sync</strong>: every phase needs both captains to confirm — use chat (💬) to keep the pace.</li>
+      <li><strong>Stay in sync</strong>: every phase needs both captains to confirm, so use chat (💬) to keep the pace.</li>
     </ul>
     <div class="pm-banner" style="margin-top:10px">
       <span class="pm-icon">🧭</span>
-      <span><strong>This is PortMasters 2</strong> — the learning curve is steep. If it feels overwhelming, warm up with
+      <span><strong>This is PortMasters 2</strong>, and the learning curve is steep. If it feels overwhelming, warm up with
       <a href="${PM1_URLS.en}" target="_blank" rel="noopener">PortMasters 1 →</a> and come back.</span>
     </div>
   `,
@@ -3103,16 +3490,16 @@ const manualContentEn = () => ({
       <tr><td>📦 Shipping</td><td>max(5, items ×2 − ship level ×5 − fortune discounts)</td><td>On every order delivery</td></tr>
       <tr><td>🧾 VAT</td><td>(sale price − avg. material cost − labor) × 5%</td><td>Auto-deducted on <strong>product</strong> orders</td></tr>
       <tr><td>📜 Income tax</td><td>Round net profit × 10% (5% with Tax Exemption)</td><td>Auto-deducted at round end</td></tr>
-      <tr><td>🔧 Upkeep</td><td>Flat 15 gold/round</td><td>Paid manually at Upkeep — <strong>fail and you're bankrupt</strong></td></tr>
+      <tr><td>🔧 Upkeep</td><td>Flat 15 gold/round</td><td>Paid manually at Upkeep; <strong>failing means bankruptcy</strong></td></tr>
     </table>
     <h4>💰 Income Sources</h4>
     <ul>
       <li><strong>Material orders</strong>: reward = demand ×5 + 10–25 variance; low effort, thin margins.</li>
-      <li><strong>Product orders</strong>: settled at market price (Hemp Garb 30–42 / Cloth Tunic 50–65 / Fine Brocade 70–90 / Sachet 95–120) — your main profit source even after VAT.</li>
+      <li><strong>Product orders</strong>: settled at market price (Hemp Garb 30–42 / Cloth Tunic 50–65 / Fine Brocade 70–90 / Sachet 95–120), and remain your main profit source even after VAT.</li>
       <li><strong>Barter</strong>: strike good deals with your partner to cover each other's gaps.</li>
     </ul>
     <h4>📈 Buying Tip</h4>
-    <p>Every material has home ports (Hemp Cloth: Quanzhou/Ningbo; Silk: Hangzhou/Yangzhou; Tea: Guangzhou/Quanzhou) where unit prices run about 1 gold lower. Ports and prices are printed on each supply card — compare before you buy.</p>
+    <p>Every material has home ports (Hemp Cloth: Quanzhou/Ningbo; Silk: Hangzhou/Yangzhou; Tea: Guangzhou/Quanzhou) where unit prices run about 1 gold lower. Ports and prices are printed on each supply card, so compare before you buy.</p>
   `,
   workers: `
     <h4>👥 The Three Artisans</h4>
@@ -3134,7 +3521,7 @@ const manualContentEn = () => ({
     <ul>
       <li>Assigning a task <strong>consumes materials immediately</strong>; the product arrives at <strong>Upkeep</strong> and can be sold from the next round.</li>
       <li>Each artisan takes one task per round; regular artisans make 1 item, <strong>skilled ⭐</strong> ones (auto-promoted after 2 lifetime items) make 2.</li>
-      <li>Wages are auto-paid at Upkeep — <strong>running out of cash means bankruptcy</strong>, so do the math before expanding.</li>
+      <li>Wages are auto-paid at Upkeep, so <strong>running out of cash means bankruptcy</strong>; do the math before expanding.</li>
       <li>Dismissing an idle artisan costs one wage as severance; busy artisans can't be dismissed.</li>
     </ul>
   `,
@@ -3144,19 +3531,19 @@ const manualContentEn = () => ({
       <li>Post an offer: "I give A×n for B×m", where A and B can be any material, product, or gold.</li>
       <li>Your partner can <strong>accept</strong> (instant swap) or <strong>decline</strong> (offer voided). Trades fail safely if either side lacks the resources.</li>
       <li>Once both captains click "✅ Ready", the artisan phase begins; unaccepted offers expire.</li>
-      <li>The right-hand panel shows your partner's gold, renown, stock, artisans and buffs in real time — <strong>see what they need before naming your price</strong>.</li>
+      <li>The right-hand panel shows your partner's gold, renown, stock, artisans and buffs in real time, so <strong>see what they need before naming your price</strong>.</li>
     </ul>
     <h4>🌐 Online Mechanics</h4>
     <ul>
       <li><strong>Invitations</strong>: invite any online player from the lobby; one invite per minute, 60-second expiry.</li>
       <li><strong>Sync</strong>: both captains are always on the same round and phase; every phase needs both to confirm.</li>
-      <li><strong>Reconnection</strong>: sessions live on the server — log back in to resume. The session is recycled only when both players are offline.</li>
+      <li><strong>Reconnection</strong>: sessions live on the server, so log back in to resume. The session is recycled only when both players are offline.</li>
       <li><strong>Chat</strong>: hit 💬 in the header to talk (disabled while your partner is offline).</li>
       <li><strong>Restart</strong>: once both games have ended (finished or bankrupt), either captain can reset for a new run.</li>
     </ul>
   `,
   boons: `
-    <h4>🍀 Fortune Codex (the Navigator's Compass draws 4 at random each round — each captain gets a different set; effects last one round)</h4>
+    <h4>🍀 Fortune Codex (the Navigator's Compass draws 4 at random each round, with each captain getting a different set; effects last one round)</h4>
     <table>
       <tr><th>Fortune</th><th>Effect</th><th>Best moment</th></tr>
       <tr><td>🌬️ Silk Road Tailwind</td><td>Silk & product shipping halved</td><td>Delivering many product orders this round</td></tr>
@@ -3167,7 +3554,84 @@ const manualContentEn = () => ({
       <tr><td>📜 Tax Exemption</td><td>Income tax drops to 5%</td><td>Expecting big profits this round</td></tr>
       <tr><td>🧶 Hemp Monopoly</td><td>Hemp Cloth −2 gold per unit</td><td>Running a garb/tunic production line</td></tr>
       <tr><td>🎓 Apprentice Legacy</td><td>Hiring wages halved</td><td>Expanding the team this round</td></tr>
+      <tr><td>🔮 Farsight<br><span class="muted">New Maritime Edict · Round 3+</span></td><td>Gain 1 free Broker's Whisper clue this round</td><td>Want to lock in a Trade-phase order early</td></tr>
+      <tr><td>🏮 Porcelain & Bronze Consortium<br><span class="muted">New Maritime Edict · Round 3+</span></td><td>Celadon Porcelain and Bronze Mirror orders pay +15% this round</td><td>Stockpiled Celadon Porcelain/Bronze Mirror ready to deliver</td></tr>
+      <tr><td>🧾 Frontier Tariff Relief<br><span class="muted">New Maritime Edict · Round 3+</span></td><td>VAT on finished-goods deliveries is halved this round</td><td>Planning to deliver lots of products this round</td></tr>
+      <tr><td>💎 Treasures from Afar<br><span class="muted">Ten Thousand Kingdoms Trade · Round 5+</span></td><td>Foreign Perfume Oil and Pearl Necklace orders pay +15% this round</td><td>Stockpiled Foreign Perfume Oil/Pearl Necklace ready to deliver</td></tr>
+      <tr><td>🛡️ Deep-Sea Escort Pact<br><span class="muted">Ten Thousand Kingdoms Trade · Round 5+</span></td><td>Escort hiring costs half price and pirate risk is halved this round</td><td>When the trade wind's pirate risk is high</td></tr>
+      <tr><td>🛍️ Merchants Converge<br><span class="muted">Ten Thousand Kingdoms Trade · Round 5+</span></td><td>1 extra order appears in the Trade phase this round</td><td>Want more delivery opportunities</td></tr>
     </table>
+  `,
+  expansion: `
+    <h4>🗺️ Silk Road Charter: Phased Unlocks</h4>
+    <p>Rounds 1-2 play exactly like the original release, with 3 raw materials, 4 products, 3 artisan types and 5 ports. From <strong>Round 3</strong>, the "New Maritime Edict" takes effect; from <strong>Round 5</strong>, "Ten Thousand Kingdoms Trade" opens. Each wave adds new resources, products, ports, artisans, fortunes, ship modules and trade winds to the pools you draw from, so the later the voyage, the wider the board.</p>
+    <table>
+      <tr><th>Wave</th><th>Unlocks at</th><th>What's added</th></tr>
+      <tr><td>🗺️ New Maritime Edict</td><td>Round 3</td><td>Porcelain Clay, Copper Ore, Bronze Mirror, Celadon Porcelain; Fuzhou, Goryeo; Coppersmith, Potter; 3 Fortunes + 3 ship modules + 2 trade winds</td></tr>
+      <tr><td>🌏 Ten Thousand Kingdoms Trade</td><td>Round 5</td><td>Spices, Pearls, Foreign Perfume Oil, Pearl Necklace; Srivijaya, Dashi; Perfumer, Jeweler; 3 Fortunes + 3 ship modules + 2 trade winds</td></tr>
+    </table>
+
+    <h4>📦 New Resources</h4>
+    <table>
+      <tr><th>Resource</th><th>Unlocked by</th><th>Home ports</th><th>Reference price</th></tr>
+      <tr><td>🧱 Porcelain Clay</td><td>New Maritime Edict</td><td>Quanzhou, Fuzhou</td><td>8 – 12</td></tr>
+      <tr><td>⛏️ Copper Ore</td><td>New Maritime Edict</td><td>Guangzhou, Goryeo</td><td>10 – 15</td></tr>
+      <tr><td>🌶️ Spices</td><td>Ten Thousand Kingdoms Trade</td><td>Srivijaya, Dashi</td><td>14 – 20</td></tr>
+      <tr><td>🦪 Pearls</td><td>Ten Thousand Kingdoms Trade</td><td>Guangzhou, Srivijaya</td><td>16 – 24</td></tr>
+    </table>
+
+    <h4>🏺 New Products</h4>
+    <table>
+      <tr><th>Product</th><th>Unlocked by</th><th>Materials</th><th>Base value</th><th>Market range</th><th>Crafted by</th></tr>
+      <tr><td>🪞 Bronze Mirror</td><td>New Maritime Edict</td><td>Copper Ore ×3</td><td>45</td><td>55 – 72</td><td>Coppersmith</td></tr>
+      <tr><td>🏺 Celadon Porcelain</td><td>New Maritime Edict</td><td>Porcelain Clay ×3</td><td>65</td><td>78 – 100</td><td>Potter</td></tr>
+      <tr><td>🧴 Foreign Perfume Oil</td><td>Ten Thousand Kingdoms Trade</td><td>Spices ×2 + Silk ×1</td><td>85</td><td>100 – 130</td><td>Perfumer</td></tr>
+      <tr><td>📿 Pearl Necklace</td><td>Ten Thousand Kingdoms Trade</td><td>Pearls ×2 + Silk ×1</td><td>105</td><td>125 – 160</td><td>Jeweler</td></tr>
+    </table>
+
+    <h4>👷 New Artisans</h4>
+    <table>
+      <tr><th>Artisan</th><th>Unlocked by</th><th>Wage/round</th><th>Crafts</th></tr>
+      <tr><td>🪞 Coppersmith</td><td>New Maritime Edict</td><td>12 gold</td><td>Bronze Mirror</td></tr>
+      <tr><td>🏺 Potter</td><td>New Maritime Edict</td><td>14 gold</td><td>Celadon Porcelain</td></tr>
+      <tr><td>🧴 Perfumer</td><td>Ten Thousand Kingdoms Trade</td><td>18 gold</td><td>Foreign Perfume Oil (only source)</td></tr>
+      <tr><td>📿 Jeweler</td><td>Ten Thousand Kingdoms Trade</td><td>24 gold</td><td>Pearl Necklace (only source)</td></tr>
+    </table>
+
+    <h4>⚓ New Ports</h4>
+    <table>
+      <tr><th>Port</th><th>Unlocked by</th><th>Specialty</th></tr>
+      <tr><td>Fuzhou</td><td>New Maritime Edict</td><td>A major source of Porcelain Clay and Celadon Porcelain</td></tr>
+      <tr><td>Goryeo</td><td>New Maritime Edict</td><td>A cross-sea trade hub and the chief source of Copper Ore</td></tr>
+      <tr><td>Srivijaya</td><td>Ten Thousand Kingdoms Trade</td><td>The Southeast Asian crossroads for Spices and Pearls</td></tr>
+      <tr><td>Dashi</td><td>Ten Thousand Kingdoms Trade</td><td>A distant western market and a premium buyer of Spice and Pearl goods</td></tr>
+    </table>
+
+    <h4>🌬️ New Trade Winds</h4>
+    <p>Beyond the original Spring Current, Summer Monsoon, Autumn Gales and Winter Blockade, 4 new trade-wind states join the pool. From Round 3 on, each "season" (every 2 rounds) is <strong>drawn at random from the currently unlocked pool</strong> instead of a fixed 4-season cycle, though Rounds 1-2 are still always Spring Current, exactly as before.</p>
+    <table>
+      <tr><th>Trade Wind</th><th>Unlocked by</th><th>Effect summary</th></tr>
+      <tr><td>🌫️ Min River Kiln-Smoke</td><td>New Maritime Edict</td><td>Fuzhou and Quanzhou orders pay more; Porcelain Clay is cheaper; pirate risk is moderate</td></tr>
+      <tr><td>🌅 Goryeo Dawn Route</td><td>New Maritime Edict</td><td>Goryeo and Guangzhou orders pay more; Copper Ore is cheaper; pirate risk is elevated</td></tr>
+      <tr><td>🌴 Srivijaya Spice Breeze</td><td>Ten Thousand Kingdoms Trade</td><td>Srivijaya and Dashi orders pay more; Spices are cheaper; pirate risk is elevated</td></tr>
+      <tr><td>🌙 Dashi Pearl Moon</td><td>Ten Thousand Kingdoms Trade</td><td>Dashi and Srivijaya orders pay much more; Pearls are cheaper; pirate risk is highest</td></tr>
+    </table>
+
+    <h4>🔧 New Ship Modules</h4>
+    <table>
+      <tr><th>Module</th><th>Unlocked by</th><th>Effect</th></tr>
+      <tr><td>🎫 Trade Bureau Token</td><td>New Maritime Edict</td><td>Orders for new trade-route goods (Porcelain Clay, Copper Ore and their products) pay +10%</td></tr>
+      <tr><td>🔥 Kiln Cellar</td><td>New Maritime Edict</td><td>Porcelain Clay and Copper Ore purchase price −2 gold per unit</td></tr>
+      <tr><td>📡 Ocean-Going Interpreter</td><td>New Maritime Edict</td><td>Each Broker's Whisper purchase reveals 1 extra clue at no added cost</td></tr>
+      <tr><td>🪪 Foreign Quarter Guild Pass</td><td>Ten Thousand Kingdoms Trade</td><td>Spices and Pearls purchase price −3 gold per unit</td></tr>
+      <tr><td>🧿 Persian Dome Compass</td><td>Ten Thousand Kingdoms Trade</td><td>Pirate risk reduced by 30%</td></tr>
+      <tr><td>⛵ Fleet of Ten-Thousand Treasures</td><td>Ten Thousand Kingdoms Trade</td><td>Shipping for Foreign Perfume Oil and Pearl Necklace is 3 gold cheaper per item</td></tr>
+    </table>
+
+    <div class="pm-banner" style="margin-top:10px">
+      <span class="pm-icon">🗺️</span>
+      <span>These additions arrive as banner announcements on the <strong>Set Sail</strong> page, so watch for them at the start of Round 3 and Round 5!</span>
+    </div>
   `,
   ship: `
     <h4>🚢 Ship Upgrades (Shipyard phase)</h4>
@@ -3180,18 +3644,18 @@ const manualContentEn = () => ({
     <ul>
       <li>Shipping never drops below 5 gold (certain fortunes/modules can push it to 0).</li>
       <li>Upgrades are a <strong>permanent investment</strong>: the more orders you deliver, the faster they pay off. Aim for Lv.1–2 around rounds 2–4.</li>
-      <li>Late upgrades (rounds 7–8) rarely pay for themselves — keep that gold for stock instead.</li>
+      <li>Late upgrades (rounds 7–8) rarely pay for themselves, so keep that gold for stock instead.</li>
     </ul>
   `,
   faq: `
     <h4>❓ Frequently Asked Questions</h4>
     <ul>
-      <li><strong>Clicked a button and nothing happened / stuck waiting?</strong> — You're most likely waiting on your partner. Check "Ready n/2" in the bottom bar, and nudge them via 💬.</li>
-      <li><strong>Have the materials but can't assign production?</strong> — All artisans may already have tasks; each takes only one per round.</li>
-      <li><strong>Why did I suddenly go bankrupt?</strong> — You couldn't cover wages or upkeep at settlement. Before expanding the team, check "⚠️ Due This Round" on the left.</li>
-      <li><strong>Can I still play after bankruptcy?</strong> — Your run is over, but you can open the "👀 Spectator Window" to watch your partner live, and you never block them; once they finish, click "Set Sail Again" for a fresh run together.</li>
-      <li><strong>Partner disconnected?</strong> — The session stays on the server; they just log back in. Chat and trades pause while they're away.</li>
-      <li><strong>What exactly is renown?</strong> — The cumulative "reward − shipping" of your orders. It's the sole basis of your final rating and is never reduced by spending.</li>
+      <li><strong>Clicked a button and nothing happened, or stuck waiting?</strong> You're most likely waiting on your partner. Check "Ready n/2" in the bottom bar, and nudge them via 💬.</li>
+      <li><strong>Have the materials but can't assign production?</strong> All artisans may already have tasks; each takes only one per round.</li>
+      <li><strong>Why did I suddenly go bankrupt?</strong> You couldn't cover wages or upkeep at settlement. Before expanding the team, check "⚠️ Due This Round" on the left.</li>
+      <li><strong>Can I still play after bankruptcy?</strong> Your run is over, but you can open the "👀 Spectator Window" to watch your partner live, and you never block them; once they finish, click "Set Sail Again" for a fresh run together.</li>
+      <li><strong>Partner disconnected?</strong> The session stays on the server, so they just log back in. Chat and trades pause while they're away.</li>
+      <li><strong>What exactly is renown?</strong> It's the running total of each order's reward minus its shipping cost. It's the sole basis of your final rating and is never reduced by spending.</li>
     </ul>
     <h4>⌨️ Shortcuts</h4>
     <ul>
@@ -3200,7 +3664,7 @@ const manualContentEn = () => ({
     <h4>😣 Finding PortMasters 2 too hard?</h4>
     <p>The taxes, wages and two-captain sync are not beginner-friendly. Try
     <a href="${PM1_URLS.en}" target="_blank" rel="noopener"><strong>PortMasters 1 →</strong></a>
-    first — no online sync, no complex taxes, and a gentler intro to the buy → produce → trade loop.</p>
+    first, with no online sync, no complex taxes, and a gentler intro to the buy → produce → trade loop.</p>
   `
 });
 
@@ -3230,10 +3694,10 @@ function switchManualTab(tab) {
   document.getElementById('manual-body').innerHTML = manualContent(tab);
 }
 
-/* 兼容旧入口（F1 等） */
+/* Backward-compat for old entry points (F1, etc.) */
 function showInstructions() { showManual(); }
 
-/* ---------- 首次进入会话时的新手引导 ---------- */
+/* ---------- Onboarding tour shown the first time a session is entered ---------- */
 function maybeShowOnboarding() {
   if (localStorage.getItem('pm2_onboarded') === '1') return;
   showModal(`
@@ -3271,7 +3735,7 @@ function finishOnboarding(openManual) {
   if (openManual) showManual('start');
 }
 
-/* ---------- 通用对话框 ---------- */
+/* ---------- Generic dialogs ---------- */
 function showModal(html, wide) {
   document.getElementById('modal-root').innerHTML = `
     <div class="modal-overlay" onclick="if(event.target===this)closeModal()">
@@ -3284,7 +3748,7 @@ function showModal(html, wide) {
 
 function closeModal() { document.getElementById('modal-root').innerHTML = ''; }
 
-/* ---------- 全局快捷键（用户自由与控制：随时求助、随时退出弹层） ---------- */
+/* ---------- Global keyboard shortcuts (user freedom and control: get help anytime, exit overlays anytime) ---------- */
 document.addEventListener('keydown', e => {
   if (e.key === 'F1') {
     e.preventDefault();
@@ -3300,7 +3764,81 @@ document.addEventListener('keydown', e => {
   }
 });
 
-/* 启动：按持久化语言偏好（默认英文）填充所有静态界面文案 */
+/* ---------- Tooltips: one shared, viewport-aware bubble (see the .tip-bubble CSS note) ----------
+   Delegated from `document`, so re-rendered phase panels never need re-binding and every
+   current/future [data-tip] element is covered with zero markup churn. The bubble is a
+   direct child of <body> (which has no transform/filter), so position:fixed is measured
+   against the viewport and no ancestor overflow or stacking context can clip it. */
+function initTooltips() {
+  const GAP = 9;       // breathing room between the element and the bubble
+  const MARGIN = 8;    // minimum distance the bubble keeps from any viewport edge
+  const bubble = document.createElement('div');
+  bubble.className = 'tip-bubble tip-hidden';
+  bubble.setAttribute('role', 'tooltip');
+  document.body.appendChild(bubble);
+
+  let current = null;
+
+  function show(el) {
+    const text = el.getAttribute('data-tip');
+    if (!text) return;
+    current = el;
+    bubble.textContent = text;             // text only — mirrors the old attr(data-tip); no HTML injection
+    bubble.classList.remove('tip-hidden');  // must be displayed to be measured
+
+    // max-width is fixed, so wrapping (and thus height) is identical wherever we place it.
+    const a = el.getBoundingClientRect();
+    const b = bubble.getBoundingClientRect();
+    const vw = document.documentElement.clientWidth;
+    const vh = document.documentElement.clientHeight;
+
+    // Vertical — prefer above; flip below only when there is no room above but room below.
+    let placement = 'above';
+    let top = a.top - GAP - b.height;
+    if (top < MARGIN && a.bottom + GAP + b.height <= vh - MARGIN) {
+      placement = 'below';
+      top = a.bottom + GAP;
+    }
+    top = Math.max(MARGIN, Math.min(top, vh - MARGIN - b.height));
+
+    // Horizontal — centre on the element, then clamp the whole bubble inside the viewport.
+    const anchorCenter = a.left + a.width / 2;
+    let left = Math.max(MARGIN, Math.min(anchorCenter - b.width / 2, vw - MARGIN - b.width));
+
+    bubble.style.top = Math.round(top) + 'px';
+    bubble.style.left = Math.round(left) + 'px';
+    bubble.dataset.placement = placement;
+    // Keep the caret pointing at the element even after the bubble was clamped sideways.
+    const caret = Math.max(11, Math.min(anchorCenter - left, b.width - 11));
+    bubble.style.setProperty('--tip-caret', Math.round(caret) + 'px');
+
+    requestAnimationFrame(() => bubble.classList.add('tip-show'));
+  }
+
+  function hide() {
+    current = null;
+    bubble.classList.remove('tip-show');
+    bubble.classList.add('tip-hidden');
+  }
+
+  // closest() lets inner icons/text inside a .tip element trigger their parent's hint.
+  document.addEventListener('pointerover', e => {
+    const el = e.target.closest('[data-tip]');
+    if (el && el !== current) show(el);
+  });
+  document.addEventListener('pointerout', e => {
+    const el = e.target.closest('[data-tip]');
+    if (!el || el !== current) return;
+    if (e.relatedTarget && el.contains(e.relatedTarget)) return; // moving within the same element
+    hide();
+  });
+  // A fixed bubble can't track a scrolling/resizing anchor — hide so it never floats detached.
+  window.addEventListener('scroll', () => { if (current) hide(); }, true);
+  window.addEventListener('resize', () => { if (current) hide(); });
+}
+initTooltips();
+
+/* Startup: fill in all static UI text according to the persisted language preference (default English) */
 applyLanguage();
 </script>
 </body>
