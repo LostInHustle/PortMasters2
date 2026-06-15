@@ -1,16 +1,16 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-PortMasters 多人联机服务器 v4（账号版）
-- 账号系统：注册 / 登录（用户名+密码，按用户分别持久化存储于 users.json）
-- 在线大厅：登录即在线，实时广播在线玩家列表；断线即离线
-- 邀请系统：每位玩家每分钟只能发出一次邀请，60 秒未响应自动超时；
-  对方可接受（双方进入共享会话）或拒绝（发起方收到拒绝提示）
-- 共享会话：8 回合 × 每回合 4 个阶段，双方始终处于同一回合同一阶段，
-  通过“继续 (n / 2)”机制同步推进
-- 互市阶段需双方都点击“准备就绪”才同步进入工匠管理
-- 聊天系统：会话双方在线时可互发消息，离线时禁止发送
-- 网页与 WebSocket 共用同一端口 8080（便于单条 ngrok 隧道穿透并支持 wss）
+PortMasters multiplayer online server v4 (account edition)
+- Account system: register / log in (username + password, persisted per user in users.json)
+- Online lobby: logging in puts you online, with the online player list broadcast live; disconnecting takes you offline
+- Invite system: each player can send at most one invite per minute, which auto-expires after 60 seconds with no response;
+  the other player can accept (both enter a shared session) or decline (the sender gets a decline notice)
+- Shared session: 8 rounds x 4 phases per round, with both players always on the same round and phase,
+  advancing in sync via a "Continue (n/2)" mechanism
+- The barter phase requires both players to click "Ready" before moving on to artisan management
+- Chat system: both players in a session can message each other while online; sending is disabled while offline
+- The web page and WebSocket share the same port 8080 (so a single ngrok tunnel can expose both, with wss support)
 """
 
 import asyncio
@@ -27,7 +27,7 @@ import time
 import hashlib
 import secrets
 
-# -------------------- 常量 --------------------
+# -------------------- Constants --------------------
 RESOURCES_TIER0 = ["麻布", "丝绸", "茶叶"]
 RESOURCES_TIER1 = ["瓷土", "铜矿"]
 RESOURCES_TIER2 = ["香料", "珍珠"]
@@ -47,7 +47,7 @@ ESCORT_COST = 10
 
 
 def unlocked(tier0, tier1, tier2, round_no):
-    """按当前回合解锁内容池：第3回合解锁Tier1（市舶新政），第5回合解锁Tier2（万国通商）"""
+    """Unlock content pools based on the current round: round 3 unlocks Tier 1 (New Maritime Edict), round 5 unlocks Tier 2 (Ten Thousand Kingdoms Trade)"""
     items = tier0[:]
     if round_no >= 3:
         items += tier1
@@ -56,7 +56,7 @@ def unlocked(tier0, tier1, tier2, round_no):
     return items
 
 
-# 丝路特许（Silk Road Charter）：在 Set Sail 页面提示新一批内容解锁
+# Silk Road Charter: announces newly unlocked content on the Set Sail page
 CHARTER_EVENTS = {
     3: {
         "id": "tier1",
@@ -210,7 +210,7 @@ PRODUCT_PRICES = {
 RESOURCE_PROBS = {"麻布": 0.30, "丝绸": 0.26, "茶叶": 0.18, "瓷土": 0.14, "铜矿": 0.12, "香料": 0.08, "珍珠": 0.06}
 WAGES = {"weaver": 8, "master": 12, "sachet_maker": 20, "coppersmith": 12, "potter": 14, "perfumer": 18, "jeweler": 24}
 
-# 工种存储：每个工种对应 PlayerGame 上的一个工人列表属性名
+# Worker-type storage: each worker type maps to a worker-list attribute name on PlayerGame
 WORKER_TYPES_BACKEND = [
     {"id": "weaver", "attr": "weavers"},
     {"id": "master", "attr": "masterWeavers"},
@@ -287,10 +287,10 @@ def module_pool(round_no):
 def monsoon_pool(round_no):
     return unlocked(MONSOON_TIER0, MONSOON_TIER1, MONSOON_TIER2, round_no)
 
-INVITE_COOLDOWN = 60          # 邀请冷却 / 超时时间（秒）
-CHAT_HISTORY_LIMIT = 200      # 每个会话保留的聊天记录条数
+INVITE_COOLDOWN = 60          # invite cooldown / expiry (seconds)
+CHAT_HISTORY_LIMIT = 200      # number of chat messages kept per session
 
-# -------------------- 工具函数 --------------------
+# -------------------- Utility functions --------------------
 def rand(a, b):
     return random.randint(a, b)
 
@@ -306,7 +306,7 @@ def weighted_choice(items):
             return item
     return items[0][0]
 
-# -------------------- PlayerGame 类 --------------------
+# -------------------- PlayerGame class --------------------
 class PlayerGame:
     def __init__(self):
         self.inventory = {item: 0 for item in RESOURCES + PRODUCTS}
@@ -331,7 +331,7 @@ class PlayerGame:
         self.shipUpgradeCost = [15, 25, 40]
         self.shipUpgradePenalty = 0
         self.maintenancePenalty = 0
-        self.phase = 0          # 0:welcome, 5:boon, 1:purchase, 'trade':互市, 'worker_mgmt':工匠, 2:贸易, 3:维护, 4:船坞
+        self.phase = 0          # 0:welcome, 5:boon, 1:purchase, 'trade':barter, 'worker_mgmt':artisans, 2:trade, 3:upkeep, 4:shipyard
         self.resourceCards = []
         self.customerCards = []
         self.purchasedCards = set()
@@ -352,7 +352,7 @@ class PlayerGame:
         self.draftChoices = []
         self.lastRoundSummary = None
         self.lastLogs = []
-        # 注入 slot 信息（由 SharedSession 设置）
+        # Slot info, injected by SharedSession
         self.slot = None
 
     def log(self, msg):
@@ -360,7 +360,7 @@ class PlayerGame:
         if len(self.lastLogs) > 100:
             self.lastLogs.pop(0)
 
-    # ---------- 丝路特许：内容解锁 ----------
+    # ---------- Silk Road Charter: content unlocks ----------
     def unlocked_resources(self):
         return unlocked(RESOURCES_TIER0, RESOURCES_TIER1, RESOURCES_TIER2, self.currentRound)
 
@@ -373,7 +373,7 @@ class PlayerGame:
     def unlocked_worker_types(self):
         return unlocked(WORKER_IDS_TIER0, WORKER_IDS_TIER1, WORKER_IDS_TIER2, self.currentRound)
 
-    # ---------- 费用计算 ----------
+    # ---------- Cost calculations ----------
     def calc_transport_cost(self, total_items, has_silk=False, resources=None):
         base = total_items * 2
         discount = self.shipLevel * 5
@@ -491,7 +491,7 @@ class PlayerGame:
             "isProductOrder": any(r["type"] in PRODUCTS for r in resources),
         }
 
-    # ---------- 卡牌生成 ----------
+    # ---------- Card generation ----------
     def gen_raw_order(self, filter=None):
         num = rand(1, 3)
         resources = []
@@ -524,7 +524,7 @@ class PlayerGame:
         return {"demandPort": port, "resources": [{"type": product, "required": req}], "reward": self.env_reward(port, base_price * req), "totalItems": req, "isProductOrder": True}
 
     def gen_mixed_order(self):
-        # 每条已购密语精确兑现为一张订单：货品与港口都与密语一致
+        # Each purchased clue resolves into exactly one order, with matching good and port
         intel = next((i for i in self.revealedIntel if not i.get("used")), None)
         if intel:
             intel["used"] = True
@@ -586,7 +586,7 @@ class PlayerGame:
             "isProductCard": True
         }
 
-    # ---------- 核心动作 ----------
+    # ---------- Core actions ----------
     def apply_boon(self, boon):
         self.modifierFlags = boon["modifiers"]
         if boon["modifiers"].get("instant_gold"):
@@ -650,7 +650,7 @@ class PlayerGame:
         self.log(f"📦 订单完成，净利润{reward - transport}金币")
         return True
 
-    # ---------- 船坞模块 ----------
+    # ---------- Shipyard modules ----------
     def start_module_draft(self):
         if self.shipLevel == 0:
             self.log("❌ 旗舰尚无模块槽位，请先升级船坞")
@@ -706,7 +706,7 @@ class PlayerGame:
         if self.money < self.intelCost:
             self.log(f"❌ 需要{self.intelCost}金币才能购买消息")
             return False
-        # 每次购买只收一次费用；装备「牙行网络」时一次揭示2条线索，「远洋通译」再额外+1条
+        # Each purchase costs gold only once; with Broker's Network equipped it reveals 2 clues at a time, and Ocean-Going Interpreter reveals 1 more on top of that
         count = 2 if self.has_module("brokers_network") else 1
         if self.has_module("ocean_relay"):
             count += 1
@@ -858,7 +858,7 @@ class PlayerGame:
             paid_tax = self.money
             self.incomeTaxPaid += self.money
             self.money = 0
-        # 在清零回合计数前留存本程结算回顾，供下一程「启航」过渡页展示
+        # Save this round's settlement summary before resetting round counters, for display on the next round's Set Sail transition page
         self.lastRoundSummary = {
             "round": self.currentRound,
             "revenue": self.roundRevenue,
@@ -937,14 +937,14 @@ class PlayerGame:
             "shipUpgradeCost": self.shipUpgradeCost,
             "shipUpgradePenalty": self.shipUpgradePenalty,
             "logs": self.lastLogs[-10:],
-            "slot": self.slot          # 身份槽位
+            "slot": self.slot          # identity slot
         }
 
-# -------------------- 账号存储 --------------------
+# -------------------- Account storage --------------------
 USERS_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "users.json")
 
 class UserStore:
-    """用户名 + 密码账号库。每个用户一条独立记录，PBKDF2 加盐存储。"""
+    """Username + password account store. Each user has its own record, salted and hashed with PBKDF2."""
     def __init__(self, path):
         self.path = path
         self.users = {}
@@ -990,9 +990,9 @@ class UserStore:
             return False, "用户名或密码错误"
         return True, "登录成功"
 
-# -------------------- 共享游戏会话 --------------------
+# -------------------- Shared game session --------------------
 class SharedSession:
-    """两名玩家的共享会话：双方始终同步处于同一回合同一阶段。"""
+    """Shared session for two players: both stay in sync on the same round and phase."""
     def __init__(self, user_a, user_b):
         self.players = [user_a, user_b]
         self.games = [PlayerGame(), PlayerGame()]
@@ -1000,21 +1000,21 @@ class SharedSession:
         self.games[1].slot = 2
         self.trade_orders = []
         self.trade_id_counter = 0
-        self.trade_ready = [False, False]   # 互市阶段双方是否点了准备
-        self.ready = set()                  # 当前阶段已点击“继续”的槽位
+        self.trade_ready = [False, False]   # whether each player has clicked ready during the barter phase
+        self.ready = set()                  # slots that have clicked "continue" in the current phase
         self.chat_history = []
         self.monsoon_state = MONSOON_STATES[0].copy()
         self.monsoon_cycle_cache = {}
         self.sync_monsoon_state()
 
-    # ---------- 身份 ----------
+    # ---------- Identity ----------
     def slot_of(self, username):
         return self.players.index(username)
 
     def partner_of(self, username):
         return self.players[1 - self.slot_of(username)]
 
-    # ---------- 同步推进 ----------
+    # ---------- Synchronized progression ----------
     def _active_phase(self):
         for i in (0, 1):
             if not self.games[i].gameOver:
@@ -1022,7 +1022,7 @@ class SharedSession:
         return self.games[0].phase
 
     def _set_phase(self, phase):
-        # 终局状态（破产/完赛）的玩家停留在各自的终局页面，不再跟随会话阶段推进
+        # Players in an end state (bankrupt/finished) stay on their own end-game page and no longer follow the session's phase progression
         for g in self.games:
             if not g.gameOver:
                 g.phase = phase
@@ -1032,7 +1032,7 @@ class SharedSession:
         active_round = max(1, min(active_game.currentRound, active_game.maxRounds))
         cycle = (active_round - 1) // 2
         if cycle == 0:
-            # 第1-2程：维持原有「春潮顺流」开局，与现有行为完全一致
+            # Rounds 1-2: keep the original Spring Current opening, identical to existing behavior
             state = MONSOON_TIER0[0]
         else:
             if cycle not in self.monsoon_cycle_cache:
@@ -1043,7 +1043,7 @@ class SharedSession:
             g.set_monsoon_state(self.monsoon_state)
 
     def gate_complete(self):
-        # 已破产/已结束的玩家视为自动准备，避免阻塞对方
+        # Bankrupt/finished players count as auto-ready so they never block their partner
         return all((i in self.ready) or self.games[i].gameOver for i in (0, 1))
 
     def trade_gate_complete(self):
@@ -1055,12 +1055,12 @@ class SharedSession:
         return sum(1 for i in (0, 1) if (i in self.ready) or self.games[i].gameOver)
 
     def advance(self):
-        """双方都准备好后，整个会话同步进入下一阶段。"""
+        """Once both players are ready, the whole session advances to the next phase together."""
         phase = self._active_phase()
         if phase == 0:
             self.sync_monsoon_state()
             self._set_phase(5)
-            # 每位玩家从福缘池中独立随机抽取4张，互不可见、互不相同
+            # Each player independently draws 4 random Fortunes from the pool; draws are hidden from and different between players
             for g in self.games:
                 if not g.gameOver:
                     g.boonChoices = random.sample(boon_pool(g.currentRound), 4)
@@ -1139,7 +1139,7 @@ class SharedSession:
         self.monsoon_cycle_cache = {}
         self.sync_monsoon_state()
 
-    # ---------- 等待提示 ----------
+    # ---------- Waiting hints ----------
     def waiting_message(self, slot):
         game = self.games[slot]
         if game.phase == "trade":
@@ -1152,7 +1152,7 @@ class SharedSession:
             return "已准备，等待对方点击继续..."
         return None
 
-    # ---------- 互市订单 ----------
+    # ---------- Barter trades ----------
     def create_trade_order(self, seller_slot, sell_items, buy_items):
         self.trade_id_counter += 1
         order = {
@@ -1172,7 +1172,7 @@ class SharedSession:
         buyer_game = self.games[buyer_slot]
         if not seller_game or not buyer_game:
             return False
-        # 检查卖方资源
+        # Check the seller's resources
         for item in order["sell"]:
             if item["type"] == "金币":
                 if seller_game.money < item["quantity"]:
@@ -1180,7 +1180,7 @@ class SharedSession:
             else:
                 if seller_game.inventory.get(item["type"], 0) < item["quantity"]:
                     return False
-        # 检查买方资源
+        # Check the buyer's resources
         for item in order["buy"]:
             if item["type"] == "金币":
                 if buyer_game.money < item["quantity"]:
@@ -1188,7 +1188,7 @@ class SharedSession:
             else:
                 if buyer_game.inventory.get(item["type"], 0) < item["quantity"]:
                     return False
-        # 执行交换
+        # Execute the swap
         for item in order["sell"]:
             if item["type"] == "金币":
                 seller_game.money -= item["quantity"]
@@ -1214,13 +1214,13 @@ class SharedSession:
             self.trade_orders.remove(order)
         return order
 
-    # ---------- 聊天 ----------
+    # ---------- Chat ----------
     def add_chat(self, sender, message):
         self.chat_history.append({"from": sender, "message": message})
         if len(self.chat_history) > CHAT_HISTORY_LIMIT:
             self.chat_history.pop(0)
 
-    # ---------- 状态广播 ----------
+    # ---------- State broadcast ----------
     async def broadcast_state(self):
         for slot in (0, 1):
             uname = self.players[slot]
@@ -1243,14 +1243,14 @@ class SharedSession:
             }
             await send_json(ws, {"type": "state", "data": state})
 
-# -------------------- 全局状态 --------------------
+# -------------------- Global state --------------------
 USERS = UserStore(USERS_FILE)
 ONLINE = {}            # username -> websocket
-SESSIONS = {}          # username -> SharedSession（两名玩家指向同一会话）
+SESSIONS = {}          # username -> SharedSession (both players point to the same session)
 PENDING_INVITES = {}   # sender -> {"to": target, "task": asyncio.Task}
-LAST_INVITE_AT = {}    # sender -> time.monotonic() 时间戳
+LAST_INVITE_AT = {}    # sender -> time.monotonic() timestamp
 
-# -------------------- 发送工具 --------------------
+# -------------------- Send helpers --------------------
 async def send_json(ws, obj):
     try:
         await ws.send(json.dumps(obj))
@@ -1267,7 +1267,7 @@ async def broadcast_online_users():
     for uname, ws in list(ONLINE.items()):
         await send_json(ws, {"type": "online_users_update", "users": [n for n in names if n != uname]})
 
-# -------------------- 邀请系统 --------------------
+# -------------------- Invite system --------------------
 async def invite_timeout_task(sender, target):
     try:
         await asyncio.sleep(INVITE_COOLDOWN)
@@ -1332,7 +1332,7 @@ async def handle_respond_invite(responder, sender, accept):
     await broadcast_online_users()
     await sess.broadcast_state()
 
-# -------------------- 聊天系统 --------------------
+# -------------------- Chat system --------------------
 async def handle_send_chat(sender, message):
     sess = SESSIONS.get(sender)
     if sess is None:
@@ -1348,7 +1348,7 @@ async def handle_send_chat(sender, message):
     sess.add_chat(sender, message)
     await send_to_user(partner, {"type": "chat_message", "from": sender, "message": message})
 
-# -------------------- 游戏内动作 --------------------
+# -------------------- In-game actions --------------------
 async def handle_game_action(username, data):
     action = data.get("action")
     sess = SESSIONS.get(username)
@@ -1359,7 +1359,7 @@ async def handle_game_action(username, data):
     phase = game.phase
     changed = False
 
-    # 终局玩家（破产/完赛）只允许观战相关的只读操作与重开
+    # Players in an end state (bankrupt/finished) may only perform read-only spectator actions and restart
     if game.gameOver and action not in ("join_game", "restart"):
         return
 
@@ -1373,7 +1373,7 @@ async def handle_game_action(username, data):
                 sess.advance()
     elif action == "selectBoon":
         if phase == 5 and slot not in sess.ready:
-            # 只能从本回合发给该玩家的4张福缘中选择
+            # Can only select from the 4 Fortunes dealt to this player this round
             pool = game.boonChoices or BOONS
             boon = next((b for b in pool if b["id"] == data.get("boonId")), None)
             if boon:
@@ -1485,7 +1485,7 @@ async def handle_game_action(username, data):
             game.draftChoices = []
             changed = True
     elif action == "restart":
-        # 仅当对方也已结束（结算完毕或破产）时才允许重置整个会话，保证双方同步
+        # Only allow resetting the whole session once the partner has also finished (settled or bankrupt), keeping both players in sync
         if sess.games[1 - slot].gameOver:
             sess.restart()
             partner = sess.partner_of(username)
@@ -1497,7 +1497,7 @@ async def handle_game_action(username, data):
     if changed:
         await sess.broadcast_state()
 
-# -------------------- WebSocket 处理 --------------------
+# -------------------- WebSocket handling --------------------
 async def handler(websocket):
     username = None
     try:
@@ -1508,7 +1508,7 @@ async def handler(websocket):
                 continue
             action = data.get("action")
 
-            # ---------- 未登录：只接受注册 / 登录 ----------
+            # ---------- Not logged in: only accept register / login ----------
             if username is None:
                 if action == "register":
                     ok, msg = USERS.register(str(data.get("username", "")).strip(), str(data.get("password", "")))
@@ -1535,7 +1535,7 @@ async def handler(websocket):
                     await send_json(websocket, {"type": "error", "message": "请先登录"})
                 continue
 
-            # ---------- 已登录：大厅 / 邀请 / 聊天 / 游戏 ----------
+            # ---------- Logged in: lobby / invites / chat / game ----------
             if action == "get_online_users":
                 await send_json(websocket, {"type": "online_users", "users": [n for n in ONLINE if n != username]})
             elif action == "send_invite":
@@ -1554,13 +1554,13 @@ async def handler(websocket):
     finally:
         if username is not None and ONLINE.get(username) is websocket:
             del ONLINE[username]
-            # 取消该用户发出的待处理邀请
+            # Cancel this user's pending outgoing invites
             inv = PENDING_INVITES.pop(username, None)
             if inv:
                 inv["task"].cancel()
                 await send_to_user(inv["to"], {"type": "invite_cancelled", "from": username})
             await broadcast_online_users()
-            # 通知会话伙伴；若双方都已离线则回收会话
+            # Notify the session partner; recycle the session if both players are offline
             sess = SESSIONS.get(username)
             if sess is not None:
                 partner = sess.partner_of(username)
@@ -1571,13 +1571,14 @@ async def handler(websocket):
                     SESSIONS.pop(username, None)
                     SESSIONS.pop(partner, None)
 
-# -------------------- HTTP 静态文件服务（与 WebSocket 共用同一端口） --------------------
-# 说明：将静态文件服务并入 WebSocket 端口，便于通过单条 ngrok 隧道（如 ngrok http 8080）
-# 同时穿透网页与 WebSocket，并自动适配 https/wss，避免浏览器混合内容限制。
+# -------------------- HTTP static file serving (shares the WebSocket port) --------------------
+# Serving static files on the same port as the WebSocket server lets a single ngrok tunnel
+# (e.g. ngrok http 8080) expose both the web page and the WebSocket, with automatic
+# https/wss adaptation, avoiding browser mixed-content restrictions.
 WEB_ROOT = os.path.dirname(os.path.abspath(__file__))
 
 async def process_request(connection, request):
-    # WebSocket 升级请求放行，交由 handler 处理
+    # Let WebSocket upgrade requests through, to be handled by handler
     if request.headers.get("Upgrade", "").lower() == "websocket":
         return None
 
@@ -1603,11 +1604,11 @@ async def process_request(connection, request):
 
 async def main():
     async with websockets.serve(handler, "0.0.0.0", 8080, process_request=process_request):
-        print(f"✅ 服务器启动：网页 http://0.0.0.0:8080 ，WebSocket ws://0.0.0.0:8080")
+        print(f"✅ Server started: web http://0.0.0.0:8080, WebSocket ws://0.0.0.0:8080")
         await asyncio.Future()
 
 if __name__ == "__main__":
     try:
         asyncio.run(main())
     except KeyboardInterrupt:
-        print("服务器关闭")
+        print("Server shut down")
