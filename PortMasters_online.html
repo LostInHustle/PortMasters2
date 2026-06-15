@@ -269,14 +269,28 @@ a { color: var(--ocean-700); }
 }
 .muted { color: var(--ink-faint); font-size: 11px; }
 
-/* ---- Tooltips (recognition over recall: bring the explanation to the user) ---- */
-.tip { position: relative; cursor: help; border-bottom: 1px dashed rgba(100, 116, 139, .55); }
-.tip::after {
-  content: attr(data-tip);
-  position: absolute;
-  left: 50%;
-  bottom: calc(100% + 9px);
-  transform: translateX(-50%) translateY(4px);
+/* ---- Tooltips (recognition over recall: bring the explanation to the user) ----
+   One shared bubble is appended to <body> and positioned by JS (see initTooltips).
+   The old `.tip::after` pseudo-element was structurally trapped, which is why hints
+   were cut off no matter how the copy was tuned:
+     • clipped by every scrolling/clipping ancestor — .side-panel, .phase-panel and
+       .card all set `overflow` other than visible, and an absolutely-positioned
+       descendant cannot escape an ancestor's overflow box (no z-index fixes this);
+     • pinned beneath ancestor stacking contexts (.phase-view animation, .card:hover
+       transform), so even where it wasn't clipped it could render behind siblings;
+     • hard-centered (left:50%) with a fixed max-width and no edge detection, so a
+       hint near any viewport edge overflowed — and a width that fit English spilled
+       over in 中文 (and vice-versa), which is the "works in one language only" symptom.
+   A body-level position:fixed bubble is measured against the viewport instead: no
+   ancestor can clip it or trap its stacking, and runtime collision detection
+   (flip above/below + horizontal clamp) keeps every hint fully on-screen in both
+   languages. Markup is unchanged — any current/future [data-tip] is covered. */
+.tip { cursor: help; border-bottom: 1px dashed rgba(100, 116, 139, .55); }
+
+.tip-bubble {
+  position: fixed;
+  top: 0; left: 0;
+  max-width: min(280px, calc(100vw - 20px));
   background: rgba(15, 23, 42, .94);
   color: #f0f9ff;
   font-size: 11px;
@@ -284,16 +298,28 @@ a { color: var(--ocean-700); }
   line-height: 1.55;
   border-radius: 10px;
   padding: 8px 11px;
-  width: max-content;
-  max-width: 250px;
   white-space: normal;
-  opacity: 0;
-  pointer-events: none;
-  transition: opacity .18s ease, transform .18s ease;
-  z-index: 60;
+  overflow-wrap: break-word;
   box-shadow: 0 8px 24px rgba(0,0,0,.25);
+  opacity: 0;
+  transform: translateY(4px);
+  transition: opacity .16s ease, transform .16s ease;
+  pointer-events: none;     /* never steal hover from the element underneath */
+  z-index: 4000;            /* above every overlay (--z-toast: 3000) */
 }
-.tip:hover::after { opacity: 1; transform: translateX(-50%) translateY(0); }
+.tip-bubble.tip-hidden { display: none; }
+.tip-bubble.tip-show { opacity: 1; transform: translateY(0); }
+.tip-bubble::after {        /* caret points back at the hovered element */
+  content: "";
+  position: absolute;
+  left: var(--tip-caret, 50%);
+  margin-left: -5px;
+  width: 10px; height: 10px;
+  background: rgba(15, 23, 42, .94);
+  transform: rotate(45deg);
+}
+.tip-bubble[data-placement="above"]::after { bottom: -4px; }
+.tip-bubble[data-placement="below"]::after { top: -4px; }
 
 /* ---- Center stage ---- */
 .phase-panel {
@@ -3737,6 +3763,80 @@ document.addEventListener('keydown', e => {
     }
   }
 });
+
+/* ---------- Tooltips: one shared, viewport-aware bubble (see the .tip-bubble CSS note) ----------
+   Delegated from `document`, so re-rendered phase panels never need re-binding and every
+   current/future [data-tip] element is covered with zero markup churn. The bubble is a
+   direct child of <body> (which has no transform/filter), so position:fixed is measured
+   against the viewport and no ancestor overflow or stacking context can clip it. */
+function initTooltips() {
+  const GAP = 9;       // breathing room between the element and the bubble
+  const MARGIN = 8;    // minimum distance the bubble keeps from any viewport edge
+  const bubble = document.createElement('div');
+  bubble.className = 'tip-bubble tip-hidden';
+  bubble.setAttribute('role', 'tooltip');
+  document.body.appendChild(bubble);
+
+  let current = null;
+
+  function show(el) {
+    const text = el.getAttribute('data-tip');
+    if (!text) return;
+    current = el;
+    bubble.textContent = text;             // text only — mirrors the old attr(data-tip); no HTML injection
+    bubble.classList.remove('tip-hidden');  // must be displayed to be measured
+
+    // max-width is fixed, so wrapping (and thus height) is identical wherever we place it.
+    const a = el.getBoundingClientRect();
+    const b = bubble.getBoundingClientRect();
+    const vw = document.documentElement.clientWidth;
+    const vh = document.documentElement.clientHeight;
+
+    // Vertical — prefer above; flip below only when there is no room above but room below.
+    let placement = 'above';
+    let top = a.top - GAP - b.height;
+    if (top < MARGIN && a.bottom + GAP + b.height <= vh - MARGIN) {
+      placement = 'below';
+      top = a.bottom + GAP;
+    }
+    top = Math.max(MARGIN, Math.min(top, vh - MARGIN - b.height));
+
+    // Horizontal — centre on the element, then clamp the whole bubble inside the viewport.
+    const anchorCenter = a.left + a.width / 2;
+    let left = Math.max(MARGIN, Math.min(anchorCenter - b.width / 2, vw - MARGIN - b.width));
+
+    bubble.style.top = Math.round(top) + 'px';
+    bubble.style.left = Math.round(left) + 'px';
+    bubble.dataset.placement = placement;
+    // Keep the caret pointing at the element even after the bubble was clamped sideways.
+    const caret = Math.max(11, Math.min(anchorCenter - left, b.width - 11));
+    bubble.style.setProperty('--tip-caret', Math.round(caret) + 'px');
+
+    requestAnimationFrame(() => bubble.classList.add('tip-show'));
+  }
+
+  function hide() {
+    current = null;
+    bubble.classList.remove('tip-show');
+    bubble.classList.add('tip-hidden');
+  }
+
+  // closest() lets inner icons/text inside a .tip element trigger their parent's hint.
+  document.addEventListener('pointerover', e => {
+    const el = e.target.closest('[data-tip]');
+    if (el && el !== current) show(el);
+  });
+  document.addEventListener('pointerout', e => {
+    const el = e.target.closest('[data-tip]');
+    if (!el || el !== current) return;
+    if (e.relatedTarget && el.contains(e.relatedTarget)) return; // moving within the same element
+    hide();
+  });
+  // A fixed bubble can't track a scrolling/resizing anchor — hide so it never floats detached.
+  window.addEventListener('scroll', () => { if (current) hide(); }, true);
+  window.addEventListener('resize', () => { if (current) hide(); });
+}
+initTooltips();
 
 /* Startup: fill in all static UI text according to the persisted language preference (default English) */
 applyLanguage();
