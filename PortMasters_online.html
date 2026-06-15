@@ -834,6 +834,35 @@ a { color: var(--ocean-700); }
 }
 .modal .modal-x:hover { background: rgba(148, 163, 184, .3); }
 
+/* ---- Difficulty chooser (invite composer + invite confirmation) ---- */
+.diff-options { display: flex; gap: 12px; margin: 16px 0 12px; }
+.diff-option {
+  flex: 1;
+  display: flex; flex-direction: column; align-items: center; gap: 6px;
+  padding: 14px 12px;
+  border: 2px solid rgba(148, 163, 184, .35);
+  border-radius: var(--radius-md);
+  background: rgba(248, 250, 252, .8);
+  cursor: pointer;
+  font-family: inherit;
+  transition: border-color .15s ease, box-shadow .15s ease, transform .15s ease;
+}
+.diff-option:hover { transform: translateY(-2px); }
+.diff-option.selected { border-color: var(--ocean-500, #0ea5e9); box-shadow: 0 6px 18px rgba(2,132,199,.18); background: #fff; }
+.diff-badge { font-size: 16px; font-weight: 800; padding: 3px 14px; border-radius: 999px; color: #fff; }
+.diff-badge.diff-easy { background: linear-gradient(135deg, #34d399, #0d9488); }
+.diff-badge.diff-hard { background: linear-gradient(135deg, #fb7185, #b91c1c); }
+.diff-tagline { font-size: 12px; color: var(--ink-soft); text-align: center; line-height: 1.5; }
+.diff-summary {
+  font-size: 13px; line-height: 1.85; color: #334155;
+  background: rgba(224, 242, 254, .45);
+  border-radius: var(--radius-md);
+  padding: 12px 14px;
+  margin-bottom: 6px;
+}
+.chip.diff-easy { background: rgba(13, 148, 136, .16); color: #0f766e; }
+.chip.diff-hard { background: rgba(185, 28, 28, .14); color: #b91c1c; }
+
 /* ---- Manual ---- */
 .manual-tabs { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 14px; justify-content: center; }
 .mtab {
@@ -1240,6 +1269,32 @@ let LANG = localStorage.getItem('pm2_lang') || 'en';
 const tr = (zh, en) => (LANG === 'en' ? en : zh);
 /* Pick a value from a {zh, en} object based on the current language */
 const pf = o => (o ? (o[LANG] !== undefined ? o[LANG] : o.zh) : '');
+
+/* Difficulty presentation. The server is the single source of truth for what each mode
+   unlocks (it caps content by tier); this object only describes the two modes to players.
+   The summaries are written as plain flowing sentences in both languages on purpose, so
+   everyone understands the distinction before they agree to a voyage. */
+const DIFFICULTY_INFO = {
+  easy: {
+    key: 'easy',
+    badge: () => tr('轻松', 'Easy'),
+    tagline: () => tr('适合初次掌舵的新船长', 'A gentle start for new captains'),
+    summary: () => tr(
+      '轻松模式让贸易保持简单清晰。你将专注经营麻布、丝绸、茶叶这三种基础原料，制作四种入门成品，并从前三类工匠中招募帮手。与之相关的福缘、战船模块、港口以及海上天象也都限定在这套基础内容之内，因此市场始终不会过度拥挤，你有充足的余裕慢慢熟悉每个回合的节奏，从容地把生意做大。',
+      'Easy mode keeps the trade simple and clear to follow. You will focus on the three founding raw materials of hemp cloth, silk and tea, craft the four starter products, and recruit from the first three artisan guilds. The fortunes, ship modules, ports and seasonal weather that belong to them stay within this founding set as well, so the market never grows crowded and you have plenty of room to learn the rhythm of each round and grow your trade at a comfortable pace.'
+    ),
+  },
+  hard: {
+    key: 'hard',
+    badge: () => tr('高难', 'Hard'),
+    tagline: () => tr('为老练船长准备的完整挑战', 'The full challenge for seasoned captains'),
+    summary: () => tr(
+      '高难模式将开放完整的海上贸易。随着航程推进，丝路特许会在第三程引入瓷土与铜矿，并在第五程引入香料与珍珠，连同它们的进阶成品、海外港口、专精工匠，以及更加丰富的福缘、战船模块与海上天象。需要同时打理的事务多得多，对舱位与金币的竞争也会激烈许多，因此它更看重你长远的谋划与权衡。',
+      'Hard mode opens the full maritime trade. As the voyage unfolds the Silk Road Charter brings in porcelain clay and copper ore at the third round and spices and pearls at the fifth, together with their advanced products, the foreign ports, the specialist artisans, and a much richer set of fortunes, ship modules and seasonal weather. There is a great deal more to manage at once and the competition for cargo space and coin grows far fiercer, so it rewards careful long term planning and judgement.'
+    ),
+  },
+};
+const difficultyInfo = key => DIFFICULTY_INFO[key] || DIFFICULTY_INFO.easy;
 
 /* PortMasters 1 link, varies by language */
 const PM1_URLS = {
@@ -1791,7 +1846,7 @@ function setupWebSocketHandlers() {
     }
 
     else if (msg.type === 'invite_received') {
-      showInviteModal(msg.from);
+      showInviteModal(msg.from, msg.difficulty);
     }
 
     else if (msg.type === 'invite_cancelled') {
@@ -1935,10 +1990,56 @@ function renderOnlineUsers() {
   });
 }
 
+/* Difficulty chosen in the invite composer. Always starts on Easy, so a voyage only
+   becomes harder when the inviter explicitly asks for it. */
+let composerTo = null;
+let composerDifficulty = 'easy';
+
 function sendInvite(to) {
+  composerTo = to;
+  composerDifficulty = 'easy';
+  renderInviteComposer();
+}
+
+function setComposerDifficulty(key) {
+  composerDifficulty = (key === 'hard') ? 'hard' : 'easy';
+  renderInviteComposer();
+}
+
+function renderInviteComposer() {
+  const to = composerTo;
+  if (!to) return;
+  const optionCard = key => {
+    const info = difficultyInfo(key);
+    const sel = composerDifficulty === key ? ' selected' : '';
+    return `<button type="button" class="diff-option${sel}" onclick="setComposerDifficulty('${key}')">
+        <span class="diff-badge diff-${key}">${info.badge()}</span>
+        <span class="diff-tagline">${info.tagline()}</span>
+      </button>`;
+  };
+  showModal(`
+    <h2>${tr('📨 发出航程邀请', '📨 Send a Voyage Invitation')}</h2>
+    <p style="text-align:center;font-size:14px;line-height:1.8">${tr(
+      `你正在邀请 <strong>${escapeHtml(to)}</strong> 共启一段航程。请先为本局选择难度，对方需要看到说明并同意后，航程才会开始。`,
+      `You are inviting <strong>${escapeHtml(to)}</strong> to set sail together. Choose the difficulty for this session first. The voyage begins only after your partner has read what it means and agrees to it.`)}</p>
+    <div class="diff-options">${optionCard('easy')}${optionCard('hard')}</div>
+    <div class="diff-summary">${difficultyInfo(composerDifficulty).summary()}</div>
+    <div style="text-align:center;margin-top:16px;display:flex;gap:10px;justify-content:center">
+      <button class="btn btn-success btn-lg" onclick="confirmSendInvite()">${tr('📨 发送邀请', '📨 Send Invitation')}</button>
+      <button class="btn btn-ghost btn-lg" onclick="closeModal()">${tr('取消', 'Cancel')}</button>
+    </div>
+  `);
+}
+
+function confirmSendInvite() {
+  const to = composerTo;
+  if (!to) return;
+  const difficulty = composerDifficulty;
   inviteStatus[to] = 'pending';
   lastInviteTo = to;
-  ws.send(JSON.stringify({ action: "send_invite", to }));
+  ws.send(JSON.stringify({ action: "send_invite", to, difficulty }));
+  composerTo = null;
+  closeModal();
   renderOnlineUsers();
 
   setTimeout(() => {
@@ -1949,18 +2050,27 @@ function sendInvite(to) {
   }, 60000);
 }
 
-function showInviteModal(from) {
+function showInviteModal(from, difficulty) {
   pendingInviteFrom = from;
+  const info = difficultyInfo(difficulty === 'hard' ? 'hard' : 'easy');
   showModal(`
     <h2>${tr('📨 航程邀请', '📨 Voyage Invitation')}</h2>
     <p style="text-align:center;font-size:14px;line-height:1.8">
-      ${tr(`<strong>${escapeHtml(from)}</strong> 邀请你共启一段海上丝路航程。`,
-           `<strong>${escapeHtml(from)}</strong> invites you to set sail on the Maritime Silk Road together.`)}<br>
-      <span class="muted">${tr('接受后双方将进入共享会话：同回合同阶段同步推进，全程可互市交易、互见状态。',
-        "Accept to enter a shared session: same round, same phase, free bartering, and full visibility of each other's fleet.")}</span>
+      ${tr(`<strong>${escapeHtml(from)}</strong> 邀请你共启一段海上丝路航程，并为本局提议了以下难度。请先了解它的含义，再决定是否同意。`,
+           `<strong>${escapeHtml(from)}</strong> invites you to set sail on the Maritime Silk Road together and proposes the following difficulty for this session. Please read what it means before you decide whether to agree.`)}
     </p>
-    <div style="text-align:center;margin-top:18px;display:flex;gap:10px;justify-content:center">
-      <button class="btn btn-success btn-lg" onclick="respondInvite(true)">${tr('✅ 接受邀请', '✅ Accept')}</button>
+    <div class="diff-options">
+      <div class="diff-option selected" style="cursor:default">
+        <span class="diff-badge diff-${info.key}">${info.badge()}</span>
+        <span class="diff-tagline">${info.tagline()}</span>
+      </div>
+    </div>
+    <div class="diff-summary">${info.summary()}</div>
+    <p class="muted" style="text-align:center;font-size:12px;line-height:1.7">${tr(
+      '接受后双方将进入共享会话，始终停留在同一回合与同一阶段，可以自由互市交易，并能随时查看彼此的船队状态。如果你更想换一种难度，可以先婉拒，再由任意一方按心仪的难度重新发出邀请。',
+      "Accept to enter a shared session where you both stay on the same round and the same phase, barter freely, and can check each other's fleet at any time. If you would prefer a different difficulty, decline for now and either of you can send a fresh invitation set to the level you both want.")}</p>
+    <div style="text-align:center;margin-top:14px;display:flex;gap:10px;justify-content:center">
+      <button class="btn btn-success btn-lg" onclick="respondInvite(true)">${tr('✅ 同意并接受', '✅ Agree and Accept')}</button>
       <button class="btn btn-danger btn-lg" onclick="respondInvite(false)">${tr('❌ 婉拒', '❌ Decline')}</button>
     </div>
   `);
@@ -2300,6 +2410,13 @@ function stepperHTML(currentKey) {
     </div>`;
 }
 
+/* Always-visible reminder of the agreed difficulty. Hovering it brings up the same
+   plain-language summary both captains saw when they agreed to the voyage. */
+function difficultyChipHTML(g) {
+  const info = difficultyInfo(g && g.difficulty);
+  return `<span class="chip tip diff-${info.key}" data-tip="${escapeHtml(info.summary())}">${tr('难度', 'Difficulty')}：${info.badge()}</span>`;
+}
+
 function phaseBriefHTML(key, extraChips = '') {
   const meta = PHASE_FLOW[PHASE_INDEX[key]];
   if (!meta) return '';
@@ -2314,6 +2431,7 @@ function phaseBriefHTML(key, extraChips = '') {
         <p>${pf(meta.brief)}</p>
       </div>
       <div class="pb-sync">
+        ${difficultyChipHTML(serverState.yourGame)}
         <span class="chip ${readyCount >= 2 ? 'green' : ''}" title="${tr('双方都确认后才进入下一阶段', 'The next phase starts once both captains confirm')}">${tr(`🔄 双方就绪 ${readyCount} / 2`, `🔄 Ready ${readyCount} / 2`)}</span>
         ${waiting ? `<span class="chip amber">⏳ ${escapeHtml(lst(waiting))}</span>` : ''}
         ${extraChips}
@@ -3201,7 +3319,7 @@ const MANUAL_TABS_I18N = {
     { id: 'trade',     label: '🤝 互市与联机' },
     { id: 'boons',     label: '🍀 福缘图鉴' },
     { id: 'ship',      label: '🚢 船坞升级' },
-    { id: 'expansion', label: '🗺️ 拓展航线' },
+    { id: 'expansion', label: '🗺️ 难度与拓展' },
     { id: 'faq',       label: '❓ 常见问题' }
   ],
   en: [
@@ -3212,7 +3330,7 @@ const MANUAL_TABS_I18N = {
     { id: 'trade',     label: '🤝 Barter & Online' },
     { id: 'boons',     label: '🍀 Fortune Codex' },
     { id: 'ship',      label: '🚢 Ship Upgrades' },
-    { id: 'expansion', label: '🗺️ Expansion Routes' },
+    { id: 'expansion', label: '🗺️ Difficulty & Expansion' },
     { id: 'faq',       label: '❓ FAQ' }
   ]
 };
@@ -3222,6 +3340,7 @@ const manualContentZh = () => ({
   start: `
     <h4>🎯 游戏目标</h4>
     <p>你与伙伴各自经营一支海上商队，在 <strong>8 个航程（回合）</strong>内通过「低买 → 生产 → 高卖」积累<strong>声望（信誉值）</strong>。声望来自每笔订单的净利润，游戏结束时按声望评级。开局资金 100 金币，并自带少量原料。</p>
+    <p class="muted">每一局都有轻松与高难两种难度，默认是轻松。难度在邀请时商定：发出邀请的一方选择，另一方在确认窗口看过说明并同意后开局。轻松模式只包含基础货物，更适合新手起步；想了解两种难度的差别，可查看「难度与拓展」一节。</p>
     <h4>🧭 第一程怎么玩（推荐路线）</h4>
     <ol>
       <li><strong>福缘</strong>：第一程建议选「紧急钱庄」（+40金币）或「商贾魅力」（采购85折），缓解开局现金压力。</li>
@@ -3310,7 +3429,7 @@ const manualContentZh = () => ({
     </ul>
     <h4>🌐 联机机制</h4>
     <ul>
-      <li><strong>邀请</strong>：大厅中向在线玩家发出邀请，每分钟限 1 次，60 秒未回应自动超时。</li>
+      <li><strong>邀请与难度</strong>：大厅中向在线玩家发出邀请，每分钟限 1 次，60 秒未回应自动超时。发出邀请时会先为本局选择难度（轻松或高难，默认轻松），对方在确认窗口看过说明并同意后，双方才以同一难度开局。</li>
       <li><strong>同步</strong>：双方始终同回合同阶段；每个阶段需双方确认才推进。</li>
       <li><strong>断线重连</strong>：会话保留在服务器，重新登录即恢复进度；双方都离线时会话回收。</li>
       <li><strong>聊天</strong>：点击右上角 💬 与伙伴实时沟通（对方离线时无法发送）。</li>
@@ -3338,7 +3457,14 @@ const manualContentZh = () => ({
     </table>
   `,
   expansion: `
-    <h4>🗺️ 丝路特许：分批解锁</h4>
+    <h4>⚖️ 难度模式</h4>
+    <p>每一局都会在两种难度之一下进行，默认始终是<strong>轻松</strong>。<strong>轻松模式</strong>让整段航程都停留在基础货物之内，只包含麻布、丝绸、茶叶三种原料、四种入门成品、前三类工匠，以及与之相关的福缘、战船改装、港口和季风。棋盘始终不会过度拥挤，你有充足的余裕慢慢熟悉每个回合的节奏。<strong>高难模式</strong>则开放完整的海上贸易，下文「丝路特许」的分批解锁只会在高难模式中发生，因此需要打理的事务多得多，对舱位与金币的竞争也激烈许多。</p>
+    <p>难度在航程开始前就已商定。发出邀请的一方先选择本局难度，对方会在确认窗口看到一段说明，了解它会改变什么之后再同意，所以两位船长始终在同一难度下经营同一段航程。</p>
+    <div class="pm-banner" style="margin:8px 0 4px">
+      <span class="pm-icon">⚖️</span>
+      <span>下面这份分批解锁清单描述的是<strong>高难模式</strong>的航程。在轻松模式下，你将全程使用上面提到的基础内容，第 3 程与第 5 程的扩展不会出现。</span>
+    </div>
+    <h4>🗺️ 丝路特许：分批解锁（高难模式）</h4>
     <p>第 1-2 程的玩法与最初版本完全一致，包含 3 种原料、4 种成品、3 类工匠、5 座港口。从<strong>第 3 程</strong>起，「市舶新政」颁布；从<strong>第 5 程</strong>起，「万国通商」开启。两批新内容会分别加入原料、成品、港口、工匠、福缘、战船改装与季风的可选池，航路越往后，棋盘也就越宽。</p>
     <table>
       <tr><th>批次</th><th>解锁时机</th><th>新增内容概览</th></tr>
@@ -3437,7 +3563,8 @@ const manualContentZh = () => ({
       <li><span class="kbd">F1</span> 打开本手册 · <span class="kbd">Esc</span> 关闭弹窗 / 观战窗 / 聊天窗</li>
     </ul>
     <h4>😣 觉得 PortMasters 2 太难？</h4>
-    <p>本作的税务、工资与双人同步机制对新手并不友好。可以先游玩上一代
+    <p>最直接的办法是以<strong>轻松</strong>难度开局。轻松模式只包含基础货物，市场不会过度拥挤，让你能从容掌握采购、生产与贸易的节奏；它本就是默认难度，邀请时确认一下即可，两种难度的具体差别可见「难度与拓展」一节。</p>
+    <p>如果仍想从最基础处入门，也可以先游玩上一代
     <a href="${PM1_URLS.zh}" target="_blank" rel="noopener"><strong>PortMasters 1（中文版）→</strong></a>
     ，它没有联机同步与复杂税制，更适合熟悉「采购 → 生产 → 贸易」的基本循环。</p>
   `
@@ -3447,6 +3574,7 @@ const manualContentEn = () => ({
   start: `
     <h4>🎯 Objective</h4>
     <p>You and your partner each run a maritime trading fleet. Over <strong>8 voyages (rounds)</strong>, build <strong>renown</strong> through the buy-low → produce → sell-high loop. Renown is the net profit of every delivered order; your final rating depends on it. You start with 100 gold and a small stock of materials.</p>
+    <p class="muted">Every session has an Easy and a Hard difficulty, and the default is Easy. The level is settled at invite time: the inviting captain picks it and the other confirms it in a short window. Easy mode keeps to the founding set of goods and is the gentler place to start; see the "Difficulty &amp; Expansion" section for exactly what changes between the two.</p>
     <h4>🧭 Your First Voyage (recommended route)</h4>
     <ol>
       <li><strong>Fortune</strong>: in round 1, Emergency Loan (+40 gold) or Merchant's Charm (15% off purchases) eases the early cash crunch.</li>
@@ -3535,7 +3663,7 @@ const manualContentEn = () => ({
     </ul>
     <h4>🌐 Online Mechanics</h4>
     <ul>
-      <li><strong>Invitations</strong>: invite any online player from the lobby; one invite per minute, 60-second expiry.</li>
+      <li><strong>Invitations &amp; difficulty</strong>: invite any online player from the lobby; one invite per minute, 60-second expiry. When you send the invite you first choose the session difficulty (Easy or Hard, Easy by default), and the other captain reads a short explanation and agrees to it before you both start at the same level.</li>
       <li><strong>Sync</strong>: both captains are always on the same round and phase; every phase needs both to confirm.</li>
       <li><strong>Reconnection</strong>: sessions live on the server, so log back in to resume. The session is recycled only when both players are offline.</li>
       <li><strong>Chat</strong>: hit 💬 in the header to talk (disabled while your partner is offline).</li>
@@ -3563,7 +3691,14 @@ const manualContentEn = () => ({
     </table>
   `,
   expansion: `
-    <h4>🗺️ Silk Road Charter: Phased Unlocks</h4>
+    <h4>⚖️ Difficulty Modes</h4>
+    <p>Every session is played at one of two difficulties, and it always starts on <strong>Easy</strong> by default. <strong>Easy mode</strong> keeps the whole voyage on the founding set of goods, with only the three raw materials Hemp Cloth, Silk and Tea, the four starter products, the first three artisan guilds, and the fortunes, ship modules, ports and trade winds tied to them. The board never grows crowded, so you have plenty of room to learn the rhythm of each round at your own pace. <strong>Hard mode</strong> opens the full maritime trade, and the phased unlocks of the Silk Road Charter below happen only in Hard mode, so there is a great deal more to manage and the competition for cargo space and coin grows much fiercer.</p>
+    <p>The difficulty is settled before a voyage begins. The inviting captain chooses the level for the session, and the other captain sees a short explanation of what it changes in the confirmation window and agrees to it, so both captains always run the same voyage at the same difficulty.</p>
+    <div class="pm-banner" style="margin:8px 0 4px">
+      <span class="pm-icon">⚖️</span>
+      <span>The phased unlock tables below describe a <strong>Hard mode</strong> voyage. In Easy mode you stay on the founding set named above for the entire game, and the Round 3 and Round 5 expansions never arrive.</span>
+    </div>
+    <h4>🗺️ Silk Road Charter: Phased Unlocks (Hard mode)</h4>
     <p>Rounds 1-2 play exactly like the original release, with 3 raw materials, 4 products, 3 artisan types and 5 ports. From <strong>Round 3</strong>, the "New Maritime Edict" takes effect; from <strong>Round 5</strong>, "Ten Thousand Kingdoms Trade" opens. Each wave adds new resources, products, ports, artisans, fortunes, ship modules and trade winds to the pools you draw from, so the later the voyage, the wider the board.</p>
     <table>
       <tr><th>Wave</th><th>Unlocks at</th><th>What's added</th></tr>
@@ -3662,7 +3797,8 @@ const manualContentEn = () => ({
       <li><span class="kbd">F1</span> opens this manual · <span class="kbd">Esc</span> closes dialogs / the spectator window / chat</li>
     </ul>
     <h4>😣 Finding PortMasters 2 too hard?</h4>
-    <p>The taxes, wages and two-captain sync are not beginner-friendly. Try
+    <p>The simplest fix is to play on <strong>Easy</strong>. Easy mode keeps to the founding set of goods so the market never gets crowded, which lets you settle into the buy, produce and trade rhythm without pressure. It is already the default, so you only need to confirm it when you invite, and the "Difficulty &amp; Expansion" section spells out exactly what differs between the two levels.</p>
+    <p>If you would still like the gentlest possible introduction, warm up with
     <a href="${PM1_URLS.en}" target="_blank" rel="noopener"><strong>PortMasters 1 →</strong></a>
     first, with no online sync, no complex taxes, and a gentler intro to the buy → produce → trade loop.</p>
   `
@@ -3705,6 +3841,8 @@ function maybeShowOnboarding() {
     <div class="manual-body" style="max-height:46vh">
       <p>${tr('这里是 <strong>PortMasters 2</strong> —— 海上丝绸之路双人联机贸易战略。开始前 60 秒了解三件事：',
         'This is <strong>PortMasters 2</strong> — a 2-player co-op trading strategy on the Maritime Silk Road. Sixty seconds, three things to know:')}</p>
+      <p class="muted">${tr('小提示：每一局有轻松与高难两种难度，默认是轻松，由邀请时双方商定。觉得吃力就保持轻松，它只包含基础货物，更适合上手。',
+        'Tip: each session has an Easy and a Hard difficulty, Easy by default, agreed between the two of you when the invite is sent. If it feels like a lot, stay on Easy, which keeps to the founding set of goods and is friendlier for getting started.')}</p>
       <h4>${tr('1️⃣ 一切围绕现金流', '1️⃣ Cash flow is everything')}</h4>
       <p>${tr('每回合必须支付<strong>工匠工资</strong>与 <strong>15 金币维护费</strong>，付不起立即破产。左侧面板会实时核算「本回合应付款项」，时刻盯紧它。',
         'Every round you must pay <strong>artisan wages</strong> plus <strong>15 gold upkeep</strong> — miss it and you go bankrupt instantly. The left panel tallies "Due This Round" live; keep an eye on it.')}</p>

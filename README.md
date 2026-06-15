@@ -15,7 +15,8 @@ What's new since PortMasters 1:
 - 🔧 Ship modules: draft and install up to 3 of them, from the Smuggler's Hold to the Overdrive Engine.
 - 👀 A spectator window, so a bankrupt captain can still watch the partner finish the voyage.
 - 🌍 The whole interface is available in English (the default) and Simplified Chinese. Switch any time with the 🌐 button.
-- 🗺️ The Silk Road Charter: at Round 3 ("New Maritime Edict") and Round 5 ("Ten Thousand Kingdoms Trade"), the trade network expands in two waves — 4 new resources, 4 new products, 4 new artisan types, 4 new ports (9 total), 6 new Fortunes, 6 new ship modules and 4 new Trade Winds (8 total) join the game. Rounds 1-2 play exactly as before.
+- ⚖️ Two difficulty modes. Easy keeps the voyage on the founding set of goods for a gentler game, while Hard opens the full trade through the Silk Road Charter. The inviting captain picks the level and the other confirms it, and every session starts on Easy unless it is changed.
+- 🗺️ The Silk Road Charter: at Round 3 ("New Maritime Edict") and Round 5 ("Ten Thousand Kingdoms Trade"), the trade network expands in two waves, 4 new resources, 4 new products, 4 new artisan types, 4 new ports (9 total), 6 new Fortunes, 6 new ship modules and 4 new Trade Winds (8 total) join the game. Rounds 1-2 play exactly as before. This progression is the Hard mode experience; in Easy mode the voyage stays on the founding set the whole way through and these waves do not arrive.
 
 ---
 
@@ -37,7 +38,7 @@ What's new since PortMasters 1:
    python server.py
    ```
 4. Each player opens **http://localhost:8080** in a browser (on a LAN, use the host machine's address and port 8080), registers an account and logs in.
-5. Invite someone from the lobby. When they accept, the shared voyage begins. 🌊
+5. Invite someone from the lobby. Choose the difficulty for the session (Easy by default), and once they have read what it means and accepted, the shared voyage begins. 🌊
 
 > 💡 Playing over the internet: the page and the WebSocket share port 8080, so a single tunnel such as `ngrok http 8080` carries the whole game, https and wss included.
 
@@ -57,6 +58,14 @@ A game lasts **8 voyages** (rounds), and each voyage runs through **8 phases**. 
 | **📦 Trade** | Deliver port orders from your stock. Clues you bought show up here as guaranteed orders marked 🗣️. |
 | **🔧 Upkeep** | Production arrives and wages are paid on their own. Then you pay 15 gold of fleet upkeep. If you cannot, your fleet goes bankrupt. |
 | **🚢 Shipyard** | Upgrade the ship if you like (levels 0 to 3), draft modules, then end the voyage. |
+
+### ⚖️ Difficulty Modes
+Every session is played at one of two difficulties, and the game always starts on Easy unless someone chooses otherwise.
+
+- **🌱 Easy** keeps the whole voyage on the founding set of goods. You trade the three starting raw materials of Hemp Cloth, Silk and Tea, craft the four starter products, and hire from the first three artisan guilds, together with only the fortunes, ship modules, ports and trade winds that belong to them. The board never grows crowded, so there is plenty of room to learn the rhythm of each round.
+- **🔥 Hard** opens the full trade. It plays exactly like the Silk Road Charter progression described below, bringing in the remaining raw materials, products, foreign ports, specialist artisans and the richer fortunes, modules and trade winds as the rounds go on. There is far more to manage and the competition for cargo space and coin is much fiercer.
+
+The difficulty is agreed before a voyage begins. When you invite another captain you choose the level, and they see a short explanation of what it changes and confirm it before the session starts. Both captains therefore always play the same voyage at the same difficulty, and a restart keeps that difficulty.
 
 ### 📦 Resources
 Raw materials:
@@ -133,7 +142,7 @@ Finished goods:
 
 ### 🌐 Multiplayer
 - **Accounts**: a username and a password. Passwords are stored salted and hashed in `users.json`.
-- **Invitations**: one per minute from the lobby, and each expires after 60 seconds.
+- **Invitations**: one per minute from the lobby, and each expires after 60 seconds. When you invite someone you also choose the session difficulty, and they confirm it in the invitation window before the voyage starts.
 - **Staying in sync**: both captains share the round and the phase. The "Ready n / 2" chip shows who has confirmed. A bankrupt player counts as ready and never holds the partner up.
 - **Bankruptcy and spectating**: a bankrupt captain stays on the settlement page and can open the live 👀 spectator window to watch the partner play on.
 - **Reconnection**: sessions live on the server, so logging back in puts you right where you were. A session is only thrown away once both players are offline.
@@ -193,7 +202,7 @@ After 8 voyages, each captain receives a final rating based on **renown**, the r
 
 ## 👤 8. Credits & License
 - **Developers**: `Joe Zhou, Aaron Zhu`
-- **Version**: `PortMasters 2 v1.0.0a3 preview`
+- **Version**: `PortMasters 2 v1.0.0a4 preview`
 - **Language Support**: English (default) and Simplified Chinese, switchable inside the game
 - **License**: MIT License. Use it, change it, share it, for personal or commercial projects.
 - New to the series? [PortMasters 1](https://lostinhustle.github.io/PortMasters/PortMasters_Web_Edition/PortMasters_v1.4.0) is a gentler, single player place to start.
@@ -202,6 +211,7 @@ After 8 voyages, each captain receives a final rating based on **renown**, the r
 
 ## 🌟 Quick Reference
 - **Launch**: `python server.py`, then open `http://localhost:8080`
+- **Difficulty**: every session starts on Easy; the inviting captain can choose Hard for the full trade, and the other captain confirms it before the voyage begins
 - **Core Loop**: Set Sail → Fortune → Procure → Barter → Artisans → Trade → Upkeep → Shipyard
 - **Best Sellers**: Scented Sachets and Fine Brocade (mind the VAT!)
 - **Sure Money**: buy whispers, and equip the Broker's Network
