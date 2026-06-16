@@ -6,8 +6,8 @@ PortMasters multiplayer online server v4 (account edition)
 - Online lobby: logging in puts you online, with the online player list broadcast live; disconnecting takes you offline
 - Invite system: each player can send at most one invite per minute, which auto-expires after 60 seconds with no response;
   the other player can accept (both enter a shared session) or decline (the sender gets a decline notice)
-- Shared session: 8 rounds x 4 phases per round, with both players always on the same round and phase,
-  advancing in sync via a "Continue (n/2)" mechanism
+- Shared session: 8 rounds in easy mode or 16 in hard mode, 8 phases per round, with both players
+  always on the same round and phase, advancing in sync via a "Continue (n/2)" mechanism
 - The barter phase requires both players to click "Ready" before moving on to artisan management
 - Chat system: both players in a session can message each other while online; sending is disabled while offline
 - The web page and WebSocket share the same port 8080 (so a single ngrok tunnel can expose both, with wss support)
@@ -46,18 +46,19 @@ PORTS = PORTS_TIER0 + PORTS_TIER1 + PORTS_TIER2
 ESCORT_COST = 10
 
 # -------------------- Difficulty --------------------
-# Difficulty is a single, per-session cap on the highest content tier that may ever
-# unlock. It is intentionally expressed in the same Tier 0/1/2 vocabulary the rest of
-# the game already uses, so there is exactly one gating concept rather than a parallel
-# system. Easy keeps the whole voyage inside the founding Tier 0 set (the first three
-# raw materials, the four starter products, the first three artisan guilds, and only the
-# fortunes, ship modules, ports and weather tied to them). Hard lifts the cap to the full
-# pool and lets the existing Silk Road Charter reveal Tier 1 at round 3 and Tier 2 at
-# round 5 exactly as before. New tiers added later need no difficulty-specific code: they
-# inherit this cap automatically.
+# A difficulty is the per-session pacing profile: how many voyages (rounds) the game
+# lasts and how high the content tier is allowed to climb. Both are expressed in the
+# Tier 0/1/2 vocabulary the rest of the game already uses, so there is exactly one gating
+# concept rather than a parallel system. Easy is the short, gentle voyage: it stays inside
+# the founding Tier 0 set (the first three raw materials, the four starter products, the
+# first three artisan guilds, and only the fortunes, ship modules, ports and weather tied
+# to them) for all 8 of its rounds. Hard is the long voyage: 16 rounds with the cap lifted
+# to the full pool, so the Silk Road Charter reveals Tier 1 and then Tier 2 on the rounds
+# set in TIER_UNLOCK_ROUNDS. New tiers or difficulties added later need no special code:
+# rounds come from this table and content inherits the cap automatically.
 DIFFICULTIES = {
-    "easy": {"max_tier": 0},
-    "hard": {"max_tier": 2},
+    "easy": {"max_tier": 0, "rounds": 8},
+    "hard": {"max_tier": 2, "rounds": 16},
 }
 DEFAULT_DIFFICULTY = "easy"
 
@@ -71,31 +72,87 @@ def difficulty_max_tier(difficulty):
     return DIFFICULTIES[normalize_difficulty(difficulty)]["max_tier"]
 
 
+def difficulty_rounds(difficulty):
+    return DIFFICULTIES[normalize_difficulty(difficulty)]["rounds"]
+
+
+# The single source of truth for the unlock cadence: the round on which each content tier
+# joins the pools. Easy mode is capped at Tier 0 (see DIFFICULTIES) so these never fire
+# there; in hard mode Tier 1 opens at round 6 and Tier 2 at round 10, leaving the first
+# five rounds on the founding set and six full rounds once everything is in play.
+# unlocked(), the Silk Road Charter and the phase option counts all read from this map, so
+# retuning the pace is a single edit here.
+TIER_UNLOCK_ROUNDS = {1: 6, 2: 10}
+
+
 def unlocked(tier0, tier1, tier2, round_no, max_tier=2):
     """Unlock content pools by round, but never above the difficulty's tier cap.
-    Round 3 unlocks Tier 1 (New Maritime Edict) and round 5 unlocks Tier 2 (Ten Thousand
-    Kingdoms Trade); max_tier caps that progression so easy mode (max_tier 0) stays on
-    Tier 0 for the entire voyage while hard mode (max_tier 2) keeps today's progression."""
-    items = tier0[:]
-    if round_no >= 3 and max_tier >= 1:
-        items += tier1
-    if round_no >= 5 and max_tier >= 2:
-        items += tier2
+    Each tier in TIER_UNLOCK_ROUNDS joins the pool on its scheduled round; max_tier caps
+    that progression so easy mode (max_tier 0) stays on Tier 0 for the entire voyage while
+    hard mode (max_tier 2) opens Tier 1 then Tier 2 on schedule."""
+    pools = {0: tier0, 1: tier1, 2: tier2}
+    items = pools[0][:]
+    for tier, unlock_round in TIER_UNLOCK_ROUNDS.items():
+        if max_tier >= tier and round_no >= unlock_round:
+            items += pools[tier]
     return items
 
 
-# Silk Road Charter: announces newly unlocked content on the Set Sail page.
-# Each announcement belongs to the tier it reveals, so it must stay silent when the
-# difficulty cap keeps that tier locked (in easy mode no further tier ever opens).
-CHARTER_TIER_BY_ROUND = {3: 1, 5: 2}
+def unlocked_tier(round_no, max_tier=2):
+    """Highest content tier in play this round, after applying the difficulty cap."""
+    return max([0] + [tier for tier, unlock_round in TIER_UNLOCK_ROUNDS.items()
+                      if max_tier >= tier and round_no >= unlock_round])
+
+
+# Each phase that deals a hand of market cards (the buying phase and the selling/Trade
+# phase) widens that hand as higher tiers unlock, so a richer pool always comes with more
+# to choose from: 5 cards on Tier 0, then PER_TIER more for each unlocked tier (8 once
+# Tier 1 opens, 11 once Tier 2 does). Easy mode never leaves Tier 0, so it always offers 5.
+PHASE_OPTIONS_BASE = 5
+PHASE_OPTIONS_PER_TIER = 3
+
+
+def phase_option_count(round_no, max_tier=2):
+    return PHASE_OPTIONS_BASE + PHASE_OPTIONS_PER_TIER * unlocked_tier(round_no, max_tier)
+
+
+# Emperor Mandate: a special high-value levy that appears on scheduled rounds. Each
+# difficulty maps its rounds to a mandate size, and the size indexes the templates below,
+# so the demand escalates over the voyage without ever inferring size from the raw round
+# number. Easy keeps the original 8-round cadence; hard spreads the same three escalating
+# mandates across its 16 rounds, with the largest landing on the final round. Adding a
+# mandate is one entry here, never a code change.
+EMPEROR_MANDATE_SCHEDULE = {
+    "easy": {3: 0, 6: 1, 8: 2},
+    "hard": {6: 0, 12: 1, 16: 2},
+}
+
+# Mandate templates ordered small -> large; EMPEROR_MANDATE_SCHEDULE indexes into this list.
+EMPEROR_MANDATE_TEMPLATES = [
+    {"port": "泉州港", "reward": 135, "resources": [{"type": "丝绸", "required": 4}, {"type": "茶叶", "required": 3}]},
+    {"port": "扬州港", "reward": 260, "resources": [{"type": "绫罗绸缎", "required": 2}, {"type": "香囊", "required": 1}]},
+    {"port": "杭州港", "reward": 420, "resources": [{"type": "布衣", "required": 2}, {"type": "绫罗绸缎", "required": 2}, {"type": "香囊", "required": 2}]},
+]
+
+
+def emperor_mandate_size(difficulty, round_no):
+    """The mandate size due this round for this difficulty, or None when no mandate fires."""
+    return EMPEROR_MANDATE_SCHEDULE.get(normalize_difficulty(difficulty), {}).get(round_no)
+
+
+# Silk Road Charter: announces a newly unlocked tier on the Set Sail page, keyed by the
+# tier it reveals. charter_event() maps the current round to its tier through
+# TIER_UNLOCK_ROUNDS, so the banner always fires on the exact round that tier joins the
+# pools and stays silent when the difficulty cap keeps that tier locked (in easy mode no
+# further tier ever opens).
 CHARTER_EVENTS = {
-    3: {
+    1: {
         "id": "tier1",
         "icon": "🗺️",
         "name": "市舶新政",
         "desc": "福建市舶司新政颁布！瓷土、铜矿、青瓷器、紫铜镜加入行情；福州港、高丽港正式开埠；陶匠与铜匠加入劳务市场；新的福缘与战船改装随之而来。",
     },
-    5: {
+    2: {
         "id": "tier2",
         "icon": "🌏",
         "name": "万国通商",
@@ -321,9 +378,10 @@ def monsoon_pool(round_no, max_tier=2):
 
 def charter_event(round_no, max_tier=2):
     """The Set Sail announcement for this round, unless its tier is capped out by difficulty."""
-    if CHARTER_TIER_BY_ROUND.get(round_no, 0) > max_tier:
-        return None
-    return CHARTER_EVENTS.get(round_no)
+    for tier, unlock_round in TIER_UNLOCK_ROUNDS.items():
+        if round_no == unlock_round and tier <= max_tier:
+            return CHARTER_EVENTS.get(tier)
+    return None
 
 INVITE_COOLDOWN = 60          # invite cooldown / expiry (seconds)
 CHAT_HISTORY_LIMIT = 200      # number of chat messages kept per session
@@ -354,7 +412,7 @@ class PlayerGame:
         self.money = 100
         self.score = 0
         self.currentRound = 1
-        self.maxRounds = 8
+        self.maxRounds = difficulty_rounds(self.difficulty)
         self.totalRevenue = 0
         self.totalCosts = 0
         self.materialCosts = 0
@@ -497,36 +555,16 @@ class PlayerGame:
             return max(1, int(round(reward * state.get("rewardMultiplier", 1))))
         return reward
 
-    def gen_emperor_mandate_order(self):
-        round_no = self.currentRound
-        if round_no >= 8:
-            resources = [
-                {"type": "布衣", "required": 2},
-                {"type": "绫罗绸缎", "required": 2},
-                {"type": "香囊", "required": 2},
-            ]
-            reward = 420
-            port = "杭州港"
-        elif round_no >= 6:
-            resources = [
-                {"type": "绫罗绸缎", "required": 2},
-                {"type": "香囊", "required": 1},
-            ]
-            reward = 260
-            port = "扬州港"
-        else:
-            resources = [
-                {"type": "丝绸", "required": 4},
-                {"type": "茶叶", "required": 3},
-            ]
-            reward = 135
-            port = "泉州港"
+    def gen_emperor_mandate_order(self, size):
+        """Build the mandate of the given size (index into EMPEROR_MANDATE_TEMPLATES)."""
+        tpl = EMPEROR_MANDATE_TEMPLATES[size]
+        resources = [dict(r) for r in tpl["resources"]]
         total = sum(r["required"] for r in resources)
         return {
             "kind": "EmperorMandate",
-            "demandPort": port,
+            "demandPort": tpl["port"],
             "resources": resources,
-            "reward": self.env_reward(port, reward),
+            "reward": self.env_reward(tpl["port"], tpl["reward"]),
             "totalItems": total,
             "isProductOrder": any(r["type"] in PRODUCTS for r in resources),
         }
@@ -1115,11 +1153,13 @@ class SharedSession:
                 if g.gameOver:
                     continue
                 g.resourceCards = []
-                for i in range(5):
+                option_count = phase_option_count(g.currentRound, g.max_tier)
+                for i in range(option_count):
                     c = g.gen_resource_card()
                     c["id"] = i
                     g.resourceCards.append(c)
-                g.phase2DemandTags = random.sample(g.unlocked_resources() + g.unlocked_products(), 5)
+                demand_pool = g.unlocked_resources() + g.unlocked_products()
+                g.phase2DemandTags = random.sample(demand_pool, min(option_count, len(demand_pool)))
                 g.revealedIntel = []
                 free_intel = g.modifierFlags.get("free_intel", 0)
                 if free_intel:
@@ -1135,12 +1175,13 @@ class SharedSession:
                     continue
                 g.customerCards = []
                 next_id = 0
-                if g.currentRound in (3, 6, 8):
-                    o = g.gen_emperor_mandate_order()
+                mandate_size = emperor_mandate_size(g.difficulty, g.currentRound)
+                if mandate_size is not None:
+                    o = g.gen_emperor_mandate_order(mandate_size)
                     o["id"] = next_id
                     g.customerCards.append(o)
                     next_id += 1
-                order_count = 5 + g.modifierFlags.get("extra_order", 0)
+                order_count = phase_option_count(g.currentRound, g.max_tier) + g.modifierFlags.get("extra_order", 0)
                 for i in range(next_id, order_count):
                     o = g.gen_mixed_order()
                     o["id"] = i
