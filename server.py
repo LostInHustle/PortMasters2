@@ -377,7 +377,7 @@ MODULES_TIER0 = [
     {"id": "bulk_hauler", "name": "散货索具", "icon": "🏗️", "desc": "每件货物运费-1。船坞升级费用+15金币。"},
     {"id": "artisans_workshop", "name": "工匠工坊", "icon": "🛠️", "desc": "工人产量+1。工资+20%。"},
     {"id": "tax_evasion", "name": "避税账本", "icon": "📒", "desc": "所得税按增值税后利润计。15%概率在订单完成时罚款20金币(稽查)。"},
-    {"id": "silk_monopoly", "name": "丝路垂断", "icon": "🐍", "desc": "丝绸运费为0。丝绸产品订单收入+20%。"},
+    {"id": "silk_monopoly", "name": "丝路垄断", "icon": "🐍", "desc": "丝绸运费为0。丝绸产品订单收入+20%。"},
     {"id": "brokers_network", "name": "牙行网络", "icon": "🕵️", "desc": "每次花费2金币。每次购买密语显示2条线索。"},
     {"id": "salvage_crane", "name": "打捞起重机", "icon": "♻️", "desc": "30%概率在订单完成时退还运费。"},
     {"id": "overdrive_engine", "name": "超载引擎", "icon": "⚡", "desc": "运费-5金币。维护费+10金币。"}
@@ -482,14 +482,19 @@ class PlayerGame:
         self.intelCost = 5
         self.boonChoices = []
         self.equippedModules = []
-        self.draftChoices = []
+        self.draftChoices = []          # this round's module batch; persists across cancel
+        self.draftOpen = False          # is the draft panel currently shown?
+        self.draftRolled = False        # has the batch been rolled this round?
+        self.draftRerolled = False      # has the once-per-round "Change Batch" been used?
         self.lastRoundSummary = None
         self.lastLogs = []
+        self.logSeq = 0  # monotonic count of all log lines this game; lets the client toast only new ones
         # Slot info, injected by SharedSession
         self.slot = None
 
     def log(self, msg):
         self.lastLogs.append(msg)
+        self.logSeq += 1
         if len(self.lastLogs) > 100:
             self.lastLogs.pop(0)
 
@@ -764,19 +769,47 @@ class PlayerGame:
         return True
 
     # ---------- Shipyard modules ----------
-    def start_module_draft(self):
-        if self.shipLevel == 0:
-            self.log("❌ 旗舰尚无模块槽位，请先升级船坞")
-            return False
+    def _roll_module_batch(self):
+        """Roll a fresh batch of up to 3 module options, preferring ones not yet installed."""
         tier_pool = module_pool(self.currentRound, self.tier_unlock)
         available = [m for m in tier_pool if not self.has_module(m["id"])]
         pool = available if len(available) >= 3 else tier_pool
         copy = pool[:]
         random.shuffle(copy)
         self.draftChoices = copy[:3]
+
+    def start_module_draft(self):
+        """Open the draft panel. The batch is rolled once per round and then fixed, so closing
+        and reopening shows the same options (no free reroll). Use reroll_module_draft to change
+        it, at most once per round."""
+        if self.shipLevel == 0:
+            self.log("❌ 旗舰尚无模块槽位，请先升级船坞")
+            return False
+        if not self.draftRolled:
+            self._roll_module_batch()
+            self.draftRolled = True
+        self.draftOpen = True
+        return True
+
+    def reroll_module_draft(self):
+        """The once-per-round 'Change Batch': swap the current options for a fresh roll."""
+        if self.shipLevel == 0:
+            self.log("❌ 旗舰尚无模块槽位，请先升级船坞")
+            return False
+        if self.draftRerolled:
+            self.log("❌ 本回合的「换一批」已经用过了")
+            return False
+        self._roll_module_batch()
+        self.draftRolled = True
+        self.draftRerolled = True
+        self.draftOpen = True
+        self.log("🔀 已更换一批可选模块")
         return True
 
     def equip_module(self, mod, swap_idx=None):
+        if self.has_module(mod["id"]):
+            self.log("❌ 已经装备了该模块")
+            return False
         if swap_idx is not None:
             if swap_idx < 0 or swap_idx >= len(self.equippedModules):
                 return False
@@ -796,7 +829,9 @@ class PlayerGame:
         if mod["id"] == "bulk_hauler": self.shipUpgradePenalty += 15
         if mod["id"] == "overdrive_engine": self.maintenancePenalty += 10
         if mod["id"] == "brokers_network": self.intelCost = 2
-        self.draftChoices = []
+        # The installed module leaves this round's batch so it can't be taken twice; close the panel.
+        self.draftChoices = [m for m in self.draftChoices if m["id"] != mod["id"]]
+        self.draftOpen = False
         return True
 
     def _reveal_intel(self, count):
@@ -1014,6 +1049,10 @@ class PlayerGame:
         self.phase2DemandTags = []
         self.revealedIntel = []
         self.boonChoices = []
+        self.draftChoices = []
+        self.draftOpen = False
+        self.draftRolled = False
+        self.draftRerolled = False
         self.roundRevenue = 0
         self.roundCosts = 0
         self.maintenanceCosts = 0
@@ -1047,6 +1086,8 @@ class PlayerGame:
             "shipLevel": self.shipLevel,
             "equippedModules": self.equippedModules,
             "draftChoices": self.draftChoices,
+            "draftOpen": self.draftOpen,
+            "draftRerolled": self.draftRerolled,
             "phase": self.phase,
             "resourceCards": self.resourceCards,
             "customerCards": self.customerCards,
@@ -1083,6 +1124,7 @@ class PlayerGame:
             "shipUpgradeCost": self.shipUpgradeCost,
             "shipUpgradePenalty": self.shipUpgradePenalty,
             "logs": self.lastLogs[-10:],
+            "logSeq": self.logSeq,
             "slot": self.slot          # identity slot
         }
 
@@ -1671,7 +1713,11 @@ async def handle_game_action(username, data):
             changed = True
     elif action == "cancelModuleDraft":
         if phase == 4:
-            game.draftChoices = []
+            game.draftOpen = False  # hide the panel; the batch persists so reopening can't reroll
+            changed = True
+    elif action == "rerollModuleDraft":
+        if phase == 4:
+            game.reroll_module_draft()
             changed = True
     elif action == "restart":
         # Only allow resetting the whole session once the partner has also finished (settled or bankrupt), keeping both players in sync

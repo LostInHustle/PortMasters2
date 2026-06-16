@@ -1026,28 +1026,43 @@ a { color: var(--ocean-700); }
 }
 #chat-input:focus { outline: none; border-color: var(--ocean-500); box-shadow: 0 0 0 3px rgba(14, 165, 233, .15); }
 
-/* ---- Notifications ---- */
-.notification {
+/* ---- Notifications / toast stack ---- */
+/* All toasts live in a fixed top-right column so multiple can stack instead of overlapping. */
+#toast-stack {
   position: fixed;
   top: 20px;
   right: 20px;
+  z-index: var(--z-toast);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  align-items: flex-end;
+  pointer-events: none;
+  max-width: 380px;
+}
+.notification {
   background: rgba(15, 23, 42, .92);
   backdrop-filter: blur(10px);
   color: #f0fdfa;
   padding: 13px 20px 13px 16px;
   border-radius: 14px;
   border-left: 4px solid #10b981;
-  z-index: var(--z-toast);
   animation: slideIn .3s cubic-bezier(.2,.8,.3,1.1);
   box-shadow: 0 12px 32px rgba(0,0,0,.3);
   font-size: 13px;
   max-width: 360px;
   line-height: 1.55;
+  pointer-events: auto;
 }
 .notification.error { border-left-color: #fb7185; }
+.notification.log { border-left-color: #38bdf8; }
+.notification.fading { animation: toastFadeOut .4s ease forwards; }
 @keyframes slideIn {
   from { transform: translateX(420px); opacity: 0; }
   to   { transform: translateX(0); opacity: 1; }
+}
+@keyframes toastFadeOut {
+  to { transform: translateX(420px); opacity: 0; }
 }
 
 /* ---- Spectator window (a separate floating window, doesn't take up the main stage) ---- */
@@ -1167,6 +1182,7 @@ a { color: var(--ocean-700); }
 </head>
 <body>
 
+<div id="toast-stack"></div>
 <div class="bg-orb orb-1" aria-hidden="true"></div>
 <div class="bg-orb orb-2" aria-hidden="true"></div>
 <div class="bg-orb orb-3" aria-hidden="true"></div>
@@ -1367,7 +1383,7 @@ const EN_NAMES = {
   "泉州港": "Quanzhou", "广州港": "Guangzhou", "宁波港": "Ningbo", "扬州港": "Yangzhou", "杭州港": "Hangzhou",
   "福州港": "Fuzhou", "高丽港": "Goryeo", "三佛齐港": "Srivijaya", "大食港": "Dashi",
   "走私暗舱": "Smuggler's Hold", "散货索具": "Bulk Rigging", "工匠工坊": "Artisan's Workshop",
-  "避税账本": "Hidden Ledger", "丝路垂断": "Silk Monopoly", "牙行网络": "Broker's Network",
+  "避税账本": "Hidden Ledger", "丝路垄断": "Silk Monopoly", "牙行网络": "Broker's Network",
   "打捞起重机": "Salvage Crane", "超载引擎": "Overdrive Engine",
   "市舶司令牌": "Trade Bureau Token", "陶土窖": "Kiln Cellar", "远洋通译": "Ocean-Going Interpreter",
   "蕃坊行会证": "Foreign Quarter Guild Pass", "波斯穹顶罗盘": "Persian Dome Compass", "万宝商船": "Fleet of Ten-Thousand Treasures",
@@ -1801,12 +1817,45 @@ let inviteStatus = {};
 /* ============================================================
    Notifications / Login & Registration
    ============================================================ */
+/* Append a toast into the stacking container so several can coexist; it lingers for `ttl`
+   then fades out. Used for invites/errors (short) and per-action log bubbles (~10s). */
+function pushToast(message, kind = '', ttl = 10000) {
+  let stack = document.getElementById('toast-stack');
+  if (!stack) { stack = document.createElement('div'); stack.id = 'toast-stack'; document.body.appendChild(stack); }
+  const el = document.createElement('div');
+  el.className = 'notification' + (kind ? ' ' + kind : '');
+  el.textContent = message;
+  stack.appendChild(el);
+  // Cap visible toasts so a burst of actions can't fill the screen; drop the oldest.
+  while (stack.children.length > 6) stack.removeChild(stack.firstChild);
+  setTimeout(() => {
+    el.classList.add('fading');
+    setTimeout(() => el.remove(), 400);
+  }, ttl);
+}
+
 function showNotification(message, isError = false) {
-  const notif = document.createElement('div');
-  notif.className = 'notification' + (isError ? ' error' : '');
-  notif.textContent = message;
-  document.body.appendChild(notif);
-  setTimeout(() => notif.remove(), 3500);
+  pushToast(message, isError ? 'error' : '', 3500);
+}
+
+/* A floating bubble for each new Captain's Log line, lingering ~10s, mirroring what the log
+   panel records. logSeq (from the server) is a monotonic count of this game's log lines, so we
+   only toast lines added since the last state, and never replay the backlog on login/resume. */
+let lastLogSeq = null;
+function maybeToastNewLogs() {
+  const g = serverState && serverState.yourGame;
+  if (!g) return;
+  const seq = g.logSeq || 0;
+  const logs = g.logs || [];
+  if (lastLogSeq === null || seq < lastLogSeq) {
+    lastLogSeq = seq;  // first state, or a restart reset the counter: sync without toasting
+    return;
+  }
+  if (seq > lastLogSeq) {
+    const newCount = Math.min(seq - lastLogSeq, logs.length);
+    for (const m of logs.slice(logs.length - newCount)) pushToast(lst(m), 'log', 10000);
+    lastLogSeq = seq;
+  }
 }
 
 function showRegister() {
@@ -1986,6 +2035,7 @@ function setupWebSocketHandlers() {
         partnerOnline = serverState.partnerOnline;
         updateChatSendState();
       }
+      maybeToastNewLogs();
       renderAll();
     }
 
@@ -3093,22 +3143,22 @@ function shipyardHTML() {
         <div class="stat-row" style="font-size:13px"><span>${tr('模块槽位', 'Module slots')}</span><strong>${slots} / ${g.shipLevel}</strong></div>
         <div style="margin-top:6px">${modulesHTML(g)}</div>
       </div>
-      ${draft.length ? moduleDraftHTML(g, draft, slotsFull) : ''}
+      ${g.draftOpen ? moduleDraftHTML(g, draft, slotsFull) : ''}
       <div style="text-align:center;display:flex;gap:12px;justify-content:center;flex-wrap:wrap">
         ${canUpgrade ? `
           <button class="btn btn-lg" onclick="sendAction('upgradeShip')" ${g.money < upgCost ? 'disabled' : ''}
             title="${tr('升级后每单运费永久再减5金币，并增加1个模块槽位', 'Each upgrade permanently cuts shipping by another 5 gold and adds a module slot')}">
             ${tr(`⚓ 升级商船至 Lv.${g.shipLevel + 1}（${upgCost}💰）`, `⚓ Upgrade Ship to Lv.${g.shipLevel + 1} (${upgCost}💰)`)}<span class="btn-sub">${tr('运费/单再 −5 金币 · +1 模块槽', 'Shipping −5 gold/order · +1 module slot')}</span>
           </button>` : `<span class="chip green">${tr('⚓ 旗舰已满级 Lv.3', '⚓ Flagship at max level (Lv.3)')}</span>`}
-        ${!draft.length ? `
+        ${!g.draftOpen ? `
           <button class="btn ${g.shipLevel > 0 ? 'btn-gold' : 'btn-grey'} btn-lg" ${g.shipLevel > 0 ? '' : 'disabled'}
             onclick="sendAction('draftModules')"
             title="${g.shipLevel > 0
-              ? (slotsFull ? tr('槽位已满，抽取后可替换现有模块', 'Slots are full — drafting lets you replace an installed module') : tr('抽取3个模块，选择一个安装到空置槽位', 'Draft 3 modules and install one in an empty slot'))
-              : tr('商船升至 Lv.1 后解锁模块槽位，方可抽取船舶模块', 'Upgrade your ship to Lv.1 to unlock module slots before drafting')}">
+              ? (slotsFull ? tr('查看本回合的模块选项，可替换现有模块', "View this round's module options; you can replace an installed module") : tr('查看本回合固定的 3 个模块选项，选择一个安装', "View this round's fixed 3 module options and install one"))
+              : tr('商船升至 Lv.1 后解锁模块槽位，方可选择船舶模块', 'Upgrade your ship to Lv.1 to unlock module slots before choosing')}">
             ${g.shipLevel > 0
-              ? `🔧 ${slotsFull ? tr('抽取并替换模块', 'Draft & Replace Module') : tr('抽取并安装模块', 'Draft & Install Module')}`
-              : tr('🔒 抽取并安装模块<span class="btn-sub">需先升级商船解锁槽位</span>', '🔒 Draft & Install Module<span class="btn-sub">Upgrade your ship to unlock slots</span>')}
+              ? `🔧 ${slotsFull ? tr('选择船舶模块（可替换）', 'Choose Ship Modules (replace)') : tr('选择船舶模块', 'Choose Ship Modules')}`
+              : tr('🔒 选择船舶模块<span class="btn-sub">需先升级商船解锁槽位</span>', '🔒 Choose Ship Modules<span class="btn-sub">Upgrade your ship to unlock slots</span>')}
           </button>` : ''}
         <button class="btn btn-success btn-lg" onclick="sendAction('ready_for_next_phase')" title="${tr('双方确认后开始下一航程', 'The next voyage begins once both captains confirm')}">${tr('⏭️ 结束本航程', '⏭️ End This Voyage')}<span class="btn-sub">${tr('双方确认后开启下一程', 'Advances when both confirm')}</span></button>
       </div>
@@ -3117,10 +3167,7 @@ function shipyardHTML() {
 }
 
 function moduleDraftHTML(g, draft, slotsFull) {
-  return `
-    <div class="section-box" style="max-width:780px;margin:18px auto">
-      <h3>${tr('🔧 模块抽取', '🔧 Module Draft')}</h3>
-      <div class="section-hint">${slotsFull ? tr('模块槽位已满，选择一个新模块后需指定要替换的现有模块。', 'All slots are full — pick a new module, then choose which installed one to replace.') : tr('选择一个模块安装到空置槽位。', 'Pick one module to install in an empty slot.')}</div>
+  const grid = draft.length ? `
       <div class="card-grid">
         ${draft.map((m, i) => `
           <div class="card">
@@ -3142,9 +3189,20 @@ function moduleDraftHTML(g, draft, slotsFull) {
             </div>
           </div>
         `).join('')}
-      </div>
-      <div style="text-align:center;margin-top:10px">
-        <button class="btn btn-ghost" onclick="sendAction('cancelModuleDraft')">${tr('❌ 放弃本次抽取', '❌ Skip This Draft')}</button>
+      </div>`
+    : `<div class="section-hint">${tr('本批模块已全部安装。', 'You have installed every module in this batch.')}${g.draftRerolled ? '' : tr('可点「换一批」再抽一批。', ' Use Change Batch for a fresh draw.')}</div>`;
+  return `
+    <div class="section-box" style="max-width:780px;margin:18px auto">
+      <h3>${tr('🔧 模块选择', '🔧 Module Draft')}</h3>
+      <div class="section-hint">${tr('本回合的模块选项是固定的，关闭后再次打开仍是同一批。', "This round's options are fixed; closing and reopening shows the same batch.")} ${slotsFull ? tr('槽位已满，选择新模块后需指定要替换的现有模块。', 'All slots are full, so pick a new module then choose which installed one to replace.') : tr('选择一个模块安装到空置槽位。', 'Pick one module to install in an empty slot.')}</div>
+      ${grid}
+      <div style="text-align:center;margin-top:10px;display:flex;gap:10px;justify-content:center;flex-wrap:wrap">
+        <button class="btn ${g.draftRerolled ? 'btn-grey' : 'btn-gold'}" ${g.draftRerolled ? 'disabled' : ''}
+          onclick="sendAction('rerollModuleDraft')"
+          title="${g.draftRerolled ? tr('本回合的「换一批」已用过', 'Reroll already used this round') : tr('每回合一次：重新抽取一批可选模块', 'Once per round: draw a fresh batch of module options')}">
+          ${g.draftRerolled ? tr('🔀 本回合已换过一批', '🔀 Batch already changed') : tr('🔀 换一批', '🔀 Change Batch')}
+        </button>
+        <button class="btn btn-ghost" onclick="sendAction('cancelModuleDraft')">${tr('❌ 关闭', '❌ Close')}</button>
       </div>
     </div>
   `;
@@ -3601,6 +3659,7 @@ const manualContentZh = () => ({
       <li>运费下限为 5 金币（部分福缘/模块可降至 0）。</li>
       <li>升级是<strong>永久投资</strong>：交付订单越频繁，回本越快。一般建议第 2~4 程内升至 Lv.1~2。</li>
       <li>临近尾声的最后一两程再升级往往回不了本，把现金留给进货更划算。</li>
+      <li>升级解锁槽位后，可在船坞「选择船舶模块」。每回合的 3 个候选<strong>固定不变</strong>，关闭再打开仍是同一批；每回合可用一次<strong>「换一批」</strong>重新抽取。</li>
     </ul>
   `,
   faq: `
@@ -3835,6 +3894,7 @@ const manualContentEn = () => ({
       <li>Shipping never drops below 5 gold (certain fortunes/modules can push it to 0).</li>
       <li>Upgrades are a <strong>permanent investment</strong>: the more orders you deliver, the faster they pay off. Aim for Lv.1–2 around rounds 2–4.</li>
       <li>Late upgrades in the final round or two rarely pay for themselves, so keep that gold for stock instead.</li>
+      <li>Once a slot is unlocked you can "Choose Ship Modules" at the Shipyard. Each round's 3 options are <strong>fixed</strong> (closing and reopening shows the same batch), and you get one <strong>Change Batch</strong> reroll per round.</li>
     </ul>
   `,
   faq: `
