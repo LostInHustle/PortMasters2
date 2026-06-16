@@ -1642,8 +1642,9 @@ const SERVER_TEXT_RULES = [
   [/^🛡️ 护航舰队已就位$/, () => `🛡️ Escort fleet is already in position`],
   [/^❌ 需要(\d+)金币才能雇佣护航$/, m => `❌ You need ${m[1]} gold to hire an escort`],
   [/^🛡️ 雇佣护航，花费(\d+)金币$/, m => `🛡️ Hired an escort for ${m[1]} gold`],
-  [/^🛡️ 护航舰队震慑海盗，本程无损$/, () => `🛡️ Escort fleet deterred pirates — no losses this voyage`],
-  [/^🏴‍☠️ 海盗袭扰，损失(\d+)金币$/, m => `🏴‍☠️ Pirate raid — lost ${m[1]} gold`],
+  [/^🛡️ 护航舰队震慑海盗，本程无损$/, () => `🛡️ Escort fleet deterred pirates, no losses this voyage`],
+  [/^🏴‍☠️ 海盗袭扰，损失(\d+)金币（财富的(\d+)%）$/, m => `🏴‍☠️ Pirate raid: lost ${m[1]} gold (${m[2]}% of your wealth)`],
+  [/^🕵️ 这名牙行形迹可疑，疑似走漏了你的行踪，本程海盗风险上升(\d+)%！$/, m => `🕵️ This broker looked shifty and seems to have leaked your route. Pirate risk is up ${m[1]}% this voyage.`],
   [/^🤝 互市成功！$/, () => `🤝 Barter complete!`],
   /* Sync waiting hints */
   [/^请点击“准备就绪”以进入工匠管理$/, () => `Click "Ready" to proceed to artisan management`],
@@ -2230,7 +2231,7 @@ function environmentBannerHTML(g) {
   const resource = m.resource ? tn(m.resource) : '';
   const rewardPct = Math.round(((m.rewardMultiplier || 1) - 1) * 100);
   const pricePct = Math.round(Math.abs(((m.purchaseMultiplier || 1) - 1) * 100));
-  const riskPct = Math.round((m.pirateRisk || 0) * 100);
+  const riskPct = Math.round((g.pirateRiskEffective ?? m.pirateRisk ?? 0) * 100);
   const priceWord = (m.purchaseMultiplier || 1) < 1 ? tr('降价', 'cheaper') : tr('涨价', 'pricier');
   return `
     <div class="environment-banner">
@@ -2716,6 +2717,10 @@ function brokerWhisperHTML(g) {
             ? tr(` 此外，<strong>📡 远洋通译</strong>已生效：每次额外多获得 <strong>1 条</strong>线索（不增加花费）。`,
                  ` Additionally, <strong>📡 Ocean-Going Interpreter</strong> is active: each purchase reveals <strong>1 extra clue</strong> at no added cost.`)
             : ''}
+          ${g.brokerCorruption
+            ? tr(` ⚠️ 高难航路上并非每个牙行都可信：每次打探都有可能遇到<strong>可疑牙行</strong>走漏你的行踪，抬高本程海盗袭扰概率，记得在结算阶段权衡是否雇佣护航。`,
+                 ` ⚠️ On the hard route not every broker is trustworthy: each purchase risks a <strong>shady broker</strong> leaking your route and raising this voyage's pirate raid chance, so weigh hiring an escort at Upkeep.`)
+            : ''}
         </div>
         <div style="margin:10px 0">
           <button class="btn btn-gold" ${canBuy ? '' : 'disabled'} onclick="sendAction('purchaseIntel')"
@@ -3014,9 +3019,11 @@ function maintenanceHTML() {
   const cost = g.fixedCost + (g.maintenancePenalty || 0);
   const safe = g.money >= cost;
   const m = g.monsoon_state || {};
-  const riskPct = Math.round((m.pirateRisk || 0) * 100);
+  const riskPct = Math.round((g.pirateRiskEffective ?? m.pirateRisk ?? 0) * 100);
   const escortCost = g.escortCost || 10;
   const canEscort = !g.pirate_immunity && g.money >= escortCost;
+  const lossPct = Math.round((g.pirateLossPct || 0) * 100);
+  const projectedLoss = Math.round((g.money || 0) * (g.pirateLossPct || 0));
   return `
     ${phaseBriefHTML(3)}
     ${environmentBannerHTML(g)}
@@ -3035,8 +3042,8 @@ function maintenanceHTML() {
       <div class="section-box">
         <h3>${tr('🛡️ 海盗反制：雇佣护航', '🛡️ Pirate Counterplay: Hire Escort')}</h3>
         <div class="section-hint">
-          ${tr(`当前环境海盗袭扰概率为 <strong>${riskPct}%</strong>，若触发将损失至多 ${m.pirateLoss || 0} 金币。雇佣护航可完全免疫本次结算的海盗 RNG。`,
-               `Current pirate raid chance is <strong>${riskPct}%</strong>; a raid can cost up to ${m.pirateLoss || 0} gold. Hiring an escort fully neutralizes pirate RNG for this upkeep.`)}
+          ${tr(`本程海盗袭扰概率为 <strong>${riskPct}%</strong>（含天象与可疑牙行的影响），若触发将损失当前金币的 <strong>${lossPct}%</strong>（按现有现金约为 ${projectedLoss} 金币）。护航费用按当前财富计算，本次为 <strong>${escortCost}</strong> 金币，可完全免疫本次结算的海盗 RNG。`,
+               `This voyage's pirate raid chance is <strong>${riskPct}%</strong> (weather plus any shady brokers); if it lands you lose <strong>${lossPct}%</strong> of your gold (about ${projectedLoss} gold at your current balance). The escort fee scales with your wealth, <strong>${escortCost}</strong> gold right now, and fully neutralizes pirate RNG for this upkeep.`)}
         </div>
         <button class="btn ${g.pirate_immunity ? 'btn-grey' : 'btn-shield'}" ${g.pirate_immunity || !canEscort ? 'disabled' : ''}
           onclick="sendAction('hireEscort')"
@@ -3488,7 +3495,7 @@ const manualContentZh = () => ({
   `,
   expansion: `
     <h4>⚖️ 难度模式</h4>
-    <p>每一局都会在两种难度之一下进行，默认始终是<strong>轻松</strong>。<strong>轻松模式</strong>共 8 个回合，让整段航程都停留在基础货物之内，只包含麻布、丝绸、茶叶三种原料、四种入门成品、前三类工匠，以及与之相关的福缘、战船改装、港口和季风。棋盘始终不会过度拥挤，你有充足的余裕慢慢熟悉每个回合的节奏。<strong>高难模式</strong>共 16 个回合，开放完整的海上贸易，下文「丝路特许」的分批解锁只会在高难模式中发生，因此需要打理的事务多得多，对舱位与金币的竞争也激烈许多。</p>
+    <p>每一局都会在两种难度之一下进行，默认始终是<strong>轻松</strong>。<strong>轻松模式</strong>共 8 个回合，让整段航程都停留在基础货物之内，只包含麻布、丝绸、茶叶三种原料、四种入门成品、前三类工匠，以及与之相关的福缘、战船改装、港口和季风。棋盘始终不会过度拥挤，你有充足的余裕慢慢熟悉每个回合的节奏。<strong>高难模式</strong>共 16 个回合，开放完整的海上贸易，下文「丝路特许」的分批解锁只会在高难模式中发生，因此需要打理的事务多得多，对舱位与金币的竞争也激烈许多。海盗机制对两种难度都已加强：海盗一旦得手会掠走当前财富的一定比例（高难模式后半程比例更高），雇佣护航的费用也随财富浮动；而在高难模式中，购买牙行密语还可能遇到可疑牙行暗通海盗、抬高本程袭扰概率，让结算阶段是否雇佣护航成为真正的取舍。</p>
     <p>难度在航程开始前就已商定。发出邀请的一方先选择本局难度，对方会在确认窗口看到一段说明，了解它会改变什么之后再同意，所以两位船长始终在同一难度下经营同一段航程。</p>
     <div class="pm-banner" style="margin:8px 0 4px">
       <span class="pm-icon">⚖️</span>
@@ -3722,7 +3729,7 @@ const manualContentEn = () => ({
   `,
   expansion: `
     <h4>⚖️ Difficulty Modes</h4>
-    <p>Every session is played at one of two difficulties, and it always starts on <strong>Easy</strong> by default. <strong>Easy mode</strong> is the shorter 8 round voyage and keeps the whole game on the founding set of goods, with only the three raw materials Hemp Cloth, Silk and Tea, the four starter products, the first three artisan guilds, and the fortunes, ship modules, ports and trade winds tied to them. The board never grows crowded, so you have plenty of room to learn the rhythm of each round at your own pace. <strong>Hard mode</strong> is the longer 16 round voyage that opens the full maritime trade, and the phased unlocks of the Silk Road Charter below happen only in Hard mode, so there is a great deal more to manage and the competition for cargo space and coin grows much fiercer.</p>
+    <p>Every session is played at one of two difficulties, and it always starts on <strong>Easy</strong> by default. <strong>Easy mode</strong> is the shorter 8 round voyage and keeps the whole game on the founding set of goods, with only the three raw materials Hemp Cloth, Silk and Tea, the four starter products, the first three artisan guilds, and the fortunes, ship modules, ports and trade winds tied to them. The board never grows crowded, so you have plenty of room to learn the rhythm of each round at your own pace. <strong>Hard mode</strong> is the longer 16 round voyage that opens the full maritime trade, and the phased unlocks of the Silk Road Charter below happen only in Hard mode, so there is a great deal more to manage and the competition for cargo space and coin grows much fiercer. Raids bite harder in both modes too: a successful raid takes a share of your current gold (a larger share in hard mode's back half) and the escort fee scales with your wealth as well; and in hard mode a Broker's Whisper can come from a corrupt broker who tips off pirates and raises that voyage's raid chance, turning the escort call at Upkeep into a genuine trade-off.</p>
     <p>The difficulty is settled before a voyage begins. The inviting captain chooses the level for the session, and the other captain sees a short explanation of what it changes in the confirmation window and agrees to it, so both captains always run the same voyage at the same difficulty.</p>
     <div class="pm-banner" style="margin:8px 0 4px">
       <span class="pm-icon">⚖️</span>

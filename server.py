@@ -43,8 +43,6 @@ PORTS_TIER1 = ["福州港", "高丽港"]
 PORTS_TIER2 = ["三佛齐港", "大食港"]
 PORTS = PORTS_TIER0 + PORTS_TIER1 + PORTS_TIER2
 
-ESCORT_COST = 10
-
 # -------------------- Difficulty --------------------
 # A difficulty is the per-session pacing profile: how many voyages (rounds) the game
 # lasts and how high the content tier is allowed to climb. Both are expressed in the
@@ -55,10 +53,12 @@ ESCORT_COST = 10
 # to them) for all 8 of its rounds. Hard is the long voyage: 16 rounds with the cap lifted
 # to the full pool, so the Silk Road Charter reveals Tier 1 and then Tier 2 on the rounds
 # set in TIER_UNLOCK_ROUNDS. New tiers or difficulties added later need no special code:
-# rounds come from this table and content inherits the cap automatically.
+# rounds come from this table and content inherits the cap automatically. Hard mode also
+# switches on the corrupt-broker hazard (broker_corruption); easy stays the safe learning
+# ground, and flipping that for any difficulty is a single edit here.
 DIFFICULTIES = {
-    "easy": {"max_tier": 0, "rounds": 8},
-    "hard": {"max_tier": 2, "rounds": 16},
+    "easy": {"max_tier": 0, "rounds": 8, "broker_corruption": False},
+    "hard": {"max_tier": 2, "rounds": 16, "broker_corruption": True},
 }
 DEFAULT_DIFFICULTY = "easy"
 
@@ -74,6 +74,10 @@ def difficulty_max_tier(difficulty):
 
 def difficulty_rounds(difficulty):
     return DIFFICULTIES[normalize_difficulty(difficulty)]["rounds"]
+
+
+def difficulty_broker_corruption(difficulty):
+    return DIFFICULTIES[normalize_difficulty(difficulty)]["broker_corruption"]
 
 
 # The single source of truth for the unlock cadence: the round on which each content tier
@@ -114,6 +118,42 @@ PHASE_OPTIONS_PER_TIER = 3
 
 def phase_option_count(round_no, max_tier=2):
     return PHASE_OPTIONS_BASE + PHASE_OPTIONS_PER_TIER * unlocked_tier(round_no, max_tier)
+
+
+# Pirate raids now bite a fraction of the captain's current gold rather than a flat toll,
+# so they stay dangerous as the economy grows. The weather still sets pirateRisk (the
+# chance a raid lands); these tiers set how hard it bites when it does. Severity scales
+# with the stakes, mapped to a tier by pirate_loss_pct below.
+PIRATE_LOSS_TIERS = {
+    "medium": 0.15,
+    "above_medium": 0.25,
+    "high": 0.40,
+}
+
+
+def pirate_loss_pct(difficulty, round_no, max_rounds):
+    """Raid severity (fraction of current gold) for this difficulty and round: easy stays at
+    a medium toll the whole way, while the longer hard voyage opens above-medium and climbs
+    to high once it passes its midpoint."""
+    if normalize_difficulty(difficulty) != "hard":
+        return PIRATE_LOSS_TIERS["medium"]
+    return PIRATE_LOSS_TIERS["above_medium"] if round_no <= max_rounds // 2 else PIRATE_LOSS_TIERS["high"]
+
+
+# The escort fee scales with the captain's gold so it stays a real decision instead of
+# pocket change late game: a share of current wealth, never below a small floor (which keeps
+# it meaningful early when the share would round to almost nothing). Paired with the
+# wealth-based pirate toll, this makes upkeep a genuine gamble: pay a non-trivial fee for
+# certainty, or skip it and risk a percentage loss that a corrupt broker can amplify.
+ESCORT_COST_MIN = 10
+ESCORT_COST_PCT = 0.10
+
+# A corrupt broker may secretly tip off pirates when you pay for a whisper, raising this
+# round's raid chance. It is part of hard mode's higher-stakes information game and stays
+# off in easy mode (see DIFFICULTIES "broker_corruption"). CHANCE is the odds any single
+# purchase is corrupt; RISK is the raid probability it adds, and tips stack across the round.
+BROKER_CORRUPTION_CHANCE = 0.30
+BROKER_CORRUPTION_RISK = 0.20
 
 
 # Emperor Mandate: a special high-value levy that appears on scheduled rounds. Each
@@ -171,7 +211,6 @@ MONSOON_TIER0 = [
         "resource": "茶叶",
         "purchaseMultiplier": 0.90,
         "pirateRisk": 0.10,
-        "pirateLoss": 8,
     },
     {
         "id": "summer_monsoon",
@@ -183,7 +222,6 @@ MONSOON_TIER0 = [
         "resource": "丝绸",
         "purchaseMultiplier": 1.15,
         "pirateRisk": 0.25,
-        "pirateLoss": 14,
     },
     {
         "id": "autumn_gales",
@@ -195,7 +233,6 @@ MONSOON_TIER0 = [
         "resource": "麻布",
         "purchaseMultiplier": 0.85,
         "pirateRisk": 0.18,
-        "pirateLoss": 11,
     },
     {
         "id": "winter_blockade",
@@ -207,7 +244,6 @@ MONSOON_TIER0 = [
         "resource": "茶叶",
         "purchaseMultiplier": 1.15,
         "pirateRisk": 0.30,
-        "pirateLoss": 18,
     },
 ]
 
@@ -222,7 +258,6 @@ MONSOON_TIER1 = [
         "resource": "瓷土",
         "purchaseMultiplier": 0.88,
         "pirateRisk": 0.15,
-        "pirateLoss": 10,
     },
     {
         "id": "goryeo_dawn_route",
@@ -234,7 +269,6 @@ MONSOON_TIER1 = [
         "resource": "铜矿",
         "purchaseMultiplier": 0.90,
         "pirateRisk": 0.20,
-        "pirateLoss": 12,
     },
 ]
 
@@ -249,7 +283,6 @@ MONSOON_TIER2 = [
         "resource": "香料",
         "purchaseMultiplier": 0.85,
         "pirateRisk": 0.22,
-        "pirateLoss": 14,
     },
     {
         "id": "dashi_pearl_moon",
@@ -261,7 +294,6 @@ MONSOON_TIER2 = [
         "resource": "珍珠",
         "purchaseMultiplier": 0.85,
         "pirateRisk": 0.25,
-        "pirateLoss": 16,
     },
 ]
 
@@ -441,7 +473,7 @@ class PlayerGame:
         self.modifierFlags = {}
         self.monsoon_state = MONSOON_STATES[0].copy()
         self.pirate_immunity = False
-        self.escortCost = ESCORT_COST
+        self.broker_pirate_risk = 0.0
         self.phase2DemandTags = []
         self.revealedIntel = []
         self.intelCost = 5
@@ -790,7 +822,18 @@ class PlayerGame:
             count += 1
         self.money -= self.intelCost
         self._reveal_intel(count)
+        self._maybe_corrupt_broker()
         return True
+
+    def _maybe_corrupt_broker(self):
+        """In modes with the hazard enabled, a paid whisper may come from a corrupt broker who
+        tips off pirates, raising this round's raid chance. Logged so the escort call stays
+        an informed choice; tips stack across the round."""
+        if not difficulty_broker_corruption(self.difficulty):
+            return
+        if random.random() < BROKER_CORRUPTION_CHANCE:
+            self.broker_pirate_risk += BROKER_CORRUPTION_RISK
+            self.log(f"🕵️ 这名牙行形迹可疑，疑似走漏了你的行踪，本程海盗风险上升{round(BROKER_CORRUPTION_RISK * 100)}%！")
 
     def hire_worker(self, wtype):
         if wtype not in self.unlocked_worker_types():
@@ -888,13 +931,18 @@ class PlayerGame:
             self.log("⚠️ 维护费不足，破产")
             return False
 
+    def escort_cost(self):
+        """Escort fee for the current balance: a share of gold, floored, then any discount."""
+        fee = max(ESCORT_COST_MIN, int(self.money * ESCORT_COST_PCT))
+        if self.modifierFlags.get("escort_discount"):
+            fee = int(fee * (1 - self.modifierFlags["escort_discount"]))
+        return fee
+
     def hire_escort(self):
         if self.pirate_immunity:
             self.log("🛡️ 护航舰队已就位")
             return False
-        cost = self.escortCost
-        if self.modifierFlags.get("escort_discount"):
-            cost = int(cost * (1 - self.modifierFlags["escort_discount"]))
+        cost = self.escort_cost()
         if self.money < cost:
             self.log(f"❌ 需要{cost}金币才能雇佣护航")
             return False
@@ -905,24 +953,36 @@ class PlayerGame:
         self.log(f"🛡️ 雇佣护航，花费{cost}金币")
         return True
 
-    def resolve_pirate_hazard(self):
-        state = self.monsoon_state or {}
-        risk = state.get("pirateRisk", 0)
-        if risk <= 0:
-            return
+    def pirate_threat(self):
+        """The raw raid chance before mitigation: the weather plus any corrupt-broker tips."""
+        return (self.monsoon_state or {}).get("pirateRisk", 0) + self.broker_pirate_risk
+
+    def effective_pirate_risk(self):
+        """Final raid probability for this upkeep, after escort/compass mitigation, clamped
+        to [0, 1]. Escort immunity drives it to 0. Drives both the resolver and the UI so the
+        player always sees the real odds they are deciding against."""
         if self.pirate_immunity:
-            self.log("🛡️ 护航舰队震慑海盗，本程无损")
-            return
+            return 0.0
+        risk = self.pirate_threat()
         if self.modifierFlags.get("pirate_risk_discount"):
             risk *= (1 - self.modifierFlags["pirate_risk_discount"])
         if self.has_module("persian_dome_compass"):
             risk *= 0.7
-        if random.random() < risk:
-            loss = min(self.money, state.get("pirateLoss", 10))
+        return max(0.0, min(1.0, risk))
+
+    def resolve_pirate_hazard(self):
+        if self.pirate_threat() <= 0:
+            return
+        if self.pirate_immunity:
+            self.log("🛡️ 护航舰队震慑海盗，本程无损")
+            return
+        if random.random() < self.effective_pirate_risk():
+            pct = pirate_loss_pct(self.difficulty, self.currentRound, self.maxRounds)
+            loss = int(self.money * pct)
             self.money -= loss
             self.roundCosts += loss
             self.totalCosts += loss
-            self.log(f"🏴‍☠️ 海盗袭扰，损失{loss}金币")
+            self.log(f"🏴‍☠️ 海盗袭扰，损失{loss}金币（财富的{round(pct * 100)}%）")
 
     def end_round(self):
         pre_tax = self.roundRevenue - self.roundCosts - self.maintenanceCosts - self.workerWages
@@ -947,6 +1007,7 @@ class PlayerGame:
         }
         self.modifierFlags = {}
         self.pirate_immunity = False
+        self.broker_pirate_risk = 0.0
         self.phase2DemandTags = []
         self.revealedIntel = []
         self.boonChoices = []
@@ -1000,7 +1061,10 @@ class PlayerGame:
             "modifierFlags": self.modifierFlags,
             "monsoon_state": self.monsoon_state,
             "pirate_immunity": self.pirate_immunity,
-            "escortCost": self.escortCost,
+            "pirateLossPct": pirate_loss_pct(self.difficulty, self.currentRound, self.maxRounds),
+            "pirateRiskEffective": self.effective_pirate_risk(),
+            "brokerCorruption": difficulty_broker_corruption(self.difficulty),
+            "escortCost": self.escort_cost(),
             "intelCost": self.intelCost,
             "revealedIntel": self.revealedIntel,
             "intelRemaining": len(self.phase2DemandTags),
