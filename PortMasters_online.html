@@ -851,6 +851,7 @@ a { color: var(--ocean-700); }
 .diff-option.selected { border-color: var(--ocean-500, #0ea5e9); box-shadow: 0 6px 18px rgba(2,132,199,.18); background: #fff; }
 .diff-badge { font-size: 16px; font-weight: 800; padding: 3px 14px; border-radius: 999px; color: #fff; }
 .diff-badge.diff-easy { background: linear-gradient(135deg, #34d399, #0d9488); }
+.diff-badge.diff-standard { background: linear-gradient(135deg, #fbbf24, #d97706); }
 .diff-badge.diff-hard { background: linear-gradient(135deg, #fb7185, #b91c1c); }
 .diff-tagline { font-size: 12px; color: var(--ink-soft); text-align: center; line-height: 1.5; }
 .diff-summary {
@@ -861,6 +862,7 @@ a { color: var(--ocean-700); }
   margin-bottom: 6px;
 }
 .chip.diff-easy { background: rgba(13, 148, 136, .16); color: #0f766e; }
+.chip.diff-standard { background: rgba(217, 119, 6, .16); color: #b45309; }
 .chip.diff-hard { background: rgba(185, 28, 28, .14); color: #b91c1c; }
 
 /* ---- Manual ---- */
@@ -1270,8 +1272,8 @@ const tr = (zh, en) => (LANG === 'en' ? en : zh);
 /* Pick a value from a {zh, en} object based on the current language */
 const pf = o => (o ? (o[LANG] !== undefined ? o[LANG] : o.zh) : '');
 
-/* Difficulty presentation. The server is the single source of truth for what each mode
-   unlocks (it caps content by tier); this object only describes the two modes to players.
+/* Difficulty presentation. The server (DIFFICULTIES) is the single source of truth for what
+   each rung does; this object only describes the rungs to players. Keys must match the server.
    The summaries are written as plain flowing sentences in both languages on purpose, so
    everyone understands the distinction before they agree to a voyage. */
 const DIFFICULTY_INFO = {
@@ -1282,6 +1284,15 @@ const DIFFICULTY_INFO = {
     summary: () => tr(
       '轻松模式是一段较短的航程，共 8 个回合，让贸易保持简单清晰。你将专注经营麻布、丝绸、茶叶这三种基础原料，制作四种入门成品，并从前三类工匠中招募帮手。与之相关的福缘、战船模块、港口以及海上天象也都限定在这套基础内容之内，因此市场始终不会过度拥挤，你有充足的余裕慢慢熟悉每个回合的节奏，从容地把生意做大。',
       'Easy mode is a shorter voyage of 8 rounds that keeps the trade simple and clear to follow. You will focus on the three founding raw materials of hemp cloth, silk and tea, craft the four starter products, and recruit from the first three artisan guilds. The fortunes, ship modules, ports and seasonal weather that belong to them stay within this founding set as well, so the market never grows crowded and you have plenty of room to learn the rhythm of each round and grow your trade at a comfortable pace.'
+    ),
+  },
+  standard: {
+    key: 'standard',
+    badge: () => tr('标准', 'Standard'),
+    tagline: () => tr('进阶船长的均衡阶梯', 'A balanced step up for rising captains'),
+    summary: () => tr(
+      '标准模式是轻松与高难之间的阶梯，共 12 个回合，同样开放完整的海上贸易，但不会出现暗通海盗的牙行。丝路特许会在第四程引入瓷土与铜矿，在第八程引入香料与珍珠，让你在更紧凑的节奏里体验完整的货物、港口与工匠，海盗的威胁也比轻松模式更明显。适合已经熟悉基础玩法、想要更多挑战，又不愿一上来就投入高难长局的船长。',
+      'Standard mode is the rung between Easy and Hard: a 12-round voyage that also opens the full maritime trade, but without the brokers who tip off pirates. The Silk Road Charter brings in porcelain clay and copper ore at round four and spices and pearls at round eight, so you get the complete set of goods, ports and artisans at a brisker pace, with pirates that bite a little harder than on Easy. It suits captains who know the basics and want a real challenge without committing to the long Hard voyage straight away.'
     ),
   },
   hard: {
@@ -1308,6 +1319,13 @@ const RATING_TIERS = {
     { min: 600,  full: { zh: '⭐ 成功商人', en: '⭐ Accomplished Merchant' },   short: { zh: '成功', en: 'Accomplished' } },
     { min: 800,  full: { zh: '🏆 海上贸易大亨', en: '🏆 Maritime Trade Tycoon' }, short: { zh: '大亨', en: 'Tycoon' } },
     { min: 1200, full: { zh: '👑 丝绸之路霸主', en: '👑 Sovereign of the Silk Road' }, short: { zh: '霸主', en: 'Sovereign' } },
+  ],
+  standard: [
+    { min: 0,    full: { zh: '🌊 新手商人', en: '🌊 Novice Merchant' },        short: { zh: '新手', en: 'Novice' } },
+    { min: 1000, full: { zh: '👍 合格商人', en: '👍 Competent Merchant' },     short: { zh: '合格', en: 'Competent' } },
+    { min: 1500, full: { zh: '⭐ 成功商人', en: '⭐ Accomplished Merchant' },   short: { zh: '成功', en: 'Accomplished' } },
+    { min: 2000, full: { zh: '🏆 海上贸易大亨', en: '🏆 Maritime Trade Tycoon' }, short: { zh: '大亨', en: 'Tycoon' } },
+    { min: 3000, full: { zh: '👑 丝绸之路霸主', en: '👑 Sovereign of the Silk Road' }, short: { zh: '霸主', en: 'Sovereign' } },
   ],
   hard: [
     { min: 0,    full: { zh: '🌊 新手商人', en: '🌊 Novice Merchant' },        short: { zh: '新手', en: 'Novice' } },
@@ -2036,7 +2054,7 @@ function sendInvite(to) {
 }
 
 function setComposerDifficulty(key) {
-  composerDifficulty = (key === 'hard') ? 'hard' : 'easy';
+  composerDifficulty = DIFFICULTY_INFO[key] ? key : 'easy';
   renderInviteComposer();
 }
 
@@ -2056,7 +2074,7 @@ function renderInviteComposer() {
     <p style="text-align:center;font-size:14px;line-height:1.8">${tr(
       `你正在邀请 <strong>${escapeHtml(to)}</strong> 共启一段航程。请先为本局选择难度，对方需要看到说明并同意后，航程才会开始。`,
       `You are inviting <strong>${escapeHtml(to)}</strong> to set sail together. Choose the difficulty for this session first. The voyage begins only after your partner has read what it means and agrees to it.`)}</p>
-    <div class="diff-options">${optionCard('easy')}${optionCard('hard')}</div>
+    <div class="diff-options">${Object.keys(DIFFICULTY_INFO).map(optionCard).join('')}</div>
     <div class="diff-summary">${difficultyInfo(composerDifficulty).summary()}</div>
     <div style="text-align:center;margin-top:16px;display:flex;gap:10px;justify-content:center">
       <button class="btn btn-success btn-lg" onclick="confirmSendInvite()">${tr('📨 发送邀请', '📨 Send Invitation')}</button>
@@ -2086,7 +2104,7 @@ function confirmSendInvite() {
 
 function showInviteModal(from, difficulty) {
   pendingInviteFrom = from;
-  const info = difficultyInfo(difficulty === 'hard' ? 'hard' : 'easy');
+  const info = difficultyInfo(difficulty);
   showModal(`
     <h2>${tr('📨 航程邀请', '📨 Voyage Invitation')}</h2>
     <p style="text-align:center;font-size:14px;line-height:1.8">
@@ -3376,8 +3394,8 @@ const manualTabs = () => MANUAL_TABS_I18N[LANG] || MANUAL_TABS_I18N.zh;
 const manualContentZh = () => ({
   start: `
     <h4>🎯 游戏目标</h4>
-    <p>你与伙伴各自经营一支海上商队，在整段航程（<strong>轻松模式 8 个回合，高难模式 16 个回合</strong>）内通过「低买 → 生产 → 高卖」积累<strong>声望（信誉值）</strong>。声望来自每笔订单的净利润，游戏结束时按声望评级。开局资金 100 金币，并自带少量原料。</p>
-    <p class="muted">每一局都有轻松与高难两种难度，默认是轻松。难度在邀请时商定：发出邀请的一方选择，另一方在确认窗口看过说明并同意后开局。轻松模式只包含基础货物，更适合新手起步；想了解两种难度的差别，可查看「难度与拓展」一节。</p>
+    <p>你与伙伴各自经营一支海上商队，在整段航程（<strong>轻松 8 回合、标准 12 回合、高难 16 回合</strong>）内通过「低买 → 生产 → 高卖」积累<strong>声望（信誉值）</strong>。声望来自每笔订单的净利润，游戏结束时按声望评级。开局资金 100 金币，并自带少量原料。</p>
+    <p class="muted">每一局有轻松、标准、高难三档难度，构成由易到难的阶梯，默认是轻松。难度在邀请时商定：发出邀请的一方选择，另一方在确认窗口看过说明并同意后开局。轻松只包含基础货物，更适合新手起步；想了解各档难度的差别，可查看「难度与拓展」一节。</p>
     <h4>🧭 第一程怎么玩（推荐路线）</h4>
     <ol>
       <li><strong>福缘</strong>：第一程建议选「紧急钱庄」（+40金币）或「商贾魅力」（采购85折），缓解开局现金压力。</li>
@@ -3495,11 +3513,11 @@ const manualContentZh = () => ({
   `,
   expansion: `
     <h4>⚖️ 难度模式</h4>
-    <p>每一局都会在两种难度之一下进行，默认始终是<strong>轻松</strong>。<strong>轻松模式</strong>共 8 个回合，让整段航程都停留在基础货物之内，只包含麻布、丝绸、茶叶三种原料、四种入门成品、前三类工匠，以及与之相关的福缘、战船改装、港口和季风。棋盘始终不会过度拥挤，你有充足的余裕慢慢熟悉每个回合的节奏。<strong>高难模式</strong>共 16 个回合，开放完整的海上贸易，下文「丝路特许」的分批解锁只会在高难模式中发生，因此需要打理的事务多得多，对舱位与金币的竞争也激烈许多。海盗机制对两种难度都已加强：海盗一旦得手会掠走当前财富的一定比例（高难模式后半程比例更高），雇佣护航的费用也随财富浮动；而在高难模式中，购买牙行密语还可能遇到可疑牙行暗通海盗、抬高本程袭扰概率，让结算阶段是否雇佣护航成为真正的取舍。</p>
+    <p>每一局会在三档难度之一下进行，构成由易到难的阶梯，默认始终是<strong>轻松</strong>。<strong>轻松模式</strong>共 8 个回合，让整段航程都停留在基础货物之内，只包含麻布、丝绸、茶叶三种原料、四种入门成品、前三类工匠，以及与之相关的福缘、战船改装、港口和季风。棋盘始终不会过度拥挤，你有充足的余裕慢慢熟悉每个回合的节奏。<strong>标准模式</strong>共 12 个回合，是中间一档：同样开放完整贸易，丝路特许在第 4、8 程分批解锁，但不会出现暗通海盗的牙行。<strong>高难模式</strong>共 16 个回合，开放完整的海上贸易并加入可疑牙行机制，丝路特许在第 6、10 程分批解锁，需要打理的事务多得多，对舱位与金币的竞争也激烈许多。下文「丝路特许」的分批解锁在标准与高难模式中都会发生，轻松模式则不会。海盗机制对所有难度都已加强：海盗一旦得手会掠走当前财富的一定比例（越往后、难度越高比例越大），雇佣护航的费用也随财富浮动；在高难模式中，购买牙行密语还可能遇到可疑牙行暗通海盗、抬高本程袭扰概率，让结算阶段是否雇佣护航成为真正的取舍。</p>
     <p>难度在航程开始前就已商定。发出邀请的一方先选择本局难度，对方会在确认窗口看到一段说明，了解它会改变什么之后再同意，所以两位船长始终在同一难度下经营同一段航程。</p>
     <div class="pm-banner" style="margin:8px 0 4px">
       <span class="pm-icon">⚖️</span>
-      <span>下面这份分批解锁清单描述的是<strong>高难模式</strong>的航程。在轻松模式下，你将全程使用上面提到的基础内容，第 6 程与第 10 程的扩展不会出现。</span>
+      <span>下面这份分批解锁清单以<strong>高难模式</strong>（第 6、10 程）为例。<strong>标准模式</strong>解锁的内容相同，只是更早到来（第 4、8 程）；<strong>轻松模式</strong>则全程停留在基础内容，这些扩展不会出现。</span>
     </div>
     <h4>🗺️ 丝路特许：分批解锁（高难模式）</h4>
     <p>第 1-5 程的玩法与最初版本完全一致，包含 3 种原料、4 种成品、3 类工匠、5 座港口。从<strong>第 6 程</strong>起，「市舶新政」颁布；从<strong>第 10 程</strong>起，「万国通商」开启。两批新内容会分别加入原料、成品、港口、工匠、福缘、战船改装与季风的可选池，航路越往后，棋盘也就越宽。随着新内容解锁，采购阶段与贸易阶段可挑选的卡牌也会相应增多：基础为 5 张，第 6 程起增至 8 张，第 10 程起增至 11 张，让新货物有充足的出现机会。</p>
@@ -3600,7 +3618,7 @@ const manualContentZh = () => ({
       <li><span class="kbd">F1</span> 打开本手册 · <span class="kbd">Esc</span> 关闭弹窗 / 观战窗 / 聊天窗</li>
     </ul>
     <h4>😣 觉得 PortMasters 2 太难？</h4>
-    <p>最直接的办法是以<strong>轻松</strong>难度开局。轻松模式只包含基础货物，市场不会过度拥挤，让你能从容掌握采购、生产与贸易的节奏；它本就是默认难度，邀请时确认一下即可，两种难度的具体差别可见「难度与拓展」一节。</p>
+    <p>最直接的办法是以<strong>轻松</strong>难度开局。轻松模式只包含基础货物，市场不会过度拥挤，让你能从容掌握采购、生产与贸易的节奏；它本就是默认难度，邀请时确认一下即可，各档难度的具体差别可见「难度与拓展」一节。</p>
     <p>如果仍想从最基础处入门，也可以先游玩上一代
     <a href="${PM1_URLS.zh}" target="_blank" rel="noopener"><strong>PortMasters 1（中文版）→</strong></a>
     ，它没有联机同步与复杂税制，更适合熟悉「采购 → 生产 → 贸易」的基本循环。</p>
@@ -3610,8 +3628,8 @@ const manualContentZh = () => ({
 const manualContentEn = () => ({
   start: `
     <h4>🎯 Objective</h4>
-    <p>You and your partner each run a maritime trading fleet. Over the voyage (<strong>8 rounds in Easy mode, 16 in Hard</strong>), build <strong>renown</strong> through the buy-low → produce → sell-high loop. Renown is the net profit of every delivered order; your final rating depends on it. You start with 100 gold and a small stock of materials.</p>
-    <p class="muted">Every session has an Easy and a Hard difficulty, and the default is Easy. The level is settled at invite time: the inviting captain picks it and the other confirms it in a short window. Easy mode keeps to the founding set of goods and is the gentler place to start; see the "Difficulty &amp; Expansion" section for exactly what changes between the two.</p>
+    <p>You and your partner each run a maritime trading fleet. Over the voyage (<strong>8 rounds on Easy, 12 on Standard, 16 on Hard</strong>), build <strong>renown</strong> through the buy-low → produce → sell-high loop. Renown is the net profit of every delivered order; your final rating depends on it. You start with 100 gold and a small stock of materials.</p>
+    <p class="muted">Every session has Easy, Standard and Hard difficulties forming a ladder, and the default is Easy. The level is settled at invite time: the inviting captain picks it and the other confirms it in a short window. Easy mode keeps to the founding set of goods and is the gentler place to start; see the "Difficulty &amp; Expansion" section for exactly what changes between them.</p>
     <h4>🧭 Your First Voyage (recommended route)</h4>
     <ol>
       <li><strong>Fortune</strong>: in round 1, Emergency Loan (+40 gold) or Merchant's Charm (15% off purchases) eases the early cash crunch.</li>
@@ -3700,7 +3718,7 @@ const manualContentEn = () => ({
     </ul>
     <h4>🌐 Online Mechanics</h4>
     <ul>
-      <li><strong>Invitations &amp; difficulty</strong>: invite any online player from the lobby; one invite per minute, 60-second expiry. When you send the invite you first choose the session difficulty (Easy or Hard, Easy by default), and the other captain reads a short explanation and agrees to it before you both start at the same level.</li>
+      <li><strong>Invitations &amp; difficulty</strong>: invite any online player from the lobby; one invite per minute, 60-second expiry. When you send the invite you first choose the session difficulty (Easy, Standard or Hard, Easy by default), and the other captain reads a short explanation and agrees to it before you both start at the same level.</li>
       <li><strong>Sync</strong>: both captains are always on the same round and phase; every phase needs both to confirm.</li>
       <li><strong>Reconnection</strong>: sessions live on the server, so log back in to resume. The session is recycled only when both players are offline.</li>
       <li><strong>Chat</strong>: hit 💬 in the header to talk (disabled while your partner is offline).</li>
@@ -3729,11 +3747,11 @@ const manualContentEn = () => ({
   `,
   expansion: `
     <h4>⚖️ Difficulty Modes</h4>
-    <p>Every session is played at one of two difficulties, and it always starts on <strong>Easy</strong> by default. <strong>Easy mode</strong> is the shorter 8 round voyage and keeps the whole game on the founding set of goods, with only the three raw materials Hemp Cloth, Silk and Tea, the four starter products, the first three artisan guilds, and the fortunes, ship modules, ports and trade winds tied to them. The board never grows crowded, so you have plenty of room to learn the rhythm of each round at your own pace. <strong>Hard mode</strong> is the longer 16 round voyage that opens the full maritime trade, and the phased unlocks of the Silk Road Charter below happen only in Hard mode, so there is a great deal more to manage and the competition for cargo space and coin grows much fiercer. Raids bite harder in both modes too: a successful raid takes a share of your current gold (a larger share in hard mode's back half) and the escort fee scales with your wealth as well; and in hard mode a Broker's Whisper can come from a corrupt broker who tips off pirates and raises that voyage's raid chance, turning the escort call at Upkeep into a genuine trade-off.</p>
+    <p>Every session is played at one of three difficulties that form a ladder, and it always starts on <strong>Easy</strong> by default. <strong>Easy mode</strong> is the shorter 8 round voyage and keeps the whole game on the founding set of goods, with only the three raw materials Hemp Cloth, Silk and Tea, the four starter products, the first three artisan guilds, and the fortunes, ship modules, ports and trade winds tied to them. The board never grows crowded, so you have plenty of room to learn the rhythm of each round at your own pace. <strong>Standard mode</strong> is the 12 round middle rung: it also opens the full trade, with the Silk Road Charter unlocking at Rounds 4 and 8, but with no corrupt brokers. <strong>Hard mode</strong> is the longer 16 round voyage that opens the full maritime trade with the charter unlocking at Rounds 6 and 10 and the corrupt-broker hazard switched on, so there is a great deal more to manage and the competition for cargo space and coin grows much fiercer. The phased unlocks below happen on Standard and Hard but never on Easy. Raids bite harder as you climb the ladder too: a successful raid takes a share of your current gold (a larger share later in the voyage and on higher difficulties) and the escort fee scales with your wealth as well; and on Hard a Broker's Whisper can come from a corrupt broker who tips off pirates and raises that voyage's raid chance, turning the escort call at Upkeep into a genuine trade-off.</p>
     <p>The difficulty is settled before a voyage begins. The inviting captain chooses the level for the session, and the other captain sees a short explanation of what it changes in the confirmation window and agrees to it, so both captains always run the same voyage at the same difficulty.</p>
     <div class="pm-banner" style="margin:8px 0 4px">
       <span class="pm-icon">⚖️</span>
-      <span>The phased unlock tables below describe a <strong>Hard mode</strong> voyage. In Easy mode you stay on the founding set named above for the entire game, and the Round 6 and Round 10 expansions never arrive.</span>
+      <span>The phased unlock tables below use <strong>Hard mode</strong> (Rounds 6 and 10) as the example. <strong>Standard mode</strong> unlocks the same content earlier (Rounds 4 and 8); <strong>Easy mode</strong> stays on the founding set named above for the entire game and these expansions never arrive.</span>
     </div>
     <h4>🗺️ Silk Road Charter: Phased Unlocks (Hard mode)</h4>
     <p>Rounds 1-5 play exactly like the original release, with 3 raw materials, 4 products, 3 artisan types and 5 ports. From <strong>Round 6</strong>, the "New Maritime Edict" takes effect; from <strong>Round 10</strong>, "Ten Thousand Kingdoms Trade" opens. Each wave adds new resources, products, ports, artisans, fortunes, ship modules and trade winds to the pools you draw from, so the later the voyage, the wider the board. As the waves arrive, the hands you pick from in the buying and trade phases grow too, going from 5 cards to 8 once the first wave opens at Round 6 and to 11 once the second opens at Round 10, so the new goods always have room to appear.</p>
@@ -3878,8 +3896,8 @@ function maybeShowOnboarding() {
     <div class="manual-body" style="max-height:46vh">
       <p>${tr('这里是 <strong>PortMasters 2</strong> —— 海上丝绸之路双人联机贸易战略。开始前 60 秒了解三件事：',
         'This is <strong>PortMasters 2</strong> — a 2-player co-op trading strategy on the Maritime Silk Road. Sixty seconds, three things to know:')}</p>
-      <p class="muted">${tr('小提示：每一局有轻松与高难两种难度，默认是轻松，由邀请时双方商定。觉得吃力就保持轻松，它只包含基础货物，更适合上手。',
-        'Tip: each session has an Easy and a Hard difficulty, Easy by default, agreed between the two of you when the invite is sent. If it feels like a lot, stay on Easy, which keeps to the founding set of goods and is friendlier for getting started.')}</p>
+      <p class="muted">${tr('小提示：每一局有轻松、标准、高难三档难度，默认是轻松，由邀请时双方商定。觉得吃力就保持轻松，它只包含基础货物，更适合上手；想要更多挑战可以拾级而上。',
+        'Tip: each session has Easy, Standard and Hard difficulties, Easy by default, agreed between the two of you when the invite is sent. If it feels like a lot, stay on Easy, which keeps to the founding set of goods and is friendlier for getting started, and climb the ladder when you want more.')}</p>
       <h4>${tr('1️⃣ 一切围绕现金流', '1️⃣ Cash flow is everything')}</h4>
       <p>${tr('每回合必须支付<strong>工匠工资</strong>与 <strong>15 金币维护费</strong>，付不起立即破产。左侧面板会实时核算「本回合应付款项」，时刻盯紧它。',
         'Every round you must pay <strong>artisan wages</strong> plus <strong>15 gold upkeep</strong> — miss it and you go bankrupt instantly. The left panel tallies "Due This Round" live; keep an eye on it.')}</p>

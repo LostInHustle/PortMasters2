@@ -25,7 +25,9 @@ from websockets.http11 import Response
 import os
 import time
 import hashlib
+import hmac
 import secrets
+import traceback
 
 # -------------------- Constants --------------------
 RESOURCES_TIER0 = ["麻布", "丝绸", "茶叶"]
@@ -44,21 +46,37 @@ PORTS_TIER2 = ["三佛齐港", "大食港"]
 PORTS = PORTS_TIER0 + PORTS_TIER1 + PORTS_TIER2
 
 # -------------------- Difficulty --------------------
-# A difficulty is the per-session pacing profile: how many voyages (rounds) the game
-# lasts and how high the content tier is allowed to climb. Both are expressed in the
-# Tier 0/1/2 vocabulary the rest of the game already uses, so there is exactly one gating
-# concept rather than a parallel system. Easy is the short, gentle voyage: it stays inside
-# the founding Tier 0 set (the first three raw materials, the four starter products, the
-# first three artisan guilds, and only the fortunes, ship modules, ports and weather tied
-# to them) for all 8 of its rounds. Hard is the long voyage: 16 rounds with the cap lifted
-# to the full pool, so the Silk Road Charter reveals Tier 1 and then Tier 2 on the rounds
-# set in TIER_UNLOCK_ROUNDS. New tiers or difficulties added later need no special code:
-# rounds come from this table and content inherits the cap automatically. Hard mode also
-# switches on the corrupt-broker hazard (broker_corruption); easy stays the safe learning
-# ground, and flipping that for any difficulty is a single edit here.
+# A difficulty is the whole per-session pacing profile, and this table is its single source
+# of truth: voyage length (rounds), the round each content tier joins the pools (tier_unlock),
+# the corrupt-broker hazard (broker_corruption), the pirate-toll curve (pirate_loss), and the
+# Emperor Mandate schedule (mandates). There is no longer a separate "max tier" cap, because
+# a tier_unlock map IS the cap: easy lists no tiers so it never leaves Tier 0, while standard
+# and hard schedule Tier 1 then Tier 2. pirate_loss is one tier name for a flat toll, or a
+# (first-half, second-half) pair that steps up at the midpoint; mandates map a round to a size
+# index into EMPEROR_MANDATE_TEMPLATES. Difficulty is a ladder, not a toggle: adding or
+# retuning a rung is a single entry here, with no other server code to touch.
 DIFFICULTIES = {
-    "easy": {"max_tier": 0, "rounds": 8, "broker_corruption": False},
-    "hard": {"max_tier": 2, "rounds": 16, "broker_corruption": True},
+    "easy": {
+        "rounds": 8,
+        "tier_unlock": {},
+        "broker_corruption": False,
+        "pirate_loss": ("medium",),
+        "mandates": {3: 0, 6: 1, 8: 2},
+    },
+    "standard": {
+        "rounds": 12,
+        "tier_unlock": {1: 4, 2: 8},
+        "broker_corruption": False,
+        "pirate_loss": ("medium", "above_medium"),
+        "mandates": {3: 0, 7: 1, 12: 2},
+    },
+    "hard": {
+        "rounds": 16,
+        "tier_unlock": {1: 6, 2: 10},
+        "broker_corruption": True,
+        "pirate_loss": ("above_medium", "high"),
+        "mandates": {6: 0, 12: 1, 16: 2},
+    },
 }
 DEFAULT_DIFFICULTY = "easy"
 
@@ -68,44 +86,36 @@ def normalize_difficulty(value):
     return value if value in DIFFICULTIES else DEFAULT_DIFFICULTY
 
 
-def difficulty_max_tier(difficulty):
-    return DIFFICULTIES[normalize_difficulty(difficulty)]["max_tier"]
+def difficulty_cfg(difficulty):
+    return DIFFICULTIES[normalize_difficulty(difficulty)]
 
 
 def difficulty_rounds(difficulty):
-    return DIFFICULTIES[normalize_difficulty(difficulty)]["rounds"]
+    return difficulty_cfg(difficulty)["rounds"]
+
+
+def difficulty_tier_unlock(difficulty):
+    return difficulty_cfg(difficulty)["tier_unlock"]
 
 
 def difficulty_broker_corruption(difficulty):
-    return DIFFICULTIES[normalize_difficulty(difficulty)]["broker_corruption"]
+    return difficulty_cfg(difficulty)["broker_corruption"]
 
 
-# The single source of truth for the unlock cadence: the round on which each content tier
-# joins the pools. Easy mode is capped at Tier 0 (see DIFFICULTIES) so these never fire
-# there; in hard mode Tier 1 opens at round 6 and Tier 2 at round 10, leaving the first
-# five rounds on the founding set and six full rounds once everything is in play.
-# unlocked(), the Silk Road Charter and the phase option counts all read from this map, so
-# retuning the pace is a single edit here.
-TIER_UNLOCK_ROUNDS = {1: 6, 2: 10}
-
-
-def unlocked(tier0, tier1, tier2, round_no, max_tier=2):
-    """Unlock content pools by round, but never above the difficulty's tier cap.
-    Each tier in TIER_UNLOCK_ROUNDS joins the pool on its scheduled round; max_tier caps
-    that progression so easy mode (max_tier 0) stays on Tier 0 for the entire voyage while
-    hard mode (max_tier 2) opens Tier 1 then Tier 2 on schedule."""
+def unlocked(tier0, tier1, tier2, round_no, tier_unlock):
+    """Unlock content pools by round. Each tier in the difficulty's tier_unlock schedule joins
+    the pool on its scheduled round; a difficulty that lists no tiers (easy) stays on Tier 0."""
     pools = {0: tier0, 1: tier1, 2: tier2}
     items = pools[0][:]
-    for tier, unlock_round in TIER_UNLOCK_ROUNDS.items():
-        if max_tier >= tier and round_no >= unlock_round:
+    for tier, unlock_round in tier_unlock.items():
+        if round_no >= unlock_round:
             items += pools[tier]
     return items
 
 
-def unlocked_tier(round_no, max_tier=2):
-    """Highest content tier in play this round, after applying the difficulty cap."""
-    return max([0] + [tier for tier, unlock_round in TIER_UNLOCK_ROUNDS.items()
-                      if max_tier >= tier and round_no >= unlock_round])
+def unlocked_tier(round_no, tier_unlock):
+    """Highest content tier in play this round for the given tier_unlock schedule."""
+    return max([0] + [tier for tier, unlock_round in tier_unlock.items() if round_no >= unlock_round])
 
 
 # Each phase that deals a hand of market cards (the buying phase and the selling/Trade
@@ -116,8 +126,8 @@ PHASE_OPTIONS_BASE = 5
 PHASE_OPTIONS_PER_TIER = 3
 
 
-def phase_option_count(round_no, max_tier=2):
-    return PHASE_OPTIONS_BASE + PHASE_OPTIONS_PER_TIER * unlocked_tier(round_no, max_tier)
+def phase_option_count(round_no, tier_unlock):
+    return PHASE_OPTIONS_BASE + PHASE_OPTIONS_PER_TIER * unlocked_tier(round_no, tier_unlock)
 
 
 # Pirate raids now bite a fraction of the captain's current gold rather than a flat toll,
@@ -132,12 +142,12 @@ PIRATE_LOSS_TIERS = {
 
 
 def pirate_loss_pct(difficulty, round_no, max_rounds):
-    """Raid severity (fraction of current gold) for this difficulty and round: easy stays at
-    a medium toll the whole way, while the longer hard voyage opens above-medium and climbs
-    to high once it passes its midpoint."""
-    if normalize_difficulty(difficulty) != "hard":
-        return PIRATE_LOSS_TIERS["medium"]
-    return PIRATE_LOSS_TIERS["above_medium"] if round_no <= max_rounds // 2 else PIRATE_LOSS_TIERS["high"]
+    """Raid severity (fraction of current gold) for this difficulty and round. The difficulty's
+    pirate_loss curve is one tier name for a flat toll, or a (first-half, second-half) pair that
+    steps up once the voyage passes its midpoint."""
+    curve = difficulty_cfg(difficulty)["pirate_loss"]
+    tier = curve[0] if (len(curve) == 1 or round_no <= max_rounds // 2) else curve[1]
+    return PIRATE_LOSS_TIERS[tier]
 
 
 # The escort fee scales with the captain's gold so it stays a real decision instead of
@@ -156,18 +166,11 @@ BROKER_CORRUPTION_CHANCE = 0.30
 BROKER_CORRUPTION_RISK = 0.20
 
 
-# Emperor Mandate: a special high-value levy that appears on scheduled rounds. Each
-# difficulty maps its rounds to a mandate size, and the size indexes the templates below,
-# so the demand escalates over the voyage without ever inferring size from the raw round
-# number. Easy keeps the original 8-round cadence; hard spreads the same three escalating
-# mandates across its 16 rounds, with the largest landing on the final round. Adding a
-# mandate is one entry here, never a code change.
-EMPEROR_MANDATE_SCHEDULE = {
-    "easy": {3: 0, 6: 1, 8: 2},
-    "hard": {6: 0, 12: 1, 16: 2},
-}
-
-# Mandate templates ordered small -> large; EMPEROR_MANDATE_SCHEDULE indexes into this list.
+# Emperor Mandate: a special high-value levy that appears on the rounds each difficulty lists
+# in its "mandates" schedule (see DIFFICULTIES). The scheduled value is a size index into the
+# templates below, so demand escalates over the voyage without ever inferring size from the raw
+# round number, and every rung's cadence lives in one place with its other pacing dials.
+# Templates are ordered small -> large.
 EMPEROR_MANDATE_TEMPLATES = [
     {"port": "泉州港", "reward": 135, "resources": [{"type": "丝绸", "required": 4}, {"type": "茶叶", "required": 3}]},
     {"port": "扬州港", "reward": 260, "resources": [{"type": "绫罗绸缎", "required": 2}, {"type": "香囊", "required": 1}]},
@@ -177,14 +180,13 @@ EMPEROR_MANDATE_TEMPLATES = [
 
 def emperor_mandate_size(difficulty, round_no):
     """The mandate size due this round for this difficulty, or None when no mandate fires."""
-    return EMPEROR_MANDATE_SCHEDULE.get(normalize_difficulty(difficulty), {}).get(round_no)
+    return difficulty_cfg(difficulty)["mandates"].get(round_no)
 
 
 # Silk Road Charter: announces a newly unlocked tier on the Set Sail page, keyed by the
-# tier it reveals. charter_event() maps the current round to its tier through
-# TIER_UNLOCK_ROUNDS, so the banner always fires on the exact round that tier joins the
-# pools and stays silent when the difficulty cap keeps that tier locked (in easy mode no
-# further tier ever opens).
+# tier it reveals. charter_event() maps the current round to its tier through the
+# difficulty's tier_unlock schedule, so the banner always fires on the exact round that tier
+# joins the pools and stays silent for difficulties that never open it (easy lists no tiers).
 CHARTER_EVENTS = {
     1: {
         "id": "tier1",
@@ -396,22 +398,23 @@ MODULES_TIER2 = [
 MODULES = MODULES_TIER0 + MODULES_TIER1 + MODULES_TIER2
 
 
-def boon_pool(round_no, max_tier=2):
-    return unlocked(BOONS_TIER0, BOONS_TIER1, BOONS_TIER2, round_no, max_tier)
+def boon_pool(round_no, tier_unlock):
+    return unlocked(BOONS_TIER0, BOONS_TIER1, BOONS_TIER2, round_no, tier_unlock)
 
 
-def module_pool(round_no, max_tier=2):
-    return unlocked(MODULES_TIER0, MODULES_TIER1, MODULES_TIER2, round_no, max_tier)
+def module_pool(round_no, tier_unlock):
+    return unlocked(MODULES_TIER0, MODULES_TIER1, MODULES_TIER2, round_no, tier_unlock)
 
 
-def monsoon_pool(round_no, max_tier=2):
-    return unlocked(MONSOON_TIER0, MONSOON_TIER1, MONSOON_TIER2, round_no, max_tier)
+def monsoon_pool(round_no, tier_unlock):
+    return unlocked(MONSOON_TIER0, MONSOON_TIER1, MONSOON_TIER2, round_no, tier_unlock)
 
 
-def charter_event(round_no, max_tier=2):
-    """The Set Sail announcement for this round, unless its tier is capped out by difficulty."""
-    for tier, unlock_round in TIER_UNLOCK_ROUNDS.items():
-        if round_no == unlock_round and tier <= max_tier:
+def charter_event(round_no, tier_unlock):
+    """The Set Sail announcement for this round: the banner for whichever tier opens on this
+    exact round in the difficulty's schedule, or None when no tier opens."""
+    for tier, unlock_round in tier_unlock.items():
+        if round_no == unlock_round:
             return CHARTER_EVENTS.get(tier)
     return None
 
@@ -438,7 +441,7 @@ def weighted_choice(items):
 class PlayerGame:
     def __init__(self, difficulty=DEFAULT_DIFFICULTY):
         self.difficulty = normalize_difficulty(difficulty)
-        self.max_tier = difficulty_max_tier(self.difficulty)
+        self.tier_unlock = difficulty_tier_unlock(self.difficulty)
         self.inventory = {item: 0 for item in RESOURCES + PRODUCTS}
         self.inventory.update({"麻布": 8, "丝绸": 5, "茶叶": 3})
         self.money = 100
@@ -492,16 +495,16 @@ class PlayerGame:
 
     # ---------- Silk Road Charter: content unlocks ----------
     def unlocked_resources(self):
-        return unlocked(RESOURCES_TIER0, RESOURCES_TIER1, RESOURCES_TIER2, self.currentRound, self.max_tier)
+        return unlocked(RESOURCES_TIER0, RESOURCES_TIER1, RESOURCES_TIER2, self.currentRound, self.tier_unlock)
 
     def unlocked_products(self):
-        return unlocked(PRODUCTS_TIER0, PRODUCTS_TIER1, PRODUCTS_TIER2, self.currentRound, self.max_tier)
+        return unlocked(PRODUCTS_TIER0, PRODUCTS_TIER1, PRODUCTS_TIER2, self.currentRound, self.tier_unlock)
 
     def unlocked_ports(self):
-        return unlocked(PORTS_TIER0, PORTS_TIER1, PORTS_TIER2, self.currentRound, self.max_tier)
+        return unlocked(PORTS_TIER0, PORTS_TIER1, PORTS_TIER2, self.currentRound, self.tier_unlock)
 
     def unlocked_worker_types(self):
-        return unlocked(WORKER_IDS_TIER0, WORKER_IDS_TIER1, WORKER_IDS_TIER2, self.currentRound, self.max_tier)
+        return unlocked(WORKER_IDS_TIER0, WORKER_IDS_TIER1, WORKER_IDS_TIER2, self.currentRound, self.tier_unlock)
 
     # ---------- Cost calculations ----------
     def calc_transport_cost(self, total_items, has_silk=False, resources=None):
@@ -765,7 +768,7 @@ class PlayerGame:
         if self.shipLevel == 0:
             self.log("❌ 旗舰尚无模块槽位，请先升级船坞")
             return False
-        tier_pool = module_pool(self.currentRound, self.max_tier)
+        tier_pool = module_pool(self.currentRound, self.tier_unlock)
         available = [m for m in tier_pool if not self.has_module(m["id"])]
         pool = available if len(available) >= 3 else tier_pool
         copy = pool[:]
@@ -1036,7 +1039,7 @@ class PlayerGame:
             "currentRound": self.currentRound,
             "maxRounds": self.maxRounds,
             "difficulty": self.difficulty,
-            "charterEvent": charter_event(self.currentRound, self.max_tier),
+            "charterEvent": charter_event(self.currentRound, self.tier_unlock),
             "unlockedResources": self.unlocked_resources(),
             "unlockedProducts": self.unlocked_products(),
             "unlockedPorts": self.unlocked_ports(),
@@ -1114,8 +1117,8 @@ class UserStore:
     def register(self, username, password):
         if not isinstance(username, str) or not (3 <= len(username) <= 20):
             return False, "用户名需为 3-20 个字符"
-        if not isinstance(password, str) or len(password) < 6:
-            return False, "密码至少 6 位"
+        if not isinstance(password, str) or not (6 <= len(password) <= 128):
+            return False, "密码需为 6-128 位"
         if username in self.users:
             return False, "该用户名已被注册"
         salt = secrets.token_hex(16)
@@ -1129,11 +1132,37 @@ class UserStore:
 
     def verify(self, username, password):
         rec = self.users.get(username)
-        if not rec or self._hash(password, rec["salt"]) != rec["hash"]:
+        if not isinstance(rec, dict) or "salt" not in rec or "hash" not in rec:
+            return False, "用户名或密码错误"
+        # Constant-time compare so a wrong password can't be narrowed down by response timing.
+        if not hmac.compare_digest(self._hash(password, rec["salt"]), rec["hash"]):
             return False, "用户名或密码错误"
         return True, "登录成功"
 
 # -------------------- Shared game session --------------------
+# Barter is the one place clients hand us item lists that we then apply to inventories, so it
+# must be validated, not trusted. A well-formed entry is a known tradeable good (or gold) with a
+# positive integer quantity. Anything else is dropped, which closes the negative-quantity exploit
+# (a crafted order would otherwise add goods/gold to the proposer and subtract from the accepter)
+# and guarantees stored orders never crash settlement or the reject-text formatting.
+TRADEABLE_TYPES = set(RESOURCES) | set(PRODUCTS) | {"金币"}
+
+
+def sanitize_trade_items(items):
+    clean = []
+    if not isinstance(items, list):
+        return clean
+    for it in items:
+        if not isinstance(it, dict):
+            continue
+        t = it.get("type")
+        q = it.get("quantity")
+        # bool is a subclass of int, so exclude it explicitly; quantity must be a positive int.
+        if t in TRADEABLE_TYPES and isinstance(q, int) and not isinstance(q, bool) and q > 0:
+            clean.append({"type": t, "quantity": q})
+    return clean
+
+
 class SharedSession:
     """Shared session for two players: both stay in sync on the same round and phase."""
     def __init__(self, user_a, user_b, difficulty=DEFAULT_DIFFICULTY):
@@ -1141,7 +1170,7 @@ class SharedSession:
         # The agreed difficulty is the session's single source of truth; both fleets and
         # any later restart are built from it, so the two captains can never drift apart.
         self.difficulty = normalize_difficulty(difficulty)
-        self.max_tier = difficulty_max_tier(self.difficulty)
+        self.tier_unlock = difficulty_tier_unlock(self.difficulty)
         self.games = [PlayerGame(self.difficulty), PlayerGame(self.difficulty)]
         self.games[0].slot = 1
         self.games[1].slot = 2
@@ -1183,7 +1212,7 @@ class SharedSession:
             state = MONSOON_TIER0[0]
         else:
             if cycle not in self.monsoon_cycle_cache:
-                self.monsoon_cycle_cache[cycle] = random.choice(monsoon_pool(active_round, self.max_tier))
+                self.monsoon_cycle_cache[cycle] = random.choice(monsoon_pool(active_round, self.tier_unlock))
             state = self.monsoon_cycle_cache[cycle]
         self.monsoon_state = state.copy()
         for g in self.games:
@@ -1210,14 +1239,14 @@ class SharedSession:
             # Each player independently draws 4 random Fortunes from the pool; draws are hidden from and different between players
             for g in self.games:
                 if not g.gameOver:
-                    g.boonChoices = random.sample(boon_pool(g.currentRound, g.max_tier), 4)
+                    g.boonChoices = random.sample(boon_pool(g.currentRound, g.tier_unlock), 4)
         elif phase == 5:
             self._set_phase(1)
             for g in self.games:
                 if g.gameOver:
                     continue
                 g.resourceCards = []
-                option_count = phase_option_count(g.currentRound, g.max_tier)
+                option_count = phase_option_count(g.currentRound, g.tier_unlock)
                 for i in range(option_count):
                     c = g.gen_resource_card()
                     c["id"] = i
@@ -1245,7 +1274,7 @@ class SharedSession:
                     o["id"] = next_id
                     g.customerCards.append(o)
                     next_id += 1
-                order_count = phase_option_count(g.currentRound, g.max_tier) + g.modifierFlags.get("extra_order", 0)
+                order_count = phase_option_count(g.currentRound, g.tier_unlock) + g.modifierFlags.get("extra_order", 0)
                 for i in range(next_id, order_count):
                     o = g.gen_mixed_order()
                     o["id"] = i
@@ -1305,12 +1334,16 @@ class SharedSession:
 
     # ---------- Barter trades ----------
     def create_trade_order(self, seller_slot, sell_items, buy_items):
+        sell = sanitize_trade_items(sell_items)
+        buy = sanitize_trade_items(buy_items)
+        if not sell and not buy:
+            return None  # nothing well-formed to trade; ignore the malformed/empty request
         self.trade_id_counter += 1
         order = {
             "id": f"trade_{self.trade_id_counter}",
             "sellerSlot": seller_slot,
-            "sell": sell_items,
-            "buy": buy_items
+            "sell": sell,
+            "buy": buy
         }
         self.trade_orders.append(order)
         return order
@@ -1662,49 +1695,61 @@ async def handler(websocket):
                 data = json.loads(raw)
             except Exception:
                 continue
-            action = data.get("action")
+            # One malformed or unexpected message must never tear down the connection, which
+            # would also strand the partner in a shared session. Isolate per-message handling:
+            # log and keep serving on any error, but let a real disconnect propagate.
+            try:
+                action = data.get("action")
 
-            # ---------- Not logged in: only accept register / login ----------
-            if username is None:
-                if action == "register":
-                    ok, msg = USERS.register(str(data.get("username", "")).strip(), str(data.get("password", "")))
-                    await send_json(websocket, {"type": "register_result", "success": ok, "message": msg})
-                elif action == "login":
-                    u = str(data.get("username", "")).strip()
-                    p = str(data.get("password", ""))
-                    ok, msg = USERS.verify(u, p)
-                    if ok and u in ONLINE:
-                        ok, msg = False, "该账号已在其他设备登录"
-                    await send_json(websocket, {"type": "login_result", "success": ok, "username": u, "message": msg})
-                    if ok:
-                        username = u
-                        ONLINE[u] = websocket
-                        await broadcast_online_users()
-                        sess = SESSIONS.get(u)
-                        if sess is not None:
-                            partner = sess.partner_of(u)
-                            await send_json(websocket, {"type": "session_resumed", "partner": partner,
-                                                        "partnerOnline": partner in ONLINE})
-                            await send_to_user(partner, {"type": "partner_status", "username": u, "online": True})
-                            await sess.broadcast_state()
+                # ---------- Not logged in: only accept register / login ----------
+                if username is None:
+                    if action == "register":
+                        ok, msg = USERS.register(str(data.get("username", "")).strip(), str(data.get("password", "")))
+                        await send_json(websocket, {"type": "register_result", "success": ok, "message": msg})
+                    elif action == "login":
+                        u = str(data.get("username", "")).strip()
+                        p = str(data.get("password", ""))
+                        ok, msg = USERS.verify(u, p)
+                        if ok and u in ONLINE:
+                            ok, msg = False, "该账号已在其他设备登录"
+                        if ok:
+                            # Claim the account slot synchronously, before any await, so two
+                            # racing logins for the same account cannot both pass the check above.
+                            username = u
+                            ONLINE[u] = websocket
+                        await send_json(websocket, {"type": "login_result", "success": ok, "username": u, "message": msg})
+                        if ok:
+                            await broadcast_online_users()
+                            sess = SESSIONS.get(u)
+                            if sess is not None:
+                                partner = sess.partner_of(u)
+                                await send_json(websocket, {"type": "session_resumed", "partner": partner,
+                                                            "partnerOnline": partner in ONLINE})
+                                await send_to_user(partner, {"type": "partner_status", "username": u, "online": True})
+                                await sess.broadcast_state()
+                    else:
+                        await send_json(websocket, {"type": "error", "message": "请先登录"})
+                    continue
+
+                # ---------- Logged in: lobby / invites / chat / game ----------
+                if action == "get_online_users":
+                    await send_json(websocket, {"type": "online_users", "users": [n for n in ONLINE if n != username]})
+                elif action == "send_invite":
+                    await handle_send_invite(username, str(data.get("to", "")), data.get("difficulty"))
+                elif action == "respond_invite":
+                    await handle_respond_invite(username, str(data.get("from", "")), bool(data.get("accept")))
+                elif action == "send_chat":
+                    await handle_send_chat(username, data.get("message", ""))
+                elif action == "get_chat_history":
+                    sess = SESSIONS.get(username)
+                    await send_json(websocket, {"type": "chat_history", "history": sess.chat_history if sess else []})
                 else:
-                    await send_json(websocket, {"type": "error", "message": "请先登录"})
+                    await handle_game_action(username, data)
+            except websockets.exceptions.ConnectionClosed:
+                raise
+            except Exception:
+                traceback.print_exc()
                 continue
-
-            # ---------- Logged in: lobby / invites / chat / game ----------
-            if action == "get_online_users":
-                await send_json(websocket, {"type": "online_users", "users": [n for n in ONLINE if n != username]})
-            elif action == "send_invite":
-                await handle_send_invite(username, str(data.get("to", "")), data.get("difficulty"))
-            elif action == "respond_invite":
-                await handle_respond_invite(username, str(data.get("from", "")), bool(data.get("accept")))
-            elif action == "send_chat":
-                await handle_send_chat(username, data.get("message", ""))
-            elif action == "get_chat_history":
-                sess = SESSIONS.get(username)
-                await send_json(websocket, {"type": "chat_history", "history": sess.chat_history if sess else []})
-            else:
-                await handle_game_action(username, data)
     except websockets.exceptions.ConnectionClosed:
         pass
     finally:
