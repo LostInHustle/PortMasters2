@@ -5,7 +5,7 @@
 ---
 
 ## 📖 1. Overview
-Welcome back to the Maritime Silk Road! PortMasters 2 takes the series online. Two captains sail one shared voyage, always on the same round and the same phase. You compete for renown, yet you also barter goods, gold and information with each other along the way. Draw a fortune from the Navigator's Compass, buy rumors from the brokers, fit your flagship with modules, and keep enough cash on hand for wages, upkeep and taxes through all 8 voyages. The richer reputation wins.
+Welcome back to the Maritime Silk Road! PortMasters 2 takes the series online. Two captains sail one shared voyage, always on the same round and the same phase. You compete for renown, yet you also barter goods, gold and information with each other along the way. Draw a fortune from the Navigator's Compass, buy rumors from the brokers, fit your flagship with modules, and keep enough cash on hand for wages, upkeep and taxes through every voyage (8 rounds on Easy, 12 on Standard, 16 on Hard). The richer reputation wins.
 
 What's new since PortMasters 1:
 - 🌐 Online play for two, with accounts, a lobby, invitations, chat and reconnection.
@@ -15,7 +15,8 @@ What's new since PortMasters 1:
 - 🔧 Ship modules: draft and install up to 3 of them, from the Smuggler's Hold to the Overdrive Engine.
 - 👀 A spectator window, so a bankrupt captain can still watch the partner finish the voyage.
 - 🌍 The whole interface is available in English (the default) and Simplified Chinese. Switch any time with the 🌐 button.
-- 🗺️ The Silk Road Charter: at Round 3 ("New Maritime Edict") and Round 5 ("Ten Thousand Kingdoms Trade"), the trade network expands in two waves — 4 new resources, 4 new products, 4 new artisan types, 4 new ports (9 total), 6 new Fortunes, 6 new ship modules and 4 new Trade Winds (8 total) join the game. Rounds 1-2 play exactly as before.
+- ⚖️ Three difficulty modes that form a ladder. Easy (8 rounds) keeps the voyage on the founding set of goods for a gentler game; Standard (12 rounds) opens the full trade at a brisker pace with no corrupt brokers; Hard (16 rounds) is the full challenge with the corrupt-broker hazard on. The inviting captain picks the level and the other confirms it, and every session starts on Easy unless it is changed.
+- 🗺️ The Silk Road Charter: the trade network expands in two waves, the "New Maritime Edict" and then "Ten Thousand Kingdoms Trade", adding 4 new resources, 4 new products, 4 new artisan types, 4 new ports (9 total), 6 new Fortunes, 6 new ship modules and 4 new Trade Winds (8 total). The waves arrive on Standard (Rounds 4 and 8) and Hard (Rounds 6 and 10); on Easy the voyage stays on the founding set the whole way through and these waves never arrive.
 
 ---
 
@@ -37,7 +38,7 @@ What's new since PortMasters 1:
    python server.py
    ```
 4. Each player opens **http://localhost:8080** in a browser (on a LAN, use the host machine's address and port 8080), registers an account and logs in.
-5. Invite someone from the lobby. When they accept, the shared voyage begins. 🌊
+5. Invite someone from the lobby. Choose the difficulty for the session (Easy by default), and once they have read what it means and accepted, the shared voyage begins. 🌊
 
 > 💡 Playing over the internet: the page and the WebSocket share port 8080, so a single tunnel such as `ngrok http 8080` carries the whole game, https and wss included.
 
@@ -45,47 +46,56 @@ What's new since PortMasters 1:
 
 ## 🎮 3. Gameplay Mechanics
 
-A game lasts **8 voyages** (rounds), and each voyage runs through **8 phases**. No phase advances until both captains confirm.
+A game lasts **8 voyages** (rounds) on Easy, **12** on Standard or **16** on Hard, and each voyage runs through **8 phases**. No phase advances until both captains confirm.
 
 | Phase | Description |
 |:---|:---|
 | **⚓ Set Sail** | Confirm the start of the round. From round 2 on, this page also recaps how the previous round went. |
 | **🧭 Fortune** | The compass deals you 4 of the 8 fortunes at random. Your partner gets a different hand. Lock one; it lasts this round only. |
-| **🛒 Procure** | Buy materials and goods from 5 supply cards. The Broker's Whisper panel sits at the top and sells intel about coming demand. |
+| **🛒 Procure** | Buy materials and goods from the supply cards (5 on Easy; on Standard and Hard the hand grows to 8 when Tier 1 opens and 11 when Tier 2 opens). The Broker's Whisper panel sits at the top and sells intel about coming demand. |
 | **🤝 Barter** | Trade with your partner. Post an offer like "I give this for that" and it settles the moment they accept. |
 | **👥 Artisans** | Hire or dismiss artisans and hand out production tasks. Materials are consumed right away. |
 | **📦 Trade** | Deliver port orders from your stock. Clues you bought show up here as guaranteed orders marked 🗣️. |
 | **🔧 Upkeep** | Production arrives and wages are paid on their own. Then you pay 15 gold of fleet upkeep. If you cannot, your fleet goes bankrupt. |
 | **🚢 Shipyard** | Upgrade the ship if you like (levels 0 to 3), draft modules, then end the voyage. |
 
+### ⚖️ Difficulty Modes
+The difficulties form a ladder, and the game always starts on Easy unless someone chooses otherwise.
+
+- **🌱 Easy** is the shorter 8 round voyage and keeps the whole game on the founding set of goods. You trade the three starting raw materials of Hemp Cloth, Silk and Tea, craft the four starter products, and hire from the first three artisan guilds, together with only the fortunes, ship modules, ports and trade winds that belong to them. The board never grows crowded, so there is plenty of room to learn the rhythm of each round.
+- **⚖️ Standard** is the 12 round middle rung and opens the full trade, but with no corrupt brokers. The Silk Road Charter brings in Tier 1 at Round 4 and Tier 2 at Round 8, so you get every good, port and artisan at a brisker pace than Hard, with pirate raids that bite a little harder than Easy. It suits captains who know the basics and want a real challenge without committing to the long Hard voyage.
+- **🔥 Hard** is the longer 16 round voyage and opens the full trade. It plays exactly like the Silk Road Charter progression described below, bringing in the remaining raw materials, products, foreign ports, specialist artisans and the richer fortunes, modules and trade winds as the rounds go on. The first five rounds stay as relaxed as Easy mode, then there is far more to manage and the competition for cargo space and coin is much fiercer. Pirate raids and escort fees both scale with your wealth, and on the hard route some brokers are corrupt and secretly tip off pirates when you buy a whisper, raising your raid chance and making the escort call at Upkeep a real gamble.
+
+The difficulty is agreed before a voyage begins. When you invite another captain you choose the level, and they see a short explanation of what it changes and confirm it before the session starts. Both captains therefore always play the same voyage at the same difficulty, and a restart keeps that difficulty.
+
 ### 📦 Resources
 Raw materials:
 - `Hemp Cloth` 🧶, the everyday fabric for simple clothes.
 - `Silk` 👘, the fine stuff behind the luxury goods.
 - `Tea Leaves` 🍵, what gives a sachet its scent.
-- `Porcelain Clay` 🧱, the fine clay behind celadon ware *(New Maritime Edict, Round 3+)*.
-- `Copper Ore` ⛏️, hammered into mirrors and fittings *(New Maritime Edict, Round 3+)*.
-- `Spices` 🌶️, the fragrant cargo of the southern seas *(Ten Thousand Kingdoms Trade, Round 5+)*.
-- `Pearls` 🦪, lustrous treasures from southern waters *(Ten Thousand Kingdoms Trade, Round 5+)*.
+- `Porcelain Clay` 🧱, the fine clay behind celadon ware *(New Maritime Edict, Round 6+)*.
+- `Copper Ore` ⛏️, hammered into mirrors and fittings *(New Maritime Edict, Round 6+)*.
+- `Spices` 🌶️, the fragrant cargo of the southern seas *(Ten Thousand Kingdoms Trade, Round 10+)*.
+- `Pearls` 🦪, lustrous treasures from southern waters *(Ten Thousand Kingdoms Trade, Round 10+)*.
 
 Finished goods:
 - `Hemp Garb` 👔 takes 2 Hemp Cloth (Weaver). Base value 15, sells around 30 to 42.
 - `Cloth Tunic` 👕 takes 2 Hemp Cloth and 1 Silk (Weaver). Base value 35, sells around 50 to 65.
 - `Fine Brocade` 👗 takes 3 Silk (Master Weaver only). Base value 60, sells around 70 to 90.
 - `Scented Sachet` 🌸 takes 1 Silk and 2 Tea (Sachet Maker only). Base value 80, sells around 95 to 120.
-- `Bronze Mirror` 🪞 takes 3 Copper Ore (Coppersmith). Base value 45, sells around 55 to 72 *(New Maritime Edict, Round 3+)*.
-- `Celadon Porcelain` 🏺 takes 3 Porcelain Clay (Potter). Base value 65, sells around 78 to 100 *(New Maritime Edict, Round 3+)*.
-- `Foreign Perfume Oil` 🧴 takes 2 Spices and 1 Silk (Perfumer only). Base value 85, sells around 100 to 130 *(Ten Thousand Kingdoms Trade, Round 5+)*.
-- `Pearl Necklace` 📿 takes 2 Pearls and 1 Silk (Jeweler only). Base value 105, sells around 125 to 160 *(Ten Thousand Kingdoms Trade, Round 5+)*.
+- `Bronze Mirror` 🪞 takes 3 Copper Ore (Coppersmith). Base value 45, sells around 55 to 72 *(New Maritime Edict, Round 6+)*.
+- `Celadon Porcelain` 🏺 takes 3 Porcelain Clay (Potter). Base value 65, sells around 78 to 100 *(New Maritime Edict, Round 6+)*.
+- `Foreign Perfume Oil` 🧴 takes 2 Spices and 1 Silk (Perfumer only). Base value 85, sells around 100 to 130 *(Ten Thousand Kingdoms Trade, Round 10+)*.
+- `Pearl Necklace` 📿 takes 2 Pearls and 1 Silk (Jeweler only). Base value 105, sells around 125 to 160 *(Ten Thousand Kingdoms Trade, Round 10+)*.
 
 ### 👷 Artisan System
 - **Weavers** 👩‍🔧 craft Hemp Garb and Cloth Tunics. Wage: 8 gold a round.
 - **Master Weavers** 👩‍🎨 also craft Fine Brocade. Wage: 12 gold a round.
 - **Sachet Makers** 🌸 are the only ones who can make Sachets. Wage: 20 gold a round.
-- **Coppersmiths** 🪞 craft Bronze Mirrors. Wage: 12 gold a round *(New Maritime Edict, Round 3+)*.
-- **Potters** 🏺 craft Celadon Porcelain. Wage: 14 gold a round *(New Maritime Edict, Round 3+)*.
-- **Perfumers** 🧴 are the only ones who can make Foreign Perfume Oil. Wage: 18 gold a round *(Ten Thousand Kingdoms Trade, Round 5+)*.
-- **Jewelers** 📿 are the only ones who can make Pearl Necklaces. Wage: 24 gold a round *(Ten Thousand Kingdoms Trade, Round 5+)*.
+- **Coppersmiths** 🪞 craft Bronze Mirrors. Wage: 12 gold a round *(New Maritime Edict, Round 6+)*.
+- **Potters** 🏺 craft Celadon Porcelain. Wage: 14 gold a round *(New Maritime Edict, Round 6+)*.
+- **Perfumers** 🧴 are the only ones who can make Foreign Perfume Oil. Wage: 18 gold a round *(Ten Thousand Kingdoms Trade, Round 10+)*.
+- **Jewelers** 📿 are the only ones who can make Pearl Necklaces. Wage: 24 gold a round *(Ten Thousand Kingdoms Trade, Round 10+)*.
 - Once an artisan has produced 2 items in total, they become **skilled** ⭐ and make 2 per task at the same wage.
 - Hiring costs nothing up front; wages come out automatically at Upkeep. Letting an idle artisan go costs one wage in severance.
 
@@ -100,12 +110,12 @@ Finished goods:
 | 📜 Tax Exemption | Income tax falls to 5% |
 | 🧶 Hemp Monopoly | Hemp Cloth costs 2 gold less per unit |
 | 🎓 Apprentice Legacy | Hiring wages are halved |
-| 🔮 Farsight *(Round 3+)* | Gain 1 free Broker's Whisper clue this round |
-| 🏮 Porcelain & Bronze Consortium *(Round 3+)* | Celadon Porcelain and Bronze Mirror orders pay 15% more this round |
-| 🧾 Frontier Tariff Relief *(Round 3+)* | VAT on finished-goods deliveries is halved this round |
-| 💎 Treasures from Afar *(Round 5+)* | Foreign Perfume Oil and Pearl Necklace orders pay 15% more this round |
-| 🛡️ Deep-Sea Escort Pact *(Round 5+)* | Escort hiring costs half price and pirate risk is halved this round |
-| 🛍️ Merchants Converge *(Round 5+)* | 1 extra order appears in the Trade phase this round |
+| 🔮 Farsight *(Round 6+)* | Gain 1 free Broker's Whisper clue this round |
+| 🏮 Porcelain & Bronze Consortium *(Round 6+)* | Celadon Porcelain and Bronze Mirror orders pay 15% more this round |
+| 🧾 Frontier Tariff Relief *(Round 6+)* | VAT on finished-goods deliveries is halved this round |
+| 💎 Treasures from Afar *(Round 10+)* | Foreign Perfume Oil and Pearl Necklace orders pay 15% more this round |
+| 🛡️ Deep-Sea Escort Pact *(Round 10+)* | Escort hiring costs half price and pirate risk is halved this round |
+| 🛍️ Merchants Converge *(Round 10+)* | 1 extra order appears in the Trade phase this round |
 
 ### 🔧 Ship Modules (draft 3, install 1; slots equal your ship level)
 | Module | Effect |
@@ -118,12 +128,12 @@ Finished goods:
 | 🕵️ Broker's Network | Whispers cost just 2 gold and reveal 2 clues at a time |
 | ♻️ Salvage Crane | A 30% chance your shipping fee comes back on delivery |
 | ⚡ Overdrive Engine | Shipping costs 5 gold less; upkeep costs 10 gold more |
-| 🎫 Trade Bureau Token *(Round 3+)* | Orders for new trade-route goods (Porcelain Clay, Copper Ore and their products) pay 10% more |
-| 🔥 Kiln Cellar *(Round 3+)* | Porcelain Clay and Copper Ore purchase price −2 gold per unit |
-| 📡 Ocean-Going Interpreter *(Round 3+)* | Each Broker's Whisper purchase reveals 1 extra clue at no added cost |
-| 🪪 Foreign Quarter Guild Pass *(Round 5+)* | Spices and Pearls purchase price −3 gold per unit |
-| 🧿 Persian Dome Compass *(Round 5+)* | Pirate risk reduced by 30% |
-| ⛵ Fleet of Ten-Thousand Treasures *(Round 5+)* | Shipping for Foreign Perfume Oil and Pearl Necklace is 3 gold cheaper per item |
+| 🎫 Trade Bureau Token *(Round 6+)* | Orders for new trade-route goods (Porcelain Clay, Copper Ore and their products) pay 10% more |
+| 🔥 Kiln Cellar *(Round 6+)* | Porcelain Clay and Copper Ore purchase price −2 gold per unit |
+| 📡 Ocean-Going Interpreter *(Round 6+)* | Each Broker's Whisper purchase reveals 1 extra clue at no added cost |
+| 🪪 Foreign Quarter Guild Pass *(Round 10+)* | Spices and Pearls purchase price −3 gold per unit |
+| 🧿 Persian Dome Compass *(Round 10+)* | Pirate risk reduced by 30% |
+| ⛵ Fleet of Ten-Thousand Treasures *(Round 10+)* | Shipping for Foreign Perfume Oil and Pearl Necklace is 3 gold cheaper per item |
 
 ### 💰 Taxes & Finance
 - **VAT**: about 5% of the profit on finished goods, taken automatically when you deliver.
@@ -133,7 +143,7 @@ Finished goods:
 
 ### 🌐 Multiplayer
 - **Accounts**: a username and a password. Passwords are stored salted and hashed in `users.json`.
-- **Invitations**: one per minute from the lobby, and each expires after 60 seconds.
+- **Invitations**: one per minute from the lobby, and each expires after 60 seconds. When you invite someone you also choose the session difficulty, and they confirm it in the invitation window before the voyage starts.
 - **Staying in sync**: both captains share the round and the phase. The "Ready n / 2" chip shows who has confirmed. A bankrupt player counts as ready and never holds the partner up.
 - **Bankruptcy and spectating**: a bankrupt captain stays on the settlement page and can open the live 👀 spectator window to watch the partner play on.
 - **Reconnection**: sessions live on the server, so logging back in puts you right where you were. A session is only thrown away once both players are offline.
@@ -169,15 +179,17 @@ Finished goods:
 
 ## 🏆 6. Game End & Rankings
 
-After 8 voyages, each captain receives a final rating based on **renown**, the running total of net profit from delivered orders.
+After the final voyage (8 rounds on Easy, 12 on Standard, 16 on Hard), each captain receives a final rating based on **renown**, the running total of net profit from delivered orders.
 
-| Renown | Rank Title |
-|:---|:---|
-| **≥ 300** | 👑 Sovereign of the Silk Road |
-| **≥ 200** | 🏆 Maritime Trade Tycoon |
-| **≥ 100** | ⭐ Accomplished Merchant |
-| **≥ 50** | 👍 Competent Merchant |
-| **< 50** | 🌊 Novice Merchant |
+A longer voyage with richer goods earns far more renown, so each difficulty has its own thresholds.
+
+| Rank Title | Easy renown | Standard renown | Hard renown |
+|:---|:---|:---|:---|
+| 👑 Sovereign of the Silk Road | ≥ 1200 | ≥ 3000 | ≥ 6000 |
+| 🏆 Maritime Trade Tycoon | ≥ 800 | ≥ 2000 | ≥ 4000 |
+| ⭐ Accomplished Merchant | ≥ 600 | ≥ 1500 | ≥ 3000 |
+| 👍 Competent Merchant | ≥ 400 | ≥ 1000 | ≥ 2000 |
+| 🌊 Novice Merchant | < 400 | < 1000 | < 2000 |
 
 ---
 
@@ -193,7 +205,7 @@ After 8 voyages, each captain receives a final rating based on **renown**, the r
 
 ## 👤 8. Credits & License
 - **Developers**: `Joe Zhou, Aaron Zhu`
-- **Version**: `PortMasters 2 v1.0.0a3 preview`
+- **Version**: `PortMasters 2 v1.0.0a4 preview`
 - **Language Support**: English (default) and Simplified Chinese, switchable inside the game
 - **License**: MIT License. Use it, change it, share it, for personal or commercial projects.
 - New to the series? [PortMasters 1](https://lostinhustle.github.io/PortMasters/PortMasters_Web_Edition/PortMasters_v1.4.0) is a gentler, single player place to start.
@@ -202,11 +214,12 @@ After 8 voyages, each captain receives a final rating based on **renown**, the r
 
 ## 🌟 Quick Reference
 - **Launch**: `python server.py`, then open `http://localhost:8080`
+- **Difficulty**: every session starts on Easy; the inviting captain can step up to Standard or Hard for the full trade, and the other captain confirms it before the voyage begins
 - **Core Loop**: Set Sail → Fortune → Procure → Barter → Artisans → Trade → Upkeep → Shipyard
 - **Best Sellers**: Scented Sachets and Fine Brocade (mind the VAT!)
 - **Sure Money**: buy whispers, and equip the Broker's Network
 - **Bankruptcy Warning**: if gold cannot cover wages and upkeep at settlement, you are out (though you can spectate!)
-- **Win Condition**: finish all 8 voyages with renown of 300 or more
+- **Win Condition**: reach the top Sovereign rating, which is renown of 1200+ on Easy, 3000+ on Standard, or 6000+ on Hard
 
 ---
 🌊 *Fair winds and following seas, Captains!* 🏴‍☠️

@@ -834,6 +834,37 @@ a { color: var(--ocean-700); }
 }
 .modal .modal-x:hover { background: rgba(148, 163, 184, .3); }
 
+/* ---- Difficulty chooser (invite composer + invite confirmation) ---- */
+.diff-options { display: flex; gap: 12px; margin: 16px 0 12px; }
+.diff-option {
+  flex: 1;
+  display: flex; flex-direction: column; align-items: center; gap: 6px;
+  padding: 14px 12px;
+  border: 2px solid rgba(148, 163, 184, .35);
+  border-radius: var(--radius-md);
+  background: rgba(248, 250, 252, .8);
+  cursor: pointer;
+  font-family: inherit;
+  transition: border-color .15s ease, box-shadow .15s ease, transform .15s ease;
+}
+.diff-option:hover { transform: translateY(-2px); }
+.diff-option.selected { border-color: var(--ocean-500, #0ea5e9); box-shadow: 0 6px 18px rgba(2,132,199,.18); background: #fff; }
+.diff-badge { font-size: 16px; font-weight: 800; padding: 3px 14px; border-radius: 999px; color: #fff; }
+.diff-badge.diff-easy { background: linear-gradient(135deg, #34d399, #0d9488); }
+.diff-badge.diff-standard { background: linear-gradient(135deg, #fbbf24, #d97706); }
+.diff-badge.diff-hard { background: linear-gradient(135deg, #fb7185, #b91c1c); }
+.diff-tagline { font-size: 12px; color: var(--ink-soft); text-align: center; line-height: 1.5; }
+.diff-summary {
+  font-size: 13px; line-height: 1.85; color: #334155;
+  background: rgba(224, 242, 254, .45);
+  border-radius: var(--radius-md);
+  padding: 12px 14px;
+  margin-bottom: 6px;
+}
+.chip.diff-easy { background: rgba(13, 148, 136, .16); color: #0f766e; }
+.chip.diff-standard { background: rgba(217, 119, 6, .16); color: #b45309; }
+.chip.diff-hard { background: rgba(185, 28, 28, .14); color: #b91c1c; }
+
 /* ---- Manual ---- */
 .manual-tabs { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 14px; justify-content: center; }
 .mtab {
@@ -995,28 +1026,43 @@ a { color: var(--ocean-700); }
 }
 #chat-input:focus { outline: none; border-color: var(--ocean-500); box-shadow: 0 0 0 3px rgba(14, 165, 233, .15); }
 
-/* ---- Notifications ---- */
-.notification {
+/* ---- Notifications / toast stack ---- */
+/* All toasts live in a fixed top-right column so multiple can stack instead of overlapping. */
+#toast-stack {
   position: fixed;
   top: 20px;
   right: 20px;
+  z-index: var(--z-toast);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  align-items: flex-end;
+  pointer-events: none;
+  max-width: 380px;
+}
+.notification {
   background: rgba(15, 23, 42, .92);
   backdrop-filter: blur(10px);
   color: #f0fdfa;
   padding: 13px 20px 13px 16px;
   border-radius: 14px;
   border-left: 4px solid #10b981;
-  z-index: var(--z-toast);
   animation: slideIn .3s cubic-bezier(.2,.8,.3,1.1);
   box-shadow: 0 12px 32px rgba(0,0,0,.3);
   font-size: 13px;
   max-width: 360px;
   line-height: 1.55;
+  pointer-events: auto;
 }
 .notification.error { border-left-color: #fb7185; }
+.notification.log { border-left-color: #38bdf8; }
+.notification.fading { animation: toastFadeOut .4s ease forwards; }
 @keyframes slideIn {
   from { transform: translateX(420px); opacity: 0; }
   to   { transform: translateX(0); opacity: 1; }
+}
+@keyframes toastFadeOut {
+  to { transform: translateX(420px); opacity: 0; }
 }
 
 /* ---- Spectator window (a separate floating window, doesn't take up the main stage) ---- */
@@ -1136,6 +1182,7 @@ a { color: var(--ocean-700); }
 </head>
 <body>
 
+<div id="toast-stack"></div>
 <div class="bg-orb orb-1" aria-hidden="true"></div>
 <div class="bg-orb orb-2" aria-hidden="true"></div>
 <div class="bg-orb orb-3" aria-hidden="true"></div>
@@ -1241,6 +1288,81 @@ const tr = (zh, en) => (LANG === 'en' ? en : zh);
 /* Pick a value from a {zh, en} object based on the current language */
 const pf = o => (o ? (o[LANG] !== undefined ? o[LANG] : o.zh) : '');
 
+/* Difficulty presentation. The server (DIFFICULTIES) is the single source of truth for what
+   each rung does; this object only describes the rungs to players. Keys must match the server.
+   The summaries are written as plain flowing sentences in both languages on purpose, so
+   everyone understands the distinction before they agree to a voyage. */
+const DIFFICULTY_INFO = {
+  easy: {
+    key: 'easy',
+    badge: () => tr('轻松', 'Easy'),
+    tagline: () => tr('适合初次掌舵的新船长', 'A gentle start for new captains'),
+    summary: () => tr(
+      '轻松模式是一段较短的航程，共 8 个回合，让贸易保持简单清晰。你将专注经营麻布、丝绸、茶叶这三种基础原料，制作四种入门成品，并从前三类工匠中招募帮手。与之相关的福缘、战船模块、港口以及海上天象也都限定在这套基础内容之内，因此市场始终不会过度拥挤，你有充足的余裕慢慢熟悉每个回合的节奏，从容地把生意做大。',
+      'Easy mode is a shorter voyage of 8 rounds that keeps the trade simple and clear to follow. You will focus on the three founding raw materials of hemp cloth, silk and tea, craft the four starter products, and recruit from the first three artisan guilds. The fortunes, ship modules, ports and seasonal weather that belong to them stay within this founding set as well, so the market never grows crowded and you have plenty of room to learn the rhythm of each round and grow your trade at a comfortable pace.'
+    ),
+  },
+  standard: {
+    key: 'standard',
+    badge: () => tr('标准', 'Standard'),
+    tagline: () => tr('进阶船长的均衡阶梯', 'A balanced step up for rising captains'),
+    summary: () => tr(
+      '标准模式是轻松与高难之间的阶梯，共 12 个回合，同样开放完整的海上贸易，但不会出现暗通海盗的牙行。丝路特许会在第四程引入瓷土与铜矿，在第八程引入香料与珍珠，让你在更紧凑的节奏里体验完整的货物、港口与工匠，海盗的威胁也比轻松模式更明显。适合已经熟悉基础玩法、想要更多挑战，又不愿一上来就投入高难长局的船长。',
+      'Standard mode is the rung between Easy and Hard: a 12-round voyage that also opens the full maritime trade, but without the brokers who tip off pirates. The Silk Road Charter brings in porcelain clay and copper ore at round four and spices and pearls at round eight, so you get the complete set of goods, ports and artisans at a brisker pace, with pirates that bite a little harder than on Easy. It suits captains who know the basics and want a real challenge without committing to the long Hard voyage straight away.'
+    ),
+  },
+  hard: {
+    key: 'hard',
+    badge: () => tr('高难', 'Hard'),
+    tagline: () => tr('为老练船长准备的完整挑战', 'The full challenge for seasoned captains'),
+    summary: () => tr(
+      '高难模式是一段更长的航程，共 16 个回合，并开放完整的海上贸易。前五程仍像轻松模式一样从容，随后丝路特许会在第六程引入瓷土与铜矿，并在第十程引入香料与珍珠，连同它们的进阶成品、海外港口、专精工匠，以及更加丰富的福缘、战船模块与海上天象。需要同时打理的事务多得多，对舱位与金币的竞争也会激烈许多，因此它更看重你长远的谋划与权衡。',
+      'Hard mode is a longer voyage of 16 rounds that opens the full maritime trade. The first five rounds stay as relaxed as easy mode, then the Silk Road Charter brings in porcelain clay and copper ore at round six and spices and pearls at round ten, together with their advanced products, the foreign ports, the specialist artisans, and a much richer set of fortunes, ship modules and seasonal weather. There is a great deal more to manage at once and the competition for cargo space and coin grows far fiercer, so it rewards careful long term planning and judgement.'
+    ),
+  },
+};
+const difficultyInfo = key => DIFFICULTY_INFO[key] || DIFFICULTY_INFO.easy;
+
+/* Endgame rating tiers per difficulty. Renown (cumulative net profit of delivered orders)
+   scales with voyage length and goods value, so a 16-round hard voyage earns far more than
+   an 8-round easy one; each difficulty therefore has its own thresholds. Tiers are listed
+   low to high, and both the awarded title and the threshold hint are read from this one
+   table, so there is a single source of truth and no parallel if-chain to drift. */
+const RATING_TIERS = {
+  easy: [
+    { min: 0,    full: { zh: '🌊 新手商人', en: '🌊 Novice Merchant' },        short: { zh: '新手', en: 'Novice' } },
+    { min: 400,  full: { zh: '👍 合格商人', en: '👍 Competent Merchant' },     short: { zh: '合格', en: 'Competent' } },
+    { min: 600,  full: { zh: '⭐ 成功商人', en: '⭐ Accomplished Merchant' },   short: { zh: '成功', en: 'Accomplished' } },
+    { min: 800,  full: { zh: '🏆 海上贸易大亨', en: '🏆 Maritime Trade Tycoon' }, short: { zh: '大亨', en: 'Tycoon' } },
+    { min: 1200, full: { zh: '👑 丝绸之路霸主', en: '👑 Sovereign of the Silk Road' }, short: { zh: '霸主', en: 'Sovereign' } },
+  ],
+  standard: [
+    { min: 0,    full: { zh: '🌊 新手商人', en: '🌊 Novice Merchant' },        short: { zh: '新手', en: 'Novice' } },
+    { min: 1000, full: { zh: '👍 合格商人', en: '👍 Competent Merchant' },     short: { zh: '合格', en: 'Competent' } },
+    { min: 1500, full: { zh: '⭐ 成功商人', en: '⭐ Accomplished Merchant' },   short: { zh: '成功', en: 'Accomplished' } },
+    { min: 2000, full: { zh: '🏆 海上贸易大亨', en: '🏆 Maritime Trade Tycoon' }, short: { zh: '大亨', en: 'Tycoon' } },
+    { min: 3000, full: { zh: '👑 丝绸之路霸主', en: '👑 Sovereign of the Silk Road' }, short: { zh: '霸主', en: 'Sovereign' } },
+  ],
+  hard: [
+    { min: 0,    full: { zh: '🌊 新手商人', en: '🌊 Novice Merchant' },        short: { zh: '新手', en: 'Novice' } },
+    { min: 2000, full: { zh: '👍 合格商人', en: '👍 Competent Merchant' },     short: { zh: '合格', en: 'Competent' } },
+    { min: 3000, full: { zh: '⭐ 成功商人', en: '⭐ Accomplished Merchant' },   short: { zh: '成功', en: 'Accomplished' } },
+    { min: 4000, full: { zh: '🏆 海上贸易大亨', en: '🏆 Maritime Trade Tycoon' }, short: { zh: '大亨', en: 'Tycoon' } },
+    { min: 6000, full: { zh: '👑 丝绸之路霸主', en: '👑 Sovereign of the Silk Road' }, short: { zh: '霸主', en: 'Sovereign' } },
+  ],
+};
+const ratingTiers = difficulty => RATING_TIERS[difficulty] || RATING_TIERS.easy;
+/* The highest tier whose threshold the score has reached. */
+const ratingTierFor = (score, difficulty) => {
+  let chosen = ratingTiers(difficulty)[0];
+  for (const t of ratingTiers(difficulty)) if (score >= t.min) chosen = t;
+  return chosen;
+};
+const ratingFor = (score, difficulty) => { const f = ratingTierFor(score, difficulty).full; return tr(f.zh, f.en); };
+/* "400 Competent · 600 Accomplished · ..." built from the same table. */
+const ratingThresholdHint = difficulty => ratingTiers(difficulty).filter(t => t.min > 0)
+  .map(t => `${t.min} ${tr(t.short.zh, t.short.en)}`).join(' · ');
+
 /* PortMasters 1 link, varies by language */
 const PM1_URLS = {
   zh: 'https://lostinhustle.github.io/PortMasters/PortMasters_Web_Edition/PortMasters_MandarinEdition_v1.4.0',
@@ -1261,7 +1383,7 @@ const EN_NAMES = {
   "泉州港": "Quanzhou", "广州港": "Guangzhou", "宁波港": "Ningbo", "扬州港": "Yangzhou", "杭州港": "Hangzhou",
   "福州港": "Fuzhou", "高丽港": "Goryeo", "三佛齐港": "Srivijaya", "大食港": "Dashi",
   "走私暗舱": "Smuggler's Hold", "散货索具": "Bulk Rigging", "工匠工坊": "Artisan's Workshop",
-  "避税账本": "Hidden Ledger", "丝路垂断": "Silk Monopoly", "牙行网络": "Broker's Network",
+  "避税账本": "Hidden Ledger", "丝路垄断": "Silk Monopoly", "牙行网络": "Broker's Network",
   "打捞起重机": "Salvage Crane", "超载引擎": "Overdrive Engine",
   "市舶司令牌": "Trade Bureau Token", "陶土窖": "Kiln Cellar", "远洋通译": "Ocean-Going Interpreter",
   "蕃坊行会证": "Foreign Quarter Guild Pass", "波斯穹顶罗盘": "Persian Dome Compass", "万宝商船": "Fleet of Ten-Thousand Treasures",
@@ -1554,8 +1676,9 @@ const SERVER_TEXT_RULES = [
   [/^🛡️ 护航舰队已就位$/, () => `🛡️ Escort fleet is already in position`],
   [/^❌ 需要(\d+)金币才能雇佣护航$/, m => `❌ You need ${m[1]} gold to hire an escort`],
   [/^🛡️ 雇佣护航，花费(\d+)金币$/, m => `🛡️ Hired an escort for ${m[1]} gold`],
-  [/^🛡️ 护航舰队震慑海盗，本程无损$/, () => `🛡️ Escort fleet deterred pirates — no losses this voyage`],
-  [/^🏴‍☠️ 海盗袭扰，损失(\d+)金币$/, m => `🏴‍☠️ Pirate raid — lost ${m[1]} gold`],
+  [/^🛡️ 护航舰队震慑海盗，本程无损$/, () => `🛡️ Escort fleet deterred pirates, no losses this voyage`],
+  [/^🏴‍☠️ 海盗袭扰，损失(\d+)金币（财富的(\d+)%）$/, m => `🏴‍☠️ Pirate raid: lost ${m[1]} gold (${m[2]}% of your wealth)`],
+  [/^🕵️ 这名牙行形迹可疑，疑似走漏了你的行踪，本程海盗风险上升(\d+)%！$/, m => `🕵️ This broker looked shifty and seems to have leaked your route. Pirate risk is up ${m[1]}% this voyage.`],
   [/^🤝 互市成功！$/, () => `🤝 Barter complete!`],
   /* Sync waiting hints */
   [/^请点击“准备就绪”以进入工匠管理$/, () => `Click "Ready" to proceed to artisan management`],
@@ -1694,12 +1817,45 @@ let inviteStatus = {};
 /* ============================================================
    Notifications / Login & Registration
    ============================================================ */
+/* Append a toast into the stacking container so several can coexist; it lingers for `ttl`
+   then fades out. Used for invites/errors (short) and per-action log bubbles (~10s). */
+function pushToast(message, kind = '', ttl = 10000) {
+  let stack = document.getElementById('toast-stack');
+  if (!stack) { stack = document.createElement('div'); stack.id = 'toast-stack'; document.body.appendChild(stack); }
+  const el = document.createElement('div');
+  el.className = 'notification' + (kind ? ' ' + kind : '');
+  el.textContent = message;
+  stack.appendChild(el);
+  // Cap visible toasts so a burst of actions can't fill the screen; drop the oldest.
+  while (stack.children.length > 6) stack.removeChild(stack.firstChild);
+  setTimeout(() => {
+    el.classList.add('fading');
+    setTimeout(() => el.remove(), 400);
+  }, ttl);
+}
+
 function showNotification(message, isError = false) {
-  const notif = document.createElement('div');
-  notif.className = 'notification' + (isError ? ' error' : '');
-  notif.textContent = message;
-  document.body.appendChild(notif);
-  setTimeout(() => notif.remove(), 3500);
+  pushToast(message, isError ? 'error' : '', 3500);
+}
+
+/* A floating bubble for each new Captain's Log line, lingering ~10s, mirroring what the log
+   panel records. logSeq (from the server) is a monotonic count of this game's log lines, so we
+   only toast lines added since the last state, and never replay the backlog on login/resume. */
+let lastLogSeq = null;
+function maybeToastNewLogs() {
+  const g = serverState && serverState.yourGame;
+  if (!g) return;
+  const seq = g.logSeq || 0;
+  const logs = g.logs || [];
+  if (lastLogSeq === null || seq < lastLogSeq) {
+    lastLogSeq = seq;  // first state, or a restart reset the counter: sync without toasting
+    return;
+  }
+  if (seq > lastLogSeq) {
+    const newCount = Math.min(seq - lastLogSeq, logs.length);
+    for (const m of logs.slice(logs.length - newCount)) pushToast(lst(m), 'log', 10000);
+    lastLogSeq = seq;
+  }
 }
 
 function showRegister() {
@@ -1791,7 +1947,7 @@ function setupWebSocketHandlers() {
     }
 
     else if (msg.type === 'invite_received') {
-      showInviteModal(msg.from);
+      showInviteModal(msg.from, msg.difficulty);
     }
 
     else if (msg.type === 'invite_cancelled') {
@@ -1879,6 +2035,7 @@ function setupWebSocketHandlers() {
         partnerOnline = serverState.partnerOnline;
         updateChatSendState();
       }
+      maybeToastNewLogs();
       renderAll();
     }
 
@@ -1935,10 +2092,56 @@ function renderOnlineUsers() {
   });
 }
 
+/* Difficulty chosen in the invite composer. Always starts on Easy, so a voyage only
+   becomes harder when the inviter explicitly asks for it. */
+let composerTo = null;
+let composerDifficulty = 'easy';
+
 function sendInvite(to) {
+  composerTo = to;
+  composerDifficulty = 'easy';
+  renderInviteComposer();
+}
+
+function setComposerDifficulty(key) {
+  composerDifficulty = DIFFICULTY_INFO[key] ? key : 'easy';
+  renderInviteComposer();
+}
+
+function renderInviteComposer() {
+  const to = composerTo;
+  if (!to) return;
+  const optionCard = key => {
+    const info = difficultyInfo(key);
+    const sel = composerDifficulty === key ? ' selected' : '';
+    return `<button type="button" class="diff-option${sel}" onclick="setComposerDifficulty('${key}')">
+        <span class="diff-badge diff-${key}">${info.badge()}</span>
+        <span class="diff-tagline">${info.tagline()}</span>
+      </button>`;
+  };
+  showModal(`
+    <h2>${tr('📨 发出航程邀请', '📨 Send a Voyage Invitation')}</h2>
+    <p style="text-align:center;font-size:14px;line-height:1.8">${tr(
+      `你正在邀请 <strong>${escapeHtml(to)}</strong> 共启一段航程。请先为本局选择难度，对方需要看到说明并同意后，航程才会开始。`,
+      `You are inviting <strong>${escapeHtml(to)}</strong> to set sail together. Choose the difficulty for this session first. The voyage begins only after your partner has read what it means and agrees to it.`)}</p>
+    <div class="diff-options">${Object.keys(DIFFICULTY_INFO).map(optionCard).join('')}</div>
+    <div class="diff-summary">${difficultyInfo(composerDifficulty).summary()}</div>
+    <div style="text-align:center;margin-top:16px;display:flex;gap:10px;justify-content:center">
+      <button class="btn btn-success btn-lg" onclick="confirmSendInvite()">${tr('📨 发送邀请', '📨 Send Invitation')}</button>
+      <button class="btn btn-ghost btn-lg" onclick="closeModal()">${tr('取消', 'Cancel')}</button>
+    </div>
+  `);
+}
+
+function confirmSendInvite() {
+  const to = composerTo;
+  if (!to) return;
+  const difficulty = composerDifficulty;
   inviteStatus[to] = 'pending';
   lastInviteTo = to;
-  ws.send(JSON.stringify({ action: "send_invite", to }));
+  ws.send(JSON.stringify({ action: "send_invite", to, difficulty }));
+  composerTo = null;
+  closeModal();
   renderOnlineUsers();
 
   setTimeout(() => {
@@ -1949,18 +2152,27 @@ function sendInvite(to) {
   }, 60000);
 }
 
-function showInviteModal(from) {
+function showInviteModal(from, difficulty) {
   pendingInviteFrom = from;
+  const info = difficultyInfo(difficulty);
   showModal(`
     <h2>${tr('📨 航程邀请', '📨 Voyage Invitation')}</h2>
     <p style="text-align:center;font-size:14px;line-height:1.8">
-      ${tr(`<strong>${escapeHtml(from)}</strong> 邀请你共启一段海上丝路航程。`,
-           `<strong>${escapeHtml(from)}</strong> invites you to set sail on the Maritime Silk Road together.`)}<br>
-      <span class="muted">${tr('接受后双方将进入共享会话：同回合同阶段同步推进，全程可互市交易、互见状态。',
-        "Accept to enter a shared session: same round, same phase, free bartering, and full visibility of each other's fleet.")}</span>
+      ${tr(`<strong>${escapeHtml(from)}</strong> 邀请你共启一段海上丝路航程，并为本局提议了以下难度。请先了解它的含义，再决定是否同意。`,
+           `<strong>${escapeHtml(from)}</strong> invites you to set sail on the Maritime Silk Road together and proposes the following difficulty for this session. Please read what it means before you decide whether to agree.`)}
     </p>
-    <div style="text-align:center;margin-top:18px;display:flex;gap:10px;justify-content:center">
-      <button class="btn btn-success btn-lg" onclick="respondInvite(true)">${tr('✅ 接受邀请', '✅ Accept')}</button>
+    <div class="diff-options">
+      <div class="diff-option selected" style="cursor:default">
+        <span class="diff-badge diff-${info.key}">${info.badge()}</span>
+        <span class="diff-tagline">${info.tagline()}</span>
+      </div>
+    </div>
+    <div class="diff-summary">${info.summary()}</div>
+    <p class="muted" style="text-align:center;font-size:12px;line-height:1.7">${tr(
+      '接受后双方将进入共享会话，始终停留在同一回合与同一阶段，可以自由互市交易，并能随时查看彼此的船队状态。如果你更想换一种难度，可以先婉拒，再由任意一方按心仪的难度重新发出邀请。',
+      "Accept to enter a shared session where you both stay on the same round and the same phase, barter freely, and can check each other's fleet at any time. If you would prefer a different difficulty, decline for now and either of you can send a fresh invitation set to the level you both want.")}</p>
+    <div style="text-align:center;margin-top:14px;display:flex;gap:10px;justify-content:center">
+      <button class="btn btn-success btn-lg" onclick="respondInvite(true)">${tr('✅ 同意并接受', '✅ Agree and Accept')}</button>
       <button class="btn btn-danger btn-lg" onclick="respondInvite(false)">${tr('❌ 婉拒', '❌ Decline')}</button>
     </div>
   `);
@@ -2087,7 +2299,7 @@ function environmentBannerHTML(g) {
   const resource = m.resource ? tn(m.resource) : '';
   const rewardPct = Math.round(((m.rewardMultiplier || 1) - 1) * 100);
   const pricePct = Math.round(Math.abs(((m.purchaseMultiplier || 1) - 1) * 100));
-  const riskPct = Math.round((m.pirateRisk || 0) * 100);
+  const riskPct = Math.round((g.pirateRiskEffective ?? m.pirateRisk ?? 0) * 100);
   const priceWord = (m.purchaseMultiplier || 1) < 1 ? tr('降价', 'cheaper') : tr('涨价', 'pricier');
   return `
     <div class="environment-banner">
@@ -2163,7 +2375,7 @@ function crewSectionsHTML(g) {
   return `
     <div class="status-section">
       <h3>${tr('📊 航海概况', '📊 Voyage Overview')}</h3>
-      <div class="stat-row"><span class="tip" data-tip="${tr('全程共8个航程（回合），结束后按声望评级', '8 voyages (rounds) in total; final rating is based on renown')}">${tr('🌊 航程进度', '🌊 Voyage')}</span><span class="stat-value">${tr(`第 ${g.currentRound} / ${g.maxRounds} 程`, `Round ${g.currentRound} / ${g.maxRounds}`)}</span></div>
+      <div class="stat-row"><span class="tip" data-tip="${tr(`全程共${g.maxRounds}个航程（回合），结束后按声望评级`, `${g.maxRounds} voyages (rounds) in total; final rating is based on renown`)}">${tr('🌊 航程进度', '🌊 Voyage')}</span><span class="stat-value">${tr(`第 ${g.currentRound} / ${g.maxRounds} 程`, `Round ${g.currentRound} / ${g.maxRounds}`)}</span></div>
       <div class="stat-row"><span class="tip" data-tip="${tr('当前现金存款。工资、维护费、税款都从这里扣除，归零即破产', 'Cash on hand. Wages, upkeep and taxes are paid from here — hit zero and you go bankrupt')}">${tr('💰 现金存款', '💰 Gold')}</span><span class="stat-money">${g.money} ${tr('金币', 'gold')}</span></div>
       <div class="stat-row"><span class="tip" data-tip="${tr('声望（信誉值）= 每笔完成订单的净利润累计。决定最终评级，越高越好', 'Renown = cumulative net profit of completed orders. Determines your final rating')}">${tr('🏆 声望（信誉）', '🏆 Renown')}</span><span class="stat-score">${g.score}</span></div>
       <div class="stat-row"><span class="tip" data-tip="${tr('当前所处阶段，双方始终同步', 'Current phase — both captains always stay in sync')}">${tr('🧭 当前阶段', '🧭 Phase')}</span><span class="stat-value">${phaseName(g.phase)}</span></div>
@@ -2300,6 +2512,13 @@ function stepperHTML(currentKey) {
     </div>`;
 }
 
+/* Always-visible reminder of the agreed difficulty. Hovering it brings up the same
+   plain-language summary both captains saw when they agreed to the voyage. */
+function difficultyChipHTML(g) {
+  const info = difficultyInfo(g && g.difficulty);
+  return `<span class="chip tip diff-${info.key}" data-tip="${escapeHtml(info.summary())}">${tr('难度', 'Difficulty')}：${info.badge()}</span>`;
+}
+
 function phaseBriefHTML(key, extraChips = '') {
   const meta = PHASE_FLOW[PHASE_INDEX[key]];
   if (!meta) return '';
@@ -2314,6 +2533,7 @@ function phaseBriefHTML(key, extraChips = '') {
         <p>${pf(meta.brief)}</p>
       </div>
       <div class="pb-sync">
+        ${difficultyChipHTML(serverState.yourGame)}
         <span class="chip ${readyCount >= 2 ? 'green' : ''}" title="${tr('双方都确认后才进入下一阶段', 'The next phase starts once both captains confirm')}">${tr(`🔄 双方就绪 ${readyCount} / 2`, `🔄 Ready ${readyCount} / 2`)}</span>
         ${waiting ? `<span class="chip amber">⏳ ${escapeHtml(lst(waiting))}</span>` : ''}
         ${extraChips}
@@ -2387,8 +2607,8 @@ function welcomeHTML() {
   return `
     <div class="center-block">
       <div class="hero-title">⚓ PortMasters 2 🚢</div>
-      <div class="subtitle-text">${tr('海上丝绸之路 · 八大航程 · 与伙伴同船竞航，成为海上霸主！',
-        'The Maritime Silk Road · Eight voyages · Race your partner fleet-to-fleet to rule the seas!')}</div>
+      <div class="subtitle-text">${tr('海上丝绸之路 · 扬帆远航 · 与伙伴同船竞航，成为海上霸主！',
+        'The Maritime Silk Road · Set your course · Race your partner fleet-to-fleet to rule the seas!')}</div>
       ${environmentBannerHTML(g)}
       ${!dismissed ? `
       <div class="pm-banner">
@@ -2564,6 +2784,10 @@ function brokerWhisperHTML(g) {
           ${hasOceanRelay
             ? tr(` 此外，<strong>📡 远洋通译</strong>已生效：每次额外多获得 <strong>1 条</strong>线索（不增加花费）。`,
                  ` Additionally, <strong>📡 Ocean-Going Interpreter</strong> is active: each purchase reveals <strong>1 extra clue</strong> at no added cost.`)
+            : ''}
+          ${g.brokerCorruption
+            ? tr(` ⚠️ 高难航路上并非每个牙行都可信：每次打探都有可能遇到<strong>可疑牙行</strong>走漏你的行踪，抬高本程海盗袭扰概率，记得在结算阶段权衡是否雇佣护航。`,
+                 ` ⚠️ On the hard route not every broker is trustworthy: each purchase risks a <strong>shady broker</strong> leaking your route and raising this voyage's pirate raid chance, so weigh hiring an escort at Upkeep.`)
             : ''}
         </div>
         <div style="margin:10px 0">
@@ -2863,9 +3087,11 @@ function maintenanceHTML() {
   const cost = g.fixedCost + (g.maintenancePenalty || 0);
   const safe = g.money >= cost;
   const m = g.monsoon_state || {};
-  const riskPct = Math.round((m.pirateRisk || 0) * 100);
+  const riskPct = Math.round((g.pirateRiskEffective ?? m.pirateRisk ?? 0) * 100);
   const escortCost = g.escortCost || 10;
   const canEscort = !g.pirate_immunity && g.money >= escortCost;
+  const lossPct = Math.round((g.pirateLossPct || 0) * 100);
+  const projectedLoss = Math.round((g.money || 0) * (g.pirateLossPct || 0));
   return `
     ${phaseBriefHTML(3)}
     ${environmentBannerHTML(g)}
@@ -2884,8 +3110,8 @@ function maintenanceHTML() {
       <div class="section-box">
         <h3>${tr('🛡️ 海盗反制：雇佣护航', '🛡️ Pirate Counterplay: Hire Escort')}</h3>
         <div class="section-hint">
-          ${tr(`当前环境海盗袭扰概率为 <strong>${riskPct}%</strong>，若触发将损失至多 ${m.pirateLoss || 0} 金币。雇佣护航可完全免疫本次结算的海盗 RNG。`,
-               `Current pirate raid chance is <strong>${riskPct}%</strong>; a raid can cost up to ${m.pirateLoss || 0} gold. Hiring an escort fully neutralizes pirate RNG for this upkeep.`)}
+          ${tr(`本程海盗袭扰概率为 <strong>${riskPct}%</strong>（含天象与可疑牙行的影响），若触发将损失当前金币的 <strong>${lossPct}%</strong>（按现有现金约为 ${projectedLoss} 金币）。护航费用按当前财富计算，本次为 <strong>${escortCost}</strong> 金币，可完全免疫本次结算的海盗 RNG。`,
+               `This voyage's pirate raid chance is <strong>${riskPct}%</strong> (weather plus any shady brokers); if it lands you lose <strong>${lossPct}%</strong> of your gold (about ${projectedLoss} gold at your current balance). The escort fee scales with your wealth, <strong>${escortCost}</strong> gold right now, and fully neutralizes pirate RNG for this upkeep.`)}
         </div>
         <button class="btn ${g.pirate_immunity ? 'btn-grey' : 'btn-shield'}" ${g.pirate_immunity || !canEscort ? 'disabled' : ''}
           onclick="sendAction('hireEscort')"
@@ -2917,22 +3143,22 @@ function shipyardHTML() {
         <div class="stat-row" style="font-size:13px"><span>${tr('模块槽位', 'Module slots')}</span><strong>${slots} / ${g.shipLevel}</strong></div>
         <div style="margin-top:6px">${modulesHTML(g)}</div>
       </div>
-      ${draft.length ? moduleDraftHTML(g, draft, slotsFull) : ''}
+      ${g.draftOpen ? moduleDraftHTML(g, draft, slotsFull) : ''}
       <div style="text-align:center;display:flex;gap:12px;justify-content:center;flex-wrap:wrap">
         ${canUpgrade ? `
           <button class="btn btn-lg" onclick="sendAction('upgradeShip')" ${g.money < upgCost ? 'disabled' : ''}
             title="${tr('升级后每单运费永久再减5金币，并增加1个模块槽位', 'Each upgrade permanently cuts shipping by another 5 gold and adds a module slot')}">
             ${tr(`⚓ 升级商船至 Lv.${g.shipLevel + 1}（${upgCost}💰）`, `⚓ Upgrade Ship to Lv.${g.shipLevel + 1} (${upgCost}💰)`)}<span class="btn-sub">${tr('运费/单再 −5 金币 · +1 模块槽', 'Shipping −5 gold/order · +1 module slot')}</span>
           </button>` : `<span class="chip green">${tr('⚓ 旗舰已满级 Lv.3', '⚓ Flagship at max level (Lv.3)')}</span>`}
-        ${!draft.length ? `
+        ${!g.draftOpen ? `
           <button class="btn ${g.shipLevel > 0 ? 'btn-gold' : 'btn-grey'} btn-lg" ${g.shipLevel > 0 ? '' : 'disabled'}
             onclick="sendAction('draftModules')"
             title="${g.shipLevel > 0
-              ? (slotsFull ? tr('槽位已满，抽取后可替换现有模块', 'Slots are full — drafting lets you replace an installed module') : tr('抽取3个模块，选择一个安装到空置槽位', 'Draft 3 modules and install one in an empty slot'))
-              : tr('商船升至 Lv.1 后解锁模块槽位，方可抽取船舶模块', 'Upgrade your ship to Lv.1 to unlock module slots before drafting')}">
+              ? (slotsFull ? tr('查看本回合的模块选项，可替换现有模块', "View this round's module options; you can replace an installed module") : tr('查看本回合固定的 3 个模块选项，选择一个安装', "View this round's fixed 3 module options and install one"))
+              : tr('商船升至 Lv.1 后解锁模块槽位，方可选择船舶模块', 'Upgrade your ship to Lv.1 to unlock module slots before choosing')}">
             ${g.shipLevel > 0
-              ? `🔧 ${slotsFull ? tr('抽取并替换模块', 'Draft & Replace Module') : tr('抽取并安装模块', 'Draft & Install Module')}`
-              : tr('🔒 抽取并安装模块<span class="btn-sub">需先升级商船解锁槽位</span>', '🔒 Draft & Install Module<span class="btn-sub">Upgrade your ship to unlock slots</span>')}
+              ? `🔧 ${slotsFull ? tr('选择船舶模块（可替换）', 'Choose Ship Modules (replace)') : tr('选择船舶模块', 'Choose Ship Modules')}`
+              : tr('🔒 选择船舶模块<span class="btn-sub">需先升级商船解锁槽位</span>', '🔒 Choose Ship Modules<span class="btn-sub">Upgrade your ship to unlock slots</span>')}
           </button>` : ''}
         <button class="btn btn-success btn-lg" onclick="sendAction('ready_for_next_phase')" title="${tr('双方确认后开始下一航程', 'The next voyage begins once both captains confirm')}">${tr('⏭️ 结束本航程', '⏭️ End This Voyage')}<span class="btn-sub">${tr('双方确认后开启下一程', 'Advances when both confirm')}</span></button>
       </div>
@@ -2941,10 +3167,7 @@ function shipyardHTML() {
 }
 
 function moduleDraftHTML(g, draft, slotsFull) {
-  return `
-    <div class="section-box" style="max-width:780px;margin:18px auto">
-      <h3>${tr('🔧 模块抽取', '🔧 Module Draft')}</h3>
-      <div class="section-hint">${slotsFull ? tr('模块槽位已满，选择一个新模块后需指定要替换的现有模块。', 'All slots are full — pick a new module, then choose which installed one to replace.') : tr('选择一个模块安装到空置槽位。', 'Pick one module to install in an empty slot.')}</div>
+  const grid = draft.length ? `
       <div class="card-grid">
         ${draft.map((m, i) => `
           <div class="card">
@@ -2966,9 +3189,20 @@ function moduleDraftHTML(g, draft, slotsFull) {
             </div>
           </div>
         `).join('')}
-      </div>
-      <div style="text-align:center;margin-top:10px">
-        <button class="btn btn-ghost" onclick="sendAction('cancelModuleDraft')">${tr('❌ 放弃本次抽取', '❌ Skip This Draft')}</button>
+      </div>`
+    : `<div class="section-hint">${tr('本批模块已全部安装。', 'You have installed every module in this batch.')}${g.draftRerolled ? '' : tr('可点「换一批」再抽一批。', ' Use Change Batch for a fresh draw.')}</div>`;
+  return `
+    <div class="section-box" style="max-width:780px;margin:18px auto">
+      <h3>${tr('🔧 模块选择', '🔧 Module Draft')}</h3>
+      <div class="section-hint">${tr('本回合的模块选项是固定的，关闭后再次打开仍是同一批。', "This round's options are fixed; closing and reopening shows the same batch.")} ${slotsFull ? tr('槽位已满，选择新模块后需指定要替换的现有模块。', 'All slots are full, so pick a new module then choose which installed one to replace.') : tr('选择一个模块安装到空置槽位。', 'Pick one module to install in an empty slot.')}</div>
+      ${grid}
+      <div style="text-align:center;margin-top:10px;display:flex;gap:10px;justify-content:center;flex-wrap:wrap">
+        <button class="btn ${g.draftRerolled ? 'btn-grey' : 'btn-gold'}" ${g.draftRerolled ? 'disabled' : ''}
+          onclick="sendAction('rerollModuleDraft')"
+          title="${g.draftRerolled ? tr('本回合的「换一批」已用过', 'Reroll already used this round') : tr('每回合一次：重新抽取一批可选模块', 'Once per round: draw a fresh batch of module options')}">
+          ${g.draftRerolled ? tr('🔀 本回合已换过一批', '🔀 Batch already changed') : tr('🔀 换一批', '🔀 Change Batch')}
+        </button>
+        <button class="btn btn-ghost" onclick="sendAction('cancelModuleDraft')">${tr('❌ 关闭', '❌ Close')}</button>
       </div>
     </div>
   `;
@@ -3086,22 +3320,19 @@ function bankruptcyHTML() {
 
 function endgameHTML() {
   const g = serverState.yourGame;
-  let rating = tr("🌊 新手商人", "🌊 Novice Merchant");
-  if (g.score >= 300) rating = tr("👑 丝绸之路霸主", "👑 Sovereign of the Silk Road");
-  else if (g.score >= 200) rating = tr("🏆 海上贸易大亨", "🏆 Maritime Trade Tycoon");
-  else if (g.score >= 100) rating = tr("⭐ 成功商人", "⭐ Accomplished Merchant");
-  else if (g.score >= 50) rating = tr("👍 合格商人", "👍 Competent Merchant");
+  const rating = ratingFor(g.score, g.difficulty);
+  const firstTierMin = ratingTiers(g.difficulty)[1].min;
   return `
     <div class="center-block" style="text-align:center">
       <div style="font-size:70px">🎆</div>
-      <div class="hero-title">${tr('八大航程完结！', 'All Eight Voyages Complete!')}</div>
+      <div class="hero-title">${tr('全部航程完结！', 'All Voyages Complete!')}</div>
       <div class="section-box" style="max-width:460px;margin:14px auto;text-align:left">
         <div class="stat-row" style="font-size:14px"><span>${tr('🏆 最终声望（信誉）', '🏆 Final renown')}</span><strong>${g.score}</strong></div>
         <div class="stat-row" style="font-size:14px"><span>${tr('💰 最终现金', '💰 Final gold')}</span><strong>${g.money} ${tr('金币', 'gold')}</strong></div>
         <div class="stat-row" style="font-size:15px"><span>${tr('📈 商人评级', '📈 Merchant rating')}</span><strong>${rating}</strong></div>
-        <div class="section-hint" style="margin-top:8px">${tr('评级门槛：50 合格 · 100 成功 · 200 大亨 · 300 霸主', 'Rating thresholds: 50 Competent · 100 Accomplished · 200 Tycoon · 300 Sovereign')}</div>
+        <div class="section-hint" style="margin-top:8px">${tr('评级门槛：', 'Rating thresholds: ')}${ratingThresholdHint(g.difficulty)}</div>
       </div>
-      ${g.score < 50 ? pm1HintHTML(tr('首航成绩不理想很正常！', 'A rough first voyage is completely normal!')) : ''}
+      ${g.score < firstTierMin ? pm1HintHTML(tr('首航成绩不理想很正常！', 'A rough first voyage is completely normal!')) : ''}
       <button class="btn btn-xl" onclick="confirmRestart()" title="${tr('需等待对方也结束本局，双方进度将一同重置', 'Requires your partner to finish too; both voyages reset together')}">${tr('🔄 再启新航程', '🔄 Begin a New Voyage')}</button>
     </div>
   `;
@@ -3201,7 +3432,7 @@ const MANUAL_TABS_I18N = {
     { id: 'trade',     label: '🤝 互市与联机' },
     { id: 'boons',     label: '🍀 福缘图鉴' },
     { id: 'ship',      label: '🚢 船坞升级' },
-    { id: 'expansion', label: '🗺️ 拓展航线' },
+    { id: 'expansion', label: '🗺️ 难度与拓展' },
     { id: 'faq',       label: '❓ 常见问题' }
   ],
   en: [
@@ -3212,7 +3443,7 @@ const MANUAL_TABS_I18N = {
     { id: 'trade',     label: '🤝 Barter & Online' },
     { id: 'boons',     label: '🍀 Fortune Codex' },
     { id: 'ship',      label: '🚢 Ship Upgrades' },
-    { id: 'expansion', label: '🗺️ Expansion Routes' },
+    { id: 'expansion', label: '🗺️ Difficulty & Expansion' },
     { id: 'faq',       label: '❓ FAQ' }
   ]
 };
@@ -3221,7 +3452,8 @@ const manualTabs = () => MANUAL_TABS_I18N[LANG] || MANUAL_TABS_I18N.zh;
 const manualContentZh = () => ({
   start: `
     <h4>🎯 游戏目标</h4>
-    <p>你与伙伴各自经营一支海上商队，在 <strong>8 个航程（回合）</strong>内通过「低买 → 生产 → 高卖」积累<strong>声望（信誉值）</strong>。声望来自每笔订单的净利润，游戏结束时按声望评级。开局资金 100 金币，并自带少量原料。</p>
+    <p>你与伙伴各自经营一支海上商队，在整段航程（<strong>轻松 8 回合、标准 12 回合、高难 16 回合</strong>）内通过「低买 → 生产 → 高卖」积累<strong>声望（信誉值）</strong>。声望来自每笔订单的净利润，游戏结束时按声望评级。开局资金 100 金币，并自带少量原料。</p>
+    <p class="muted">每一局有轻松、标准、高难三档难度，构成由易到难的阶梯，默认是轻松。难度在邀请时商定：发出邀请的一方选择，另一方在确认窗口看过说明并同意后开局。轻松只包含基础货物，更适合新手起步；想了解各档难度的差别，可查看「难度与拓展」一节。</p>
     <h4>🧭 第一程怎么玩（推荐路线）</h4>
     <ol>
       <li><strong>福缘</strong>：第一程建议选「紧急钱庄」（+40金币）或「商贾魅力」（采购85折），缓解开局现金压力。</li>
@@ -3310,7 +3542,7 @@ const manualContentZh = () => ({
     </ul>
     <h4>🌐 联机机制</h4>
     <ul>
-      <li><strong>邀请</strong>：大厅中向在线玩家发出邀请，每分钟限 1 次，60 秒未回应自动超时。</li>
+      <li><strong>邀请与难度</strong>：大厅中向在线玩家发出邀请，每分钟限 1 次，60 秒未回应自动超时。发出邀请时会先为本局选择难度（轻松或高难，默认轻松），对方在确认窗口看过说明并同意后，双方才以同一难度开局。</li>
       <li><strong>同步</strong>：双方始终同回合同阶段；每个阶段需双方确认才推进。</li>
       <li><strong>断线重连</strong>：会话保留在服务器，重新登录即恢复进度；双方都离线时会话回收。</li>
       <li><strong>聊天</strong>：点击右上角 💬 与伙伴实时沟通（对方离线时无法发送）。</li>
@@ -3329,21 +3561,28 @@ const manualContentZh = () => ({
       <tr><td>📜 免税令</td><td>所得税率降至 5%</td><td>预计本回合利润很高</td></tr>
       <tr><td>🧶 麻布专营</td><td>麻布采购单价 −2 金币</td><td>主打麻衣/布衣生产线</td></tr>
       <tr><td>🎓 学徒传承</td><td>雇佣工资减半</td><td>本回合计划扩编工匠团队</td></tr>
-      <tr><td>🔮 千里眼<br><span class="muted">市舶新政 · 第3程起</span></td><td>本回合免费获得 1 条牙行密语线索</td><td>想提前锁定贸易阶段订单</td></tr>
-      <tr><td>🏮 陶铜联号<br><span class="muted">市舶新政 · 第3程起</span></td><td>本回合「青瓷器」与「紫铜镜」订单报酬 +15%</td><td>库存中已有大量青瓷器/紫铜镜待交付</td></tr>
-      <tr><td>🧾 拓商减负<br><span class="muted">市舶新政 · 第3程起</span></td><td>本回合交付成品订单的增值税减半</td><td>本回合计划大量交付成品</td></tr>
-      <tr><td>💎 蕃国奇珍<br><span class="muted">万国通商 · 第5程起</span></td><td>本回合「蕃香脂」与「珠链」订单报酬 +15%</td><td>库存中已有大量蕃香脂/珠链待交付</td></tr>
-      <tr><td>🛡️ 远洋护航<br><span class="muted">万国通商 · 第5程起</span></td><td>本回合雇佣护航费用减半，海盗风险减半</td><td>季风海盗风险较高时</td></tr>
-      <tr><td>🛍️ 万商云集<br><span class="muted">万国通商 · 第5程起</span></td><td>本回合贸易阶段额外出现 1 张订单</td><td>想要更多交付机会</td></tr>
+      <tr><td>🔮 千里眼<br><span class="muted">市舶新政 · 第6程起</span></td><td>本回合免费获得 1 条牙行密语线索</td><td>想提前锁定贸易阶段订单</td></tr>
+      <tr><td>🏮 陶铜联号<br><span class="muted">市舶新政 · 第6程起</span></td><td>本回合「青瓷器」与「紫铜镜」订单报酬 +15%</td><td>库存中已有大量青瓷器/紫铜镜待交付</td></tr>
+      <tr><td>🧾 拓商减负<br><span class="muted">市舶新政 · 第6程起</span></td><td>本回合交付成品订单的增值税减半</td><td>本回合计划大量交付成品</td></tr>
+      <tr><td>💎 蕃国奇珍<br><span class="muted">万国通商 · 第10程起</span></td><td>本回合「蕃香脂」与「珠链」订单报酬 +15%</td><td>库存中已有大量蕃香脂/珠链待交付</td></tr>
+      <tr><td>🛡️ 远洋护航<br><span class="muted">万国通商 · 第10程起</span></td><td>本回合雇佣护航费用减半，海盗风险减半</td><td>季风海盗风险较高时</td></tr>
+      <tr><td>🛍️ 万商云集<br><span class="muted">万国通商 · 第10程起</span></td><td>本回合贸易阶段额外出现 1 张订单</td><td>想要更多交付机会</td></tr>
     </table>
   `,
   expansion: `
-    <h4>🗺️ 丝路特许：分批解锁</h4>
-    <p>第 1-2 程的玩法与最初版本完全一致，包含 3 种原料、4 种成品、3 类工匠、5 座港口。从<strong>第 3 程</strong>起，「市舶新政」颁布；从<strong>第 5 程</strong>起，「万国通商」开启。两批新内容会分别加入原料、成品、港口、工匠、福缘、战船改装与季风的可选池，航路越往后，棋盘也就越宽。</p>
+    <h4>⚖️ 难度模式</h4>
+    <p>每一局会在三档难度之一下进行，构成由易到难的阶梯，默认始终是<strong>轻松</strong>。<strong>轻松模式</strong>共 8 个回合，让整段航程都停留在基础货物之内，只包含麻布、丝绸、茶叶三种原料、四种入门成品、前三类工匠，以及与之相关的福缘、战船改装、港口和季风。棋盘始终不会过度拥挤，你有充足的余裕慢慢熟悉每个回合的节奏。<strong>标准模式</strong>共 12 个回合，是中间一档：同样开放完整贸易，丝路特许在第 4、8 程分批解锁，但不会出现暗通海盗的牙行。<strong>高难模式</strong>共 16 个回合，开放完整的海上贸易并加入可疑牙行机制，丝路特许在第 6、10 程分批解锁，需要打理的事务多得多，对舱位与金币的竞争也激烈许多。下文「丝路特许」的分批解锁在标准与高难模式中都会发生，轻松模式则不会。海盗机制对所有难度都已加强：海盗一旦得手会掠走当前财富的一定比例（越往后、难度越高比例越大），雇佣护航的费用也随财富浮动；在高难模式中，购买牙行密语还可能遇到可疑牙行暗通海盗、抬高本程袭扰概率，让结算阶段是否雇佣护航成为真正的取舍。</p>
+    <p>难度在航程开始前就已商定。发出邀请的一方先选择本局难度，对方会在确认窗口看到一段说明，了解它会改变什么之后再同意，所以两位船长始终在同一难度下经营同一段航程。</p>
+    <div class="pm-banner" style="margin:8px 0 4px">
+      <span class="pm-icon">⚖️</span>
+      <span>下面这份分批解锁清单以<strong>高难模式</strong>（第 6、10 程）为例。<strong>标准模式</strong>解锁的内容相同，只是更早到来（第 4、8 程）；<strong>轻松模式</strong>则全程停留在基础内容，这些扩展不会出现。</span>
+    </div>
+    <h4>🗺️ 丝路特许：分批解锁（高难模式）</h4>
+    <p>第 1-5 程的玩法与最初版本完全一致，包含 3 种原料、4 种成品、3 类工匠、5 座港口。从<strong>第 6 程</strong>起，「市舶新政」颁布；从<strong>第 10 程</strong>起，「万国通商」开启。两批新内容会分别加入原料、成品、港口、工匠、福缘、战船改装与季风的可选池，航路越往后，棋盘也就越宽。随着新内容解锁，采购阶段与贸易阶段可挑选的卡牌也会相应增多：基础为 5 张，第 6 程起增至 8 张，第 10 程起增至 11 张，让新货物有充足的出现机会。</p>
     <table>
       <tr><th>批次</th><th>解锁时机</th><th>新增内容概览</th></tr>
-      <tr><td>🗺️ 市舶新政</td><td>第 3 程起</td><td>瓷土、铜矿、紫铜镜、青瓷器；福州港、高丽港；铜匠、陶匠；3 福缘 + 3 战船改装 + 2 季风</td></tr>
-      <tr><td>🌏 万国通商</td><td>第 5 程起</td><td>香料、珍珠、蕃香脂、珠链；三佛齐港、大食港；香料师、珠宝匠；3 福缘 + 3 战船改装 + 2 季风</td></tr>
+      <tr><td>🗺️ 市舶新政</td><td>第 6 程起</td><td>瓷土、铜矿、紫铜镜、青瓷器；福州港、高丽港；铜匠、陶匠；3 福缘 + 3 战船改装 + 2 季风</td></tr>
+      <tr><td>🌏 万国通商</td><td>第 10 程起</td><td>香料、珍珠、蕃香脂、珠链；三佛齐港、大食港；香料师、珠宝匠；3 福缘 + 3 战船改装 + 2 季风</td></tr>
     </table>
 
     <h4>📦 新增原料</h4>
@@ -3405,7 +3644,7 @@ const manualContentZh = () => ({
 
     <div class="pm-banner" style="margin-top:10px">
       <span class="pm-icon">🗺️</span>
-      <span>这些新内容会在<strong>「启航」</strong>页以横幅公告的形式出现，记得留意第 3 程与第 5 程开局时的提示！</span>
+      <span>这些新内容会在<strong>「启航」</strong>页以横幅公告的形式出现，记得留意第 6 程与第 10 程开局时的提示！</span>
     </div>
   `,
   ship: `
@@ -3419,7 +3658,8 @@ const manualContentZh = () => ({
     <ul>
       <li>运费下限为 5 金币（部分福缘/模块可降至 0）。</li>
       <li>升级是<strong>永久投资</strong>：交付订单越频繁，回本越快。一般建议第 2~4 程内升至 Lv.1~2。</li>
-      <li>末期（第 7、8 程）再升级往往回不了本，把现金留给进货更划算。</li>
+      <li>临近尾声的最后一两程再升级往往回不了本，把现金留给进货更划算。</li>
+      <li>升级解锁槽位后，可在船坞「选择船舶模块」。每回合的 3 个候选<strong>固定不变</strong>，关闭再打开仍是同一批；每回合可用一次<strong>「换一批」</strong>重新抽取。</li>
     </ul>
   `,
   faq: `
@@ -3437,7 +3677,8 @@ const manualContentZh = () => ({
       <li><span class="kbd">F1</span> 打开本手册 · <span class="kbd">Esc</span> 关闭弹窗 / 观战窗 / 聊天窗</li>
     </ul>
     <h4>😣 觉得 PortMasters 2 太难？</h4>
-    <p>本作的税务、工资与双人同步机制对新手并不友好。可以先游玩上一代
+    <p>最直接的办法是以<strong>轻松</strong>难度开局。轻松模式只包含基础货物，市场不会过度拥挤，让你能从容掌握采购、生产与贸易的节奏；它本就是默认难度，邀请时确认一下即可，各档难度的具体差别可见「难度与拓展」一节。</p>
+    <p>如果仍想从最基础处入门，也可以先游玩上一代
     <a href="${PM1_URLS.zh}" target="_blank" rel="noopener"><strong>PortMasters 1（中文版）→</strong></a>
     ，它没有联机同步与复杂税制，更适合熟悉「采购 → 生产 → 贸易」的基本循环。</p>
   `
@@ -3446,7 +3687,8 @@ const manualContentZh = () => ({
 const manualContentEn = () => ({
   start: `
     <h4>🎯 Objective</h4>
-    <p>You and your partner each run a maritime trading fleet. Over <strong>8 voyages (rounds)</strong>, build <strong>renown</strong> through the buy-low → produce → sell-high loop. Renown is the net profit of every delivered order; your final rating depends on it. You start with 100 gold and a small stock of materials.</p>
+    <p>You and your partner each run a maritime trading fleet. Over the voyage (<strong>8 rounds on Easy, 12 on Standard, 16 on Hard</strong>), build <strong>renown</strong> through the buy-low → produce → sell-high loop. Renown is the net profit of every delivered order; your final rating depends on it. You start with 100 gold and a small stock of materials.</p>
+    <p class="muted">Every session has Easy, Standard and Hard difficulties forming a ladder, and the default is Easy. The level is settled at invite time: the inviting captain picks it and the other confirms it in a short window. Easy mode keeps to the founding set of goods and is the gentler place to start; see the "Difficulty &amp; Expansion" section for exactly what changes between them.</p>
     <h4>🧭 Your First Voyage (recommended route)</h4>
     <ol>
       <li><strong>Fortune</strong>: in round 1, Emergency Loan (+40 gold) or Merchant's Charm (15% off purchases) eases the early cash crunch.</li>
@@ -3535,7 +3777,7 @@ const manualContentEn = () => ({
     </ul>
     <h4>🌐 Online Mechanics</h4>
     <ul>
-      <li><strong>Invitations</strong>: invite any online player from the lobby; one invite per minute, 60-second expiry.</li>
+      <li><strong>Invitations &amp; difficulty</strong>: invite any online player from the lobby; one invite per minute, 60-second expiry. When you send the invite you first choose the session difficulty (Easy, Standard or Hard, Easy by default), and the other captain reads a short explanation and agrees to it before you both start at the same level.</li>
       <li><strong>Sync</strong>: both captains are always on the same round and phase; every phase needs both to confirm.</li>
       <li><strong>Reconnection</strong>: sessions live on the server, so log back in to resume. The session is recycled only when both players are offline.</li>
       <li><strong>Chat</strong>: hit 💬 in the header to talk (disabled while your partner is offline).</li>
@@ -3554,21 +3796,28 @@ const manualContentEn = () => ({
       <tr><td>📜 Tax Exemption</td><td>Income tax drops to 5%</td><td>Expecting big profits this round</td></tr>
       <tr><td>🧶 Hemp Monopoly</td><td>Hemp Cloth −2 gold per unit</td><td>Running a garb/tunic production line</td></tr>
       <tr><td>🎓 Apprentice Legacy</td><td>Hiring wages halved</td><td>Expanding the team this round</td></tr>
-      <tr><td>🔮 Farsight<br><span class="muted">New Maritime Edict · Round 3+</span></td><td>Gain 1 free Broker's Whisper clue this round</td><td>Want to lock in a Trade-phase order early</td></tr>
-      <tr><td>🏮 Porcelain & Bronze Consortium<br><span class="muted">New Maritime Edict · Round 3+</span></td><td>Celadon Porcelain and Bronze Mirror orders pay +15% this round</td><td>Stockpiled Celadon Porcelain/Bronze Mirror ready to deliver</td></tr>
-      <tr><td>🧾 Frontier Tariff Relief<br><span class="muted">New Maritime Edict · Round 3+</span></td><td>VAT on finished-goods deliveries is halved this round</td><td>Planning to deliver lots of products this round</td></tr>
-      <tr><td>💎 Treasures from Afar<br><span class="muted">Ten Thousand Kingdoms Trade · Round 5+</span></td><td>Foreign Perfume Oil and Pearl Necklace orders pay +15% this round</td><td>Stockpiled Foreign Perfume Oil/Pearl Necklace ready to deliver</td></tr>
-      <tr><td>🛡️ Deep-Sea Escort Pact<br><span class="muted">Ten Thousand Kingdoms Trade · Round 5+</span></td><td>Escort hiring costs half price and pirate risk is halved this round</td><td>When the trade wind's pirate risk is high</td></tr>
-      <tr><td>🛍️ Merchants Converge<br><span class="muted">Ten Thousand Kingdoms Trade · Round 5+</span></td><td>1 extra order appears in the Trade phase this round</td><td>Want more delivery opportunities</td></tr>
+      <tr><td>🔮 Farsight<br><span class="muted">New Maritime Edict · Round 6+</span></td><td>Gain 1 free Broker's Whisper clue this round</td><td>Want to lock in a Trade-phase order early</td></tr>
+      <tr><td>🏮 Porcelain & Bronze Consortium<br><span class="muted">New Maritime Edict · Round 6+</span></td><td>Celadon Porcelain and Bronze Mirror orders pay +15% this round</td><td>Stockpiled Celadon Porcelain/Bronze Mirror ready to deliver</td></tr>
+      <tr><td>🧾 Frontier Tariff Relief<br><span class="muted">New Maritime Edict · Round 6+</span></td><td>VAT on finished-goods deliveries is halved this round</td><td>Planning to deliver lots of products this round</td></tr>
+      <tr><td>💎 Treasures from Afar<br><span class="muted">Ten Thousand Kingdoms Trade · Round 10+</span></td><td>Foreign Perfume Oil and Pearl Necklace orders pay +15% this round</td><td>Stockpiled Foreign Perfume Oil/Pearl Necklace ready to deliver</td></tr>
+      <tr><td>🛡️ Deep-Sea Escort Pact<br><span class="muted">Ten Thousand Kingdoms Trade · Round 10+</span></td><td>Escort hiring costs half price and pirate risk is halved this round</td><td>When the trade wind's pirate risk is high</td></tr>
+      <tr><td>🛍️ Merchants Converge<br><span class="muted">Ten Thousand Kingdoms Trade · Round 10+</span></td><td>1 extra order appears in the Trade phase this round</td><td>Want more delivery opportunities</td></tr>
     </table>
   `,
   expansion: `
-    <h4>🗺️ Silk Road Charter: Phased Unlocks</h4>
-    <p>Rounds 1-2 play exactly like the original release, with 3 raw materials, 4 products, 3 artisan types and 5 ports. From <strong>Round 3</strong>, the "New Maritime Edict" takes effect; from <strong>Round 5</strong>, "Ten Thousand Kingdoms Trade" opens. Each wave adds new resources, products, ports, artisans, fortunes, ship modules and trade winds to the pools you draw from, so the later the voyage, the wider the board.</p>
+    <h4>⚖️ Difficulty Modes</h4>
+    <p>Every session is played at one of three difficulties that form a ladder, and it always starts on <strong>Easy</strong> by default. <strong>Easy mode</strong> is the shorter 8 round voyage and keeps the whole game on the founding set of goods, with only the three raw materials Hemp Cloth, Silk and Tea, the four starter products, the first three artisan guilds, and the fortunes, ship modules, ports and trade winds tied to them. The board never grows crowded, so you have plenty of room to learn the rhythm of each round at your own pace. <strong>Standard mode</strong> is the 12 round middle rung: it also opens the full trade, with the Silk Road Charter unlocking at Rounds 4 and 8, but with no corrupt brokers. <strong>Hard mode</strong> is the longer 16 round voyage that opens the full maritime trade with the charter unlocking at Rounds 6 and 10 and the corrupt-broker hazard switched on, so there is a great deal more to manage and the competition for cargo space and coin grows much fiercer. The phased unlocks below happen on Standard and Hard but never on Easy. Raids bite harder as you climb the ladder too: a successful raid takes a share of your current gold (a larger share later in the voyage and on higher difficulties) and the escort fee scales with your wealth as well; and on Hard a Broker's Whisper can come from a corrupt broker who tips off pirates and raises that voyage's raid chance, turning the escort call at Upkeep into a genuine trade-off.</p>
+    <p>The difficulty is settled before a voyage begins. The inviting captain chooses the level for the session, and the other captain sees a short explanation of what it changes in the confirmation window and agrees to it, so both captains always run the same voyage at the same difficulty.</p>
+    <div class="pm-banner" style="margin:8px 0 4px">
+      <span class="pm-icon">⚖️</span>
+      <span>The phased unlock tables below use <strong>Hard mode</strong> (Rounds 6 and 10) as the example. <strong>Standard mode</strong> unlocks the same content earlier (Rounds 4 and 8); <strong>Easy mode</strong> stays on the founding set named above for the entire game and these expansions never arrive.</span>
+    </div>
+    <h4>🗺️ Silk Road Charter: Phased Unlocks (Hard mode)</h4>
+    <p>Rounds 1-5 play exactly like the original release, with 3 raw materials, 4 products, 3 artisan types and 5 ports. From <strong>Round 6</strong>, the "New Maritime Edict" takes effect; from <strong>Round 10</strong>, "Ten Thousand Kingdoms Trade" opens. Each wave adds new resources, products, ports, artisans, fortunes, ship modules and trade winds to the pools you draw from, so the later the voyage, the wider the board. As the waves arrive, the hands you pick from in the buying and trade phases grow too, going from 5 cards to 8 once the first wave opens at Round 6 and to 11 once the second opens at Round 10, so the new goods always have room to appear.</p>
     <table>
       <tr><th>Wave</th><th>Unlocks at</th><th>What's added</th></tr>
-      <tr><td>🗺️ New Maritime Edict</td><td>Round 3</td><td>Porcelain Clay, Copper Ore, Bronze Mirror, Celadon Porcelain; Fuzhou, Goryeo; Coppersmith, Potter; 3 Fortunes + 3 ship modules + 2 trade winds</td></tr>
-      <tr><td>🌏 Ten Thousand Kingdoms Trade</td><td>Round 5</td><td>Spices, Pearls, Foreign Perfume Oil, Pearl Necklace; Srivijaya, Dashi; Perfumer, Jeweler; 3 Fortunes + 3 ship modules + 2 trade winds</td></tr>
+      <tr><td>🗺️ New Maritime Edict</td><td>Round 6</td><td>Porcelain Clay, Copper Ore, Bronze Mirror, Celadon Porcelain; Fuzhou, Goryeo; Coppersmith, Potter; 3 Fortunes + 3 ship modules + 2 trade winds</td></tr>
+      <tr><td>🌏 Ten Thousand Kingdoms Trade</td><td>Round 10</td><td>Spices, Pearls, Foreign Perfume Oil, Pearl Necklace; Srivijaya, Dashi; Perfumer, Jeweler; 3 Fortunes + 3 ship modules + 2 trade winds</td></tr>
     </table>
 
     <h4>📦 New Resources</h4>
@@ -3630,7 +3879,7 @@ const manualContentEn = () => ({
 
     <div class="pm-banner" style="margin-top:10px">
       <span class="pm-icon">🗺️</span>
-      <span>These additions arrive as banner announcements on the <strong>Set Sail</strong> page, so watch for them at the start of Round 3 and Round 5!</span>
+      <span>These additions arrive as banner announcements on the <strong>Set Sail</strong> page, so watch for them at the start of Round 6 and Round 10!</span>
     </div>
   `,
   ship: `
@@ -3644,7 +3893,8 @@ const manualContentEn = () => ({
     <ul>
       <li>Shipping never drops below 5 gold (certain fortunes/modules can push it to 0).</li>
       <li>Upgrades are a <strong>permanent investment</strong>: the more orders you deliver, the faster they pay off. Aim for Lv.1–2 around rounds 2–4.</li>
-      <li>Late upgrades (rounds 7–8) rarely pay for themselves, so keep that gold for stock instead.</li>
+      <li>Late upgrades in the final round or two rarely pay for themselves, so keep that gold for stock instead.</li>
+      <li>Once a slot is unlocked you can "Choose Ship Modules" at the Shipyard. Each round's 3 options are <strong>fixed</strong> (closing and reopening shows the same batch), and you get one <strong>Change Batch</strong> reroll per round.</li>
     </ul>
   `,
   faq: `
@@ -3662,7 +3912,8 @@ const manualContentEn = () => ({
       <li><span class="kbd">F1</span> opens this manual · <span class="kbd">Esc</span> closes dialogs / the spectator window / chat</li>
     </ul>
     <h4>😣 Finding PortMasters 2 too hard?</h4>
-    <p>The taxes, wages and two-captain sync are not beginner-friendly. Try
+    <p>The simplest fix is to play on <strong>Easy</strong>. Easy mode keeps to the founding set of goods so the market never gets crowded, which lets you settle into the buy, produce and trade rhythm without pressure. It is already the default, so you only need to confirm it when you invite, and the "Difficulty &amp; Expansion" section spells out exactly what differs between the two levels.</p>
+    <p>If you would still like the gentlest possible introduction, warm up with
     <a href="${PM1_URLS.en}" target="_blank" rel="noopener"><strong>PortMasters 1 →</strong></a>
     first, with no online sync, no complex taxes, and a gentler intro to the buy → produce → trade loop.</p>
   `
@@ -3705,6 +3956,8 @@ function maybeShowOnboarding() {
     <div class="manual-body" style="max-height:46vh">
       <p>${tr('这里是 <strong>PortMasters 2</strong> —— 海上丝绸之路双人联机贸易战略。开始前 60 秒了解三件事：',
         'This is <strong>PortMasters 2</strong> — a 2-player co-op trading strategy on the Maritime Silk Road. Sixty seconds, three things to know:')}</p>
+      <p class="muted">${tr('小提示：每一局有轻松、标准、高难三档难度，默认是轻松，由邀请时双方商定。觉得吃力就保持轻松，它只包含基础货物，更适合上手；想要更多挑战可以拾级而上。',
+        'Tip: each session has Easy, Standard and Hard difficulties, Easy by default, agreed between the two of you when the invite is sent. If it feels like a lot, stay on Easy, which keeps to the founding set of goods and is friendlier for getting started, and climb the ladder when you want more.')}</p>
       <h4>${tr('1️⃣ 一切围绕现金流', '1️⃣ Cash flow is everything')}</h4>
       <p>${tr('每回合必须支付<strong>工匠工资</strong>与 <strong>15 金币维护费</strong>，付不起立即破产。左侧面板会实时核算「本回合应付款项」，时刻盯紧它。',
         'Every round you must pay <strong>artisan wages</strong> plus <strong>15 gold upkeep</strong> — miss it and you go bankrupt instantly. The left panel tallies "Due This Round" live; keep an eye on it.')}</p>
