@@ -554,25 +554,41 @@ class PlayerGame:
     def has_module(self, mid):
         return any(m["id"] == mid for m in self.equippedModules)
 
+    def get_resource_unit_discount(self, rtype):
+        """Flat per-unit gold discount on one resource/product type from the active boon
+        and equipped modules. Shared by get_card_final_cost() (the real charge) and
+        resource_cards_for_client() (the displayed price), so the two can never drift apart."""
+        discount = 0
+        if rtype == "麻布" and self.modifierFlags.get("hemp_price_reduction"):
+            discount += self.modifierFlags["hemp_price_reduction"]
+        if rtype in ("瓷土", "铜矿") and self.has_module("kiln_cellar"):
+            discount += 2
+        if rtype in ("香料", "珍珠") and self.has_module("foreign_quarter_pass"):
+            discount += 3
+        return discount
+
     def get_card_final_cost(self, card):
         cost = card["totalCost"]
         if self.modifierFlags.get("purchase_discount"):
             cost = int(cost * (1 - self.modifierFlags["purchase_discount"]))
-        if self.modifierFlags.get("hemp_price_reduction"):
-            for r in card["resources"]:
-                if r["type"] == "麻布":
-                    cost -= r["quantity"] * self.modifierFlags["hemp_price_reduction"]
-        if self.has_module("kiln_cellar"):
-            for r in card["resources"]:
-                if r["type"] in ("瓷土", "铜矿"):
-                    cost -= r["quantity"] * 2
-        if self.has_module("foreign_quarter_pass"):
-            for r in card["resources"]:
-                if r["type"] in ("香料", "珍珠"):
-                    cost -= r["quantity"] * 3
+        for r in card["resources"]:
+            cost -= r["quantity"] * self.get_resource_unit_discount(r["type"])
         if self.has_module("smugglers_hold"):
             cost = int(cost * 0.85)
         return max(0, cost)
+
+    def resource_cards_for_client(self):
+        """Resource cards as the client should see them: each line and the card total carry
+        the real, post-discount price (boons + modules already applied) right alongside the
+        sticker price, instead of the client re-deriving discounts from raw modifier flags."""
+        cards = []
+        for card in self.resourceCards:
+            resources = [
+                dict(r, discountedPrice=max(0, r["price"] - self.get_resource_unit_discount(r["type"])))
+                for r in card["resources"]
+            ]
+            cards.append(dict(card, resources=resources, finalCost=self.get_card_final_cost(card)))
+        return cards
 
     def get_hire_cost(self, wtype):
         wage = WAGES[wtype]
@@ -1089,7 +1105,7 @@ class PlayerGame:
             "draftOpen": self.draftOpen,
             "draftRerolled": self.draftRerolled,
             "phase": self.phase,
-            "resourceCards": self.resourceCards,
+            "resourceCards": self.resource_cards_for_client(),
             "customerCards": self.customerCards,
             "purchaseCount": self.purchaseCount,
             "orderCount": self.orderCount,

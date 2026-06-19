@@ -6,7 +6,7 @@
 <title>PortMasters 2 · Maritime Silk Road (2-Player Online)</title>
 <style>
 /* ============================================================
-   PortMasters 2 — Design System
+   PortMasters 2 Design System
    Bright and natural, ocean-glass feel, smooth gradients, near-future (~2030) aesthetic
    Layer hierarchy (low to high): background decor < chat window < fullscreen overlay < dialogs < notifications
    ============================================================ */
@@ -272,19 +272,20 @@ a { color: var(--ocean-700); }
 /* ---- Tooltips (recognition over recall: bring the explanation to the user) ----
    One shared bubble is appended to <body> and positioned by JS (see initTooltips).
    The old `.tip::after` pseudo-element was structurally trapped, which is why hints
-   were cut off no matter how the copy was tuned:
-     • clipped by every scrolling/clipping ancestor — .side-panel, .phase-panel and
-       .card all set `overflow` other than visible, and an absolutely-positioned
-       descendant cannot escape an ancestor's overflow box (no z-index fixes this);
+   were cut off regardless of how the copy was tuned:
+     • clipped by every scrolling/clipping ancestor: .side-panel, .phase-panel and
+       .card all set `overflow` to something other than visible, and an absolutely
+       positioned descendant cannot escape an ancestor's overflow box (no z-index fix
+       gets around this);
      • pinned beneath ancestor stacking contexts (.phase-view animation, .card:hover
-       transform), so even where it wasn't clipped it could render behind siblings;
+       transform), so even when it wasn't clipped it could render behind siblings;
      • hard-centered (left:50%) with a fixed max-width and no edge detection, so a
-       hint near any viewport edge overflowed — and a width that fit English spilled
-       over in 中文 (and vice-versa), which is the "works in one language only" symptom.
-   A body-level position:fixed bubble is measured against the viewport instead: no
+       hint near any viewport edge overflowed, and a width that fit English text
+       spilled over in 中文 (and the reverse), the "works in one language only" symptom.
+   A body-level position:fixed bubble is measured against the viewport instead, so no
    ancestor can clip it or trap its stacking, and runtime collision detection
-   (flip above/below + horizontal clamp) keeps every hint fully on-screen in both
-   languages. Markup is unchanged — any current/future [data-tip] is covered. */
+   (flip above/below plus horizontal clamp) keeps every hint fully on-screen in both
+   languages. Markup is unchanged: any current or future [data-tip] is covered. */
 .tip { cursor: help; border-bottom: 1px dashed rgba(100, 116, 139, .55); }
 
 .tip-bubble {
@@ -1276,7 +1277,7 @@ a { color: var(--ocean-700); }
    Architecture convention: the online protocol and server state always identify
    items, ports and similar data using "canonical Chinese keys" (changing these
    keys would break protocol and save compatibility); language belongs only to the
-   presentation layer — each client translates independently when rendering, so
+   presentation layer, since each client translates independently when rendering, so
    the two players in a session can use different languages. The default language
    is English, and players can switch at any time, with the choice persisted to
    localStorage.
@@ -1593,6 +1594,20 @@ const WORKER_TYPES = [
 ];
 const wName = key => pf((WORKER_TYPES.find(w => w.key === key) || {}).name) || key;
 
+function workerWageRate(key, g) {
+  const base = WAGES[key];
+  const hasWorkshop = (g.equippedModules || []).some(m => m.id === 'artisans_workshop');
+  return hasWorkshop ? Math.floor(base * 1.2) : base; // matches server pay_wages()
+}
+
+function pendingWages(g) {
+  return WORKER_TYPES.reduce((sum, wt) => sum + (g[wt.listKey] || []).length * workerWageRate(wt.key, g), 0);
+}
+
+function pendingMaintenance(g) {
+  return g.fixedCost + (g.maintenancePenalty || 0); // matches server pay_maintenance()
+}
+
 const RECIPE_MATS = {
   "麻衣":     [["麻布", 2]],
   "布衣":     [["麻布", 2], ["丝绸", 1]],
@@ -1611,7 +1626,7 @@ const PHASE_FLOW = [
              en: "A new round begins. Once both captains confirm, you'll draw your fortunes." } },
   { key: 5, icon: "🧭", name: { zh: "福缘", en: "Fortune" },
     brief: { zh: "航海家的罗盘从福缘池中为你随机抽出4张（双方抽到的组合不同），选择一项仅本回合生效的增益。要采购多就选折扣，要生产多就选匠人灵感。",
-             en: "The Navigator's Compass deals you 4 random fortunes (each captain gets a different draw). Pick one buff for this round only — discounts if you plan to buy big, Artisan's Inspiration if you plan to produce." } },
+             en: "The Navigator's Compass deals you 4 random fortunes (each captain gets a different draw). Pick one buff for this round only: discounts if you plan to buy big, or Artisan's Inspiration if you plan to produce." } },
   { key: 1, icon: "🛒", name: { zh: "采购", en: "Procure" },
     brief: { zh: "用金币购入原料或成品。在商品的特产港口采购单价更低；可在「牙行密语」面板花金币打探未来订单需求；注意为工资和维护费留足现金。",
              en: "Spend gold on materials or finished goods. Prices are lower at a commodity's home port; the Broker's Whisper panel sells intel on upcoming demand. Keep enough cash for wages and upkeep!" } },
@@ -1626,7 +1641,7 @@ const PHASE_FLOW = [
              en: "Fulfill port orders from your cargo for gold. Product orders pay ~5% VAT; every delivery also costs shipping." } },
   { key: 3, icon: "🔧", name: { zh: "结算", en: "Upkeep" },
     brief: { zh: "工匠产出入库、自动支付工资，然后支付维护费。现金不足以支付即破产，务必提前规划！",
-             en: "Production arrives, wages are paid automatically, then you pay fleet upkeep. If you can't cover it, you go bankrupt — plan ahead!" } },
+             en: "Production arrives, wages are paid automatically, then you pay fleet upkeep. If you can't cover it, you go bankrupt, so plan ahead!" } },
   { key: 4, icon: "🚢", name: { zh: "船坞", en: "Shipyard" },
     brief: { zh: "可花费金币升级商船：每级永久减运费5金币并增加1个模块槽位。",
              en: "Optionally upgrade your ship: each level permanently cuts shipping by 5 gold and adds a module slot." } }
@@ -1652,27 +1667,27 @@ function phaseName(key) {
 const SERVER_TEXT_RULES = [
   [/^💰 福缘：获得 (\d+) 金币$/, m => `💰 Fortune: gained ${m[1]} gold`],
   [/^❌ 资金不足！需要(\d+)金币$/, m => `❌ Not enough gold! ${m[1]} needed`],
-  [/^🛒 采购完成，花费(\d+)金币$/, m => `🛒 Purchase complete — ${m[1]} gold spent`],
+  [/^🛒 采购完成，花费(\d+)金币$/, m => `🛒 Purchase complete: ${m[1]} gold spent`],
   [/^❌ 库存不足：(.+)×(\d+)$/, m => `❌ Not enough stock: ${tn(m[1])} ×${m[2]}`],
   [/^♻️ 打捞起重机退还(\d+)金币$/, m => `♻️ Salvage Crane refunded ${m[1]} gold in shipping`],
-  [/^🚨 避税账本触发，罚款20金币！$/, () => `🚨 Hidden Ledger audit — fined 20 gold!`],
-  [/^📦 订单完成，净利润(-?\d+)金币$/, m => `📦 Order delivered — net profit ${m[1]} gold`],
-  [/^❌ 旗舰尚无模块槽位，请先升级船坞$/, () => `❌ No module slots yet — upgrade your ship first`],
+  [/^🚨 避税账本触发，罚款20金币！$/, () => `🚨 Hidden Ledger audit: fined 20 gold!`],
+  [/^📦 订单完成，净利润(-?\d+)金币$/, m => `📦 Order delivered: net profit ${m[1]} gold`],
+  [/^❌ 旗舰尚无模块槽位，请先升级船坞$/, () => `❌ No module slots yet. Upgrade your ship first`],
   [/^🔄 将 (.+) 替换为 (.+)！$/, m => `🔄 Swapped ${tn(m[1])} for ${tn(m[2])}!`],
   [/^✅ 安装了 (.+)！$/, m => `✅ Installed ${tn(m[1])}!`],
-  [/^❌ 没有空置槽位，必须替换现有模块$/, () => `❌ No empty slot — you must replace an existing module`],
+  [/^❌ 没有空置槽位，必须替换现有模块$/, () => `❌ No empty slot. You must replace an existing module`],
   [/^🔮 牙行已无更多密语\.\.\.$/, () => `🔮 The brokers have no more whispers...`],
   [/^❌ 需要(\d+)金币才能购买消息$/, m => `❌ You need ${m[1]} gold to buy intel`],
-  [/^🗣️ 牙行密语：'来自(.+)的消息，对(.+)的需求很大！'$/, m => `🗣️ Broker's Whisper: 'Word from ${tn(m[1])} — strong demand for ${tn(m[2])}!'`],
+  [/^🗣️ 牙行密语：'来自(.+)的消息，对(.+)的需求很大！'$/, m => `🗣️ Broker's Whisper: 'Word from ${tn(m[1])}, strong demand for ${tn(m[2])}!'`],
   [/^👥 雇佣了新工匠（(\w+)）$/, m => `👥 Hired a new artisan (${wName(m[1])})`],
   [/^❌ 资金不足，无法雇佣$/, () => `❌ Not enough gold to hire`],
-  [/^💔 解雇了(\w+)，支付(\d+)金币$/, m => `💔 Dismissed a ${wName(m[1])} — ${m[2]} gold severance paid`],
+  [/^💔 解雇了(\w+)，支付(\d+)金币$/, m => `💔 Dismissed a ${wName(m[1])}: ${m[2]} gold severance paid`],
   [/^❌ 资金不足，无法解雇$/, () => `❌ Not enough gold to pay severance`],
   [/^❌ 材料不足，无法生产(.+)$/, m => `❌ Not enough materials to craft ${tn(m[1])}`],
   [/^📋 分配任务：生产(.+)$/, m => `📋 Task assigned: craft ${tn(m[1])}`],
   [/^❌ 所有工匠都在忙$/, () => `❌ All artisans are busy`],
   [/^⚠️ 工资不足，(\d+)金币$/, m => `⚠️ Cannot cover wages of ${m[1]} gold`],
-  [/^⚠️ 维护费不足，破产$/, () => `⚠️ Cannot cover upkeep — bankrupt`],
+  [/^⚠️ 维护费不足，破产$/, () => `⚠️ Cannot cover upkeep: bankrupt`],
   [/^🛡️ 护航舰队已就位$/, () => `🛡️ Escort fleet is already in position`],
   [/^❌ 需要(\d+)金币才能雇佣护航$/, m => `❌ You need ${m[1]} gold to hire an escort`],
   [/^🛡️ 雇佣护航，花费(\d+)金币$/, m => `🛡️ Hired an escort for ${m[1]} gold`],
@@ -1683,29 +1698,29 @@ const SERVER_TEXT_RULES = [
   /* Sync waiting hints */
   [/^请点击“准备就绪”以进入工匠管理$/, () => `Click "Ready" to proceed to artisan management`],
   [/^等待对方也点击准备就绪\.\.\.$/, () => `Waiting for your partner to click Ready...`],
-  [/^已准备，等待对方点击继续\.\.\.$/, () => `Ready — waiting for your partner to continue...`],
+  [/^已准备，等待对方点击继续\.\.\.$/, () => `Ready: waiting for your partner to continue...`],
   /* System messages */
-  [/^对方重新开始了游戏，双方进度已重置$/, () => `Your partner restarted the game — both voyages have been reset`],
+  [/^对方重新开始了游戏，双方进度已重置$/, () => `Your partner restarted the game. Both voyages have been reset`],
   [/^需等待对方完成本局后才能重新起航$/, () => `You can set sail again once your partner finishes this game`],
   [/^❌ 对方拒绝了你的互市提案（出 (.+) ⇄ 换 (.+)）$/, m => `❌ Your partner declined your barter offer (give ${lstNames(m[1])} ⇄ get ${lstNames(m[2])})`],
   [/^该邀请已失效$/, () => `That invitation has expired`],
-  [/^对方已离线，邀请失效$/, () => `The other player went offline — invitation void`],
+  [/^对方已离线，邀请失效$/, () => `The other player went offline, so the invitation is void`],
   [/^无法建立会话：其中一方已在游戏中$/, () => `Cannot start a session: one of you is already in a game`],
   [/^你还没有游戏伙伴，无法发送消息$/, () => `You don't have a partner yet, so messages can't be sent`],
-  [/^对方已离线，无法发送消息$/, () => `Your partner is offline — message not sent`],
+  [/^对方已离线，无法发送消息$/, () => `Your partner is offline, so the message wasn't sent`],
   /* Invite results */
   [/^无效的邀请对象$/, () => `Invalid invitation target`],
   [/^你已在游戏会话中，无法发出邀请$/, () => `You're already in a game session and can't send invitations`],
-  [/^你已向 (.+) 发出邀请，请等待对方回应或超时$/, m => `You've already invited ${m[1]} — wait for a response or timeout`],
-  [/^每分钟只能发出一次邀请，请 (\d+) 秒后再试$/, m => `Only one invitation per minute — try again in ${m[1]}s`],
+  [/^你已向 (.+) 发出邀请，请等待对方回应或超时$/, m => `You've already invited ${m[1]}. Wait for a response or for it to time out`],
+  [/^每分钟只能发出一次邀请，请 (\d+) 秒后再试$/, m => `Only one invitation per minute. Try again in ${m[1]}s`],
   [/^(.+) 不在线，无法邀请$/, m => `${m[1]} is offline and can't be invited`],
   [/^(.+) 正在游戏中，无法邀请$/, m => `${m[1]} is in a game and can't be invited`],
-  [/^邀请已发送给 (.+)，等待回应（(\d+) 秒内有效）$/, m => `Invitation sent to ${m[1]} — awaiting response (valid for ${m[2]}s)`],
+  [/^邀请已发送给 (.+)，等待回应（(\d+) 秒内有效）$/, m => `Invitation sent to ${m[1]}. Awaiting response (valid for ${m[2]}s)`],
   /* Register / Login */
-  [/^用户名需为 3-20 个字符$/, () => `Username must be 3–20 characters`],
+  [/^用户名需为 3-20 个字符$/, () => `Username must be 3-20 characters`],
   [/^密码至少 6 位$/, () => `Password must be at least 6 characters`],
   [/^该用户名已被注册$/, () => `That username is already taken`],
-  [/^注册成功，请登录$/, () => `Account created — please log in`],
+  [/^注册成功，请登录$/, () => `Account created. Please log in`],
   [/^用户名或密码错误$/, () => `Incorrect username or password`],
   [/^登录成功$/, () => `Logged in`],
   [/^该账号已在其他设备登录$/, () => `This account is already logged in on another device`],
@@ -1749,8 +1764,8 @@ function applyLanguage() {
   const langTitle = LANG === 'en' ? '切换为中文界面 / Switch to Chinese' : 'Switch to English / 切换为英文界面';
 
   /* Header */
-  set('hdr-subtitle', tr('海上丝绸之路 · 双人联机贸易战略 — 采购 · 互市 · 生产 · 远航',
-                         'Maritime Silk Road · 2-Player Co-op Trading — Procure · Barter · Produce · Voyage'));
+  set('hdr-subtitle', tr('海上丝绸之路 · 双人联机贸易战略：采购 · 互市 · 生产 · 远航',
+                         'Maritime Silk Road · 2-Player Co-op Trading: Procure · Barter · Produce · Voyage'));
   set('btn-lang', langLabel, langTitle);
   set('btn-manual', tr('📖 手册', '📖 Manual'), tr('打开游戏手册（快捷键 F1）', 'Open the game manual (F1)'));
   set('btn-chat', tr('💬 聊天', '💬 Chat'), tr('与伙伴聊天', 'Chat with your partner'));
@@ -1770,7 +1785,7 @@ function applyLanguage() {
   set('btn-lang-login', langLabel, langTitle);
   set('lg-note', tr(
     `💡 <strong>本作为 PortMasters 2</strong>，引入了税务、工资、双人同步互市等更复杂的机制，<strong>上手门槛较高</strong>。如果是初次接触本系列，建议先体验上一代 <a href="${pm1Url()}" target="_blank" rel="noopener">${pm1Label()}</a> 熟悉基础玩法。`,
-    `💡 <strong>This is PortMasters 2</strong> — it adds taxes, wages and synchronized two-captain bartering, so the learning curve is <strong>steeper than the original</strong>. New to the series? Start with <a href="${pm1Url()}" target="_blank" rel="noopener">${pm1Label()}</a> to learn the basics.`));
+    `💡 <strong>This is PortMasters 2</strong>, which adds taxes, wages and synchronized two-captain bartering, so the learning curve is <strong>steeper than the original</strong>. New to the series? Start with <a href="${pm1Url()}" target="_blank" rel="noopener">${pm1Label()}</a> to learn the basics.`));
 
   /* Lobby */
   set('lb-title', tr('🏠 游戏大厅', '🏠 Game Lobby'));
@@ -1781,7 +1796,7 @@ function applyLanguage() {
   set('lb-online-title', tr('🧑‍✈️ 在线玩家', '🧑‍✈️ Players Online'));
   set('lb-banner', tr(
     `<strong>新船长须知：</strong>PortMasters 2 的经济系统（增值税 / 所得税 / 工资 / 维护费）比一代更复杂。开局后可随时按 <span class="kbd">F1</span> 查看完整手册；若感到吃力，可先游玩 <a href="${pm1Url()}" target="_blank" rel="noopener">${pm1Label()}</a>`,
-    `<strong>Note for new captains:</strong> the economy in PortMasters 2 (VAT / income tax / wages / upkeep) is more complex than the original. Press <span class="kbd">F1</span> any time for the full manual — or warm up with <a href="${pm1Url()}" target="_blank" rel="noopener">${pm1Label()}</a>`));
+    `<strong>Note for new captains:</strong> the economy in PortMasters 2 (VAT / income tax / wages / upkeep) is more complex than the original. Press <span class="kbd">F1</span> any time for the full manual, or warm up with <a href="${pm1Url()}" target="_blank" rel="noopener">${pm1Label()}</a>`));
 
   /* Chat window */
   set('chat-title', tr(`💬 与 <span id="chat-partner">${escapeHtml(chatPartner || '')}</span> 的船桥通话`,
@@ -1929,7 +1944,7 @@ function login() {
 
 function logout() {
   if (!confirm(tr('确定要退出登录吗？游戏进度已保存在服务器，重新登录可继续。',
-                  'Log out? Your progress is saved on the server — log back in to continue.'))) return;
+                  'Log out? Your progress is saved on the server, so you can log back in to continue.'))) return;
   if (ws) ws.close();
   location.reload();
 }
@@ -1964,7 +1979,7 @@ function setupWebSocketHandlers() {
       delete inviteStatus[msg.partner];
       enterGameView();
       ws.send(JSON.stringify({ action: "join_game" }));
-      showNotification(tr(`已加入游戏，伙伴: ${chatPartner}`, `Joined the game — partner: ${chatPartner}`));
+      showNotification(tr(`已加入游戏，伙伴: ${chatPartner}`, `Joined the game, partner: ${chatPartner}`));
       maybeShowOnboarding();
     }
 
@@ -1972,7 +1987,7 @@ function setupWebSocketHandlers() {
       chatPartner = msg.partner;
       partnerOnline = !!msg.partnerOnline;
       enterGameView();
-      showNotification(tr(`已恢复游戏会话，伙伴: ${chatPartner}`, `Session resumed — partner: ${chatPartner}`));
+      showNotification(tr(`已恢复游戏会话，伙伴: ${chatPartner}`, `Session resumed, partner: ${chatPartner}`));
       maybeShowOnboarding();
     }
 
@@ -2046,7 +2061,7 @@ function setupWebSocketHandlers() {
 
   ws.onclose = () => {
     if (currentUser) {
-      showNotification(tr('连接断开，请刷新页面', 'Connection lost — please refresh the page'), true);
+      showNotification(tr('连接断开，请刷新页面', 'Connection lost. Please refresh the page'), true);
     }
   };
 }
@@ -2067,7 +2082,7 @@ function renderOnlineUsers() {
   if (onlineUsers.length === 0) {
     list.innerHTML = `<p style="color:#94a3b8;text-align:center;padding:24px;font-size:13px">${tr(
       '🌊 暂无其他在线玩家。让朋友打开本页面注册登录，即可向其发出航程邀请。',
-      '🌊 No other players online. Ask a friend to open this page and sign up — then you can invite them to a voyage.')}</p>`;
+      '🌊 No other players online. Ask a friend to open this page and sign up, then you can invite them to a voyage.')}</p>`;
     return;
   }
 
@@ -2194,14 +2209,14 @@ function updateChatSendState() {
   const enabled = !!chatPartner && partnerOnline;
   btn.disabled = !enabled;
   input.disabled = !enabled;
-  input.placeholder = enabled ? tr('输入消息...', 'Type a message...') : tr('对方离线，无法发送', 'Partner offline — cannot send');
+  input.placeholder = enabled ? tr('输入消息...', 'Type a message...') : tr('对方离线，无法发送', 'Partner offline, cannot send');
 }
 
 function toggleChat() {
   const chatWindow = document.getElementById('chat-window');
   if (chatWindow.style.display !== 'flex') {
     chatWindow.style.display = 'flex';
-    document.getElementById('chat-partner').textContent = chatPartner || tr('无', '—');
+    document.getElementById('chat-partner').textContent = chatPartner || tr('无', 'None');
     updateChatSendState();
     if (chatPartner) {
       ws.send(JSON.stringify({ action: "get_chat_history", with: chatPartner }));
@@ -2235,7 +2250,7 @@ function appendChatMessage(from, message, isSent) {
    Re-render on demand: only rebuild the DOM for a panel when its underlying data
    has actually changed. Wholesale innerHTML rebuilds reset scroll position and
    break in-progress clicks (a click never fires if mousedown and mouseup land on
-   different DOM nodes) — this was the root cause of the earlier "buttons don't
+   different DOM nodes), which was the root cause of the earlier "buttons don't
    respond / page jumps back to top" bugs, so blanket re-renders are forbidden.
    ============================================================ */
 let _lastMyJson = '';
@@ -2323,7 +2338,7 @@ function charterBannerHTML(charterEvent) {
     <div class="pm-banner" style="margin:14px auto;max-width:640px;text-align:left">
       <span class="pm-icon">${charterEvent.icon || '🗺️'}</span>
       <span>
-        <strong>${tr('丝路特许：', 'Silk Road Charter — ')}${escapeHtml(charterName(charterEvent))}</strong><br>
+        <strong>${tr('丝路特许：', 'Silk Road Charter: ')}${escapeHtml(charterName(charterEvent))}</strong><br>
         ${escapeHtml(charterDesc(charterEvent))}
       </span>
     </div>`;
@@ -2376,9 +2391,9 @@ function crewSectionsHTML(g) {
     <div class="status-section">
       <h3>${tr('📊 航海概况', '📊 Voyage Overview')}</h3>
       <div class="stat-row"><span class="tip" data-tip="${tr(`全程共${g.maxRounds}个航程（回合），结束后按声望评级`, `${g.maxRounds} voyages (rounds) in total; final rating is based on renown`)}">${tr('🌊 航程进度', '🌊 Voyage')}</span><span class="stat-value">${tr(`第 ${g.currentRound} / ${g.maxRounds} 程`, `Round ${g.currentRound} / ${g.maxRounds}`)}</span></div>
-      <div class="stat-row"><span class="tip" data-tip="${tr('当前现金存款。工资、维护费、税款都从这里扣除，归零即破产', 'Cash on hand. Wages, upkeep and taxes are paid from here — hit zero and you go bankrupt')}">${tr('💰 现金存款', '💰 Gold')}</span><span class="stat-money">${g.money} ${tr('金币', 'gold')}</span></div>
+      <div class="stat-row"><span class="tip" data-tip="${tr('当前现金存款。工资、维护费、税款都从这里扣除，归零即破产', 'Cash on hand. Wages, upkeep and taxes are paid from here, and hitting zero means bankruptcy')}">${tr('💰 现金存款', '💰 Gold')}</span><span class="stat-money">${g.money} ${tr('金币', 'gold')}</span></div>
       <div class="stat-row"><span class="tip" data-tip="${tr('声望（信誉值）= 每笔完成订单的净利润累计。决定最终评级，越高越好', 'Renown = cumulative net profit of completed orders. Determines your final rating')}">${tr('🏆 声望（信誉）', '🏆 Renown')}</span><span class="stat-score">${g.score}</span></div>
-      <div class="stat-row"><span class="tip" data-tip="${tr('当前所处阶段，双方始终同步', 'Current phase — both captains always stay in sync')}">${tr('🧭 当前阶段', '🧭 Phase')}</span><span class="stat-value">${phaseName(g.phase)}</span></div>
+      <div class="stat-row"><span class="tip" data-tip="${tr('当前所处阶段，双方始终同步', 'Current phase. Both captains always stay in sync')}">${tr('🧭 当前阶段', '🧭 Phase')}</span><span class="stat-value">${phaseName(g.phase)}</span></div>
     </div>
     <div class="status-section">
       <h3>${tr('🪄 本回合增益', '🪄 Round Buffs')}</h3>
@@ -2425,23 +2440,20 @@ function renderStatus() {
   `;
 
   if (![0, 5, 'endgame', 'bankruptcy'].includes(g.phase) && !g.gameOver) {
-    const ww = g.weavers.length * WAGES.weaver;
-    const mw = g.masterWeavers.length * WAGES.master;
-    const sw = g.sachetMakers.length * WAGES.sachet_maker;
-    const pendWages = ww + mw + sw;
-    const pendMaint = g.fixedCost + (g.maintenancePenalty || 0);
+    const pendWages = pendingWages(g);
+    const pendMaint = pendingMaintenance(g);
     const pendTotal = pendWages + pendMaint;
     const safe = g.money >= pendTotal;
     html += `
     <div class="status-section" style="border-color:${safe ? 'rgba(14,165,233,.14)' : 'rgba(225,29,72,.5)'}">
       <h3>${tr('⚠️ 本回合应付款项', '⚠️ Due This Round')}</h3>
-      <div class="stat-row"><span class="tip" data-tip="${tr('每回合结算阶段必须支付的固定运营成本，付不起即破产', 'Fixed operating cost paid every Upkeep phase — fail to pay and you go bankrupt')}">${tr('🔧 维护费', '🔧 Upkeep')}</span><span class="stat-value">${pendMaint} ${tr('金币', 'gold')}</span></div>
-      <div class="stat-row"><span class="tip" data-tip="${tr('结算阶段自动支付的全部工匠工资，付不起即破产', 'All artisan wages, paid automatically at Upkeep — fail to pay and you go bankrupt')}">${tr('👥 工资合计', '👥 Total wages')}</span><span class="stat-value">${pendWages} ${tr('金币', 'gold')}</span></div>
+      <div class="stat-row"><span class="tip" data-tip="${tr('每回合结算阶段必须支付的固定运营成本，付不起即破产', 'Fixed operating cost paid every Upkeep phase. Fail to pay and you go bankrupt')}">${tr('🔧 维护费', '🔧 Upkeep')}</span><span class="stat-value">${pendMaint} ${tr('金币', 'gold')}</span></div>
+      <div class="stat-row"><span class="tip" data-tip="${tr('结算阶段自动支付的全部工匠工资，付不起即破产', 'All artisan wages, paid automatically at Upkeep. Fail to pay and you go bankrupt')}">${tr('👥 工资合计', '👥 Total wages')}</span><span class="stat-value">${pendWages} ${tr('金币', 'gold')}</span></div>
       <div class="stat-row" style="border-top:1px solid rgba(148,163,184,.3);margin-top:4px;padding-top:5px">
         <span><strong>${tr('💸 合计应付', '💸 Total due')}</strong></span>
         <span style="font-weight:800;color:${safe ? '#059669' : '#e11d48'}">${pendTotal} ${tr('金币', 'gold')}</span>
       </div>
-      ${!safe ? `<div style="background:var(--grad-danger);color:white;border-radius:9px;padding:5px 9px;font-size:10.5px;margin-top:6px;text-align:center;font-weight:700">${tr('🚨 现金不足以支付本回合结算费用，请尽快回笼资金！', "🚨 You can't cover this round's settlement — raise cash fast!")}</div>` : ''}
+      ${!safe ? `<div style="background:var(--grad-danger);color:white;border-radius:9px;padding:5px 9px;font-size:10.5px;margin-top:6px;text-align:center;font-weight:700">${tr('🚨 现金不足以支付本回合结算费用，请尽快回笼资金！', "🚨 You can't cover this round's settlement. Raise cash fast!")}</div>` : ''}
     </div>`;
   }
   p.innerHTML = html;
@@ -2463,7 +2475,7 @@ function renderPartner() {
       </div>
       <p class="muted" style="padding:8px 2px;line-height:1.8">${tr(
         '进入共享会话后，这里会实时展示伙伴的声望、存款、货物、工匠与增益，方便协商互市。',
-        "Once you're in a shared session, this panel shows your partner's renown, gold, cargo, artisans and buffs in real time — handy for negotiating trades.")}</p>
+        "Once you're in a shared session, this panel shows your partner's renown, gold, cargo, artisans and buffs in real time, which is handy for negotiating trades.")}</p>
     `;
     return;
   }
@@ -2488,7 +2500,7 @@ function renderPartner() {
     </div>
     <div class="status-section" style="background:linear-gradient(135deg,rgba(56,189,248,.08),rgba(20,184,166,.08))">
       <span class="muted">${tr('💡 看准对方缺什么、富余什么，在<strong>互市阶段</strong>发起互利交易，或随时点右上角 💬 沟通。',
-        "💡 Spot what your partner lacks or has in surplus, then strike a deal during <strong>Barter</strong> — or hit 💬 up top to talk it over.")}</span>
+        "💡 Spot what your partner lacks or has in surplus, then strike a deal during <strong>Barter</strong>, or hit 💬 up top to talk it over.")}</span>
     </div>
   `;
 }
@@ -2550,7 +2562,7 @@ function pm1HintHTML(context) {
         ${tr(`本作 <strong>PortMasters 2</strong> 上手门槛较高；可以先游玩上一代
         <a href="${pm1Url()}" target="_blank" rel="noopener">${pm1Label()}</a>
         熟悉采购、生产与贸易的基本节奏，再回来挑战。`,
-        `<strong>PortMasters 2</strong> has a steep learning curve — consider warming up with
+        `<strong>PortMasters 2</strong> has a steep learning curve, so consider warming up with
         <a href="${pm1Url()}" target="_blank" rel="noopener">${pm1Label()}</a>
         to learn the buy → produce → trade loop, then come back for the challenge.`)}
       </span>
@@ -2593,7 +2605,7 @@ function setSailButtonHTML() {
   return `
     <button class="btn ${ready ? 'btn-grey' : 'btn-success'} btn-xl" ${ready ? 'disabled' : ''}
       onclick="sendAction('startBoon')" title="${tr('双方都点击后进入福缘抽取', 'The fortune draw begins once both captains confirm')}">
-      ${ready ? tr('⌛ 已确认，等待伙伴', '⌛ Confirmed — waiting for partner') : tr('🚢 扬帆起航', '🚢 Set Sail')}<span class="btn-sub">${tr('双方确认后抽取本程福缘', "Both confirm to draw this round's fortunes")}</span>
+      ${ready ? tr('⌛ 已确认，等待伙伴', '⌛ Confirmed: waiting for partner') : tr('🚢 扬帆起航', '🚢 Set Sail')}<span class="btn-sub">${tr('双方确认后抽取本程福缘', "Both confirm to draw this round's fortunes")}</span>
     </button>`;
 }
 
@@ -2617,7 +2629,7 @@ function welcomeHTML() {
           ${tr(`<strong>欢迎来到 PortMasters 2！</strong>本作引入增值税、所得税、工匠工资、双人同步互市等深度机制，<strong>上手门槛高于一代</strong>。
           建议先按 <span class="kbd">F1</span> 阅读手册；若感到吃力，可先体验
           <a href="${pm1Url()}" target="_blank" rel="noopener">${pm1Label()}</a>`,
-          `<strong>Welcome to PortMasters 2!</strong> This sequel adds VAT, income tax, artisan wages and synchronized two-captain bartering — <strong>a steeper curve than the original</strong>.
+          `<strong>Welcome to PortMasters 2!</strong> This sequel adds VAT, income tax, artisan wages and synchronized two-captain bartering, making for <strong>a steeper curve than the original</strong>.
           Press <span class="kbd">F1</span> to read the manual; if it feels overwhelming, warm up with
           <a href="${pm1Url()}" target="_blank" rel="noopener">${pm1Label()}</a>`)}
         </span>
@@ -2711,6 +2723,7 @@ function purchaseHTML() {
   if (flags.hemp_price_reduction) discountChips.push(`<span class="chip green">${tr('🧶 麻布专营：麻布单价−2', '🧶 Hemp Monopoly: −2/unit on Hemp Cloth')}</span>`);
   if ((g.equippedModules || []).some(m => m.id === 'kiln_cellar')) discountChips.push(`<span class="chip green">${tr('🔥 陶土窖：瓷土、铜矿单价−2', '🔥 Kiln Cellar: −2/unit on Porcelain Clay & Copper Ore')}</span>`);
   if ((g.equippedModules || []).some(m => m.id === 'foreign_quarter_pass')) discountChips.push(`<span class="chip green">${tr('🪪 蕃坊行会证：香料、珍珠单价−3', '🪪 Foreign Quarter Guild Pass: −3/unit on Spices & Pearls')}</span>`);
+  if ((g.equippedModules || []).some(m => m.id === 'smugglers_hold')) discountChips.push(`<span class="chip green">${tr('🏴‍☠️ 走私货舱：采购实付约85折', "🏴‍☠️ Smuggler's Hold: ~15% off purchases")}</span>`);
 
   return `
     ${phaseBriefHTML(1, discountChips.join(''))}
@@ -2719,7 +2732,8 @@ function purchaseHTML() {
     <div class="card-grid">
       ${cards.map(card => {
         const purchased = g.purchasedCards.includes(card.id);
-        const canAfford = g.money >= card.totalCost && !purchased;
+        const discounted = card.finalCost < card.totalCost;
+        const canAfford = g.money >= card.finalCost && !purchased;
         return `
           <div class="card">
             <div class="card-header">
@@ -2732,15 +2746,15 @@ function purchaseHTML() {
                   <span class="icon">${ICONS[r.type]}</span>
                   <span class="name tip" data-tip="${itemTip(r.type)}" style="color:${COLORS[r.type]}">${tn(r.type)}</span>
                   <span class="qty">×${r.quantity}</span>
-                  <span class="price">${tr('单价', 'unit')} ${r.price}💰${r.materialDetails ? ` · ${tr('用料', 'uses')} ${tnames(r.materialDetails)}` : ''}</span>
+                  <span class="price">${tr('单价', 'unit')} ${r.discountedPrice < r.price ? `<s class="muted">${r.price}</s> ${r.discountedPrice}` : r.price}💰${r.materialDetails ? ` · ${tr('用料', 'uses')} ${tnames(r.materialDetails)}` : ''}</span>
                 </div>
               `).join('')}
-              <div class="card-total"><span>${tr('合计货款', 'Total')}</span><span>${card.totalCost} 💰</span></div>
+              <div class="card-total"><span>${tr('合计货款', 'Total')}</span><span>${discounted ? `<s class="muted">${card.totalCost}</s> ` : ''}${card.finalCost} 💰</span></div>
             </div>
             <div class="card-footer">
               <button class="btn ${canAfford ? 'btn-success' : 'btn-grey'}" style="width:100%"
                 ${!canAfford ? 'disabled' : ''} onclick="sendAction('purchase', {cardId: ${card.id}})"
-                title="${purchased ? tr('该批货物已购入船舱', 'This cargo is already in your hold') : (canAfford ? tr('立即购入，货物直接进入船舱', 'Buy now — goods go straight to your hold') : tr('现金不足，无法采购', 'Not enough gold'))}">
+                title="${purchased ? tr('该批货物已购入船舱', 'This cargo is already in your hold') : (canAfford ? tr('立即购入，货物直接进入船舱', 'Buy now: goods go straight to your hold') : tr('现金不足，无法采购', 'Not enough gold'))}">
                 ${purchased ? tr('✅ 已采购入舱', '✅ Purchased') : (canAfford ? tr('🛒 采购此批货物', '🛒 Buy This Cargo') : tr('💸 现金不足', '💸 Not Enough Gold'))}
               </button>
             </div>
@@ -2749,7 +2763,7 @@ function purchaseHTML() {
       }).join('')}
     </div>
     <div style="text-align:center; margin-top:22px">
-      <button class="btn btn-lg" onclick="sendAction('ready_for_next_phase')" title="${tr('确认后等待对方，双方都确认即进入互市', 'Confirm and wait — Barter begins once both captains are ready')}">${tr('✅ 完成采购，进入互市', '✅ Done Procuring — To Barter')}<span class="btn-sub">${tr('双方确认后同步推进', 'Advances when both confirm')}</span></button>
+      <button class="btn btn-lg" onclick="sendAction('ready_for_next_phase')" title="${tr('确认后等待对方，双方都确认即进入互市', 'Confirm and wait. Barter begins once both captains are ready')}">${tr('✅ 完成采购，进入互市', '✅ Done Procuring → Barter')}<span class="btn-sub">${tr('双方确认后同步推进', 'Advances when both confirm')}</span></button>
     </div>
   `;
 }
@@ -2774,8 +2788,8 @@ function brokerWhisperHTML(g) {
       </summary>
       <div class="whisper-body">
         <div class="section-hint">
-          ${tr(`花费 <strong>${g.intelCost} 金币</strong>向牙行打探<strong>贸易阶段（未来订单）</strong>的货物需求——每条密语都会在贸易阶段兑现为一张对应货品与港口的订单，提前备货即可稳赚。`,
-               `Pay the brokers <strong>${g.intelCost} gold</strong> for intel on <strong>upcoming Trade-phase demand</strong> — every whisper becomes a real order for that exact item and port, so stock up early for a guaranteed sale.`)}
+          ${tr(`花费 <strong>${g.intelCost} 金币</strong>向牙行打探<strong>贸易阶段（未来订单）</strong>的货物需求，每条密语都会在贸易阶段兑现为一张对应货品与港口的订单，提前备货即可稳赚。`,
+               `Pay the brokers <strong>${g.intelCost} gold</strong> for intel on <strong>upcoming Trade-phase demand</strong>. Every whisper becomes a real order for that exact item and port, so stock up early for a guaranteed sale.`)}
           ${hasNetwork
             ? tr(`当前已装备 <strong>🕵️ 牙行网络</strong>：每次仅需 ${g.intelCost} 金币，且一次获得 <strong>2 条</strong>线索。`,
                  `<strong>🕵️ Broker's Network</strong> equipped: each purchase costs only ${g.intelCost} gold and reveals <strong>2 clues</strong>.`)
@@ -2890,8 +2904,8 @@ function tradePhaseHTML() {
       <button class="btn btn-lg ${myReady ? 'btn-grey' : 'btn-success'}"
         ${myReady ? 'disabled' : ''}
         onclick="sendAction('setTradeReady')"
-        title="${tr('双方都点击后进入工匠管理。点击前请确认交易已谈妥', 'Artisan management begins once both captains are ready — settle your trades first')}">
-        ${myReady ? tr('⏳ 已准备，等待对方就绪', '⏳ Ready — waiting for partner') : tr('✅ 互市完毕，准备就绪', '✅ Done Bartering — Ready')}
+        title="${tr('双方都点击后进入工匠管理。点击前请确认交易已谈妥', 'Artisan management begins once both captains are ready. Settle your trades first')}">
+        ${myReady ? tr('⏳ 已准备，等待对方就绪', '⏳ Ready: waiting for partner') : tr('✅ 互市完毕，准备就绪', '✅ Done Bartering · Ready')}
         <span class="btn-sub">${myReady ? '' : tr('双方就绪后进入工匠管理', 'Advances when both are ready')}</span>
       </button>
     </div>
@@ -2915,7 +2929,7 @@ function createTradeOrder() {
     sell: [{ type: sellType, quantity: sellQty }],
     buy: [{ type: buyType, quantity: buyQty }]
   });
-  showNotification(tr('📨 订单已发布，对方可在其界面中接受或拒绝', '📨 Offer posted — your partner can accept or decline it'));
+  showNotification(tr('📨 订单已发布，对方可在其界面中接受或拒绝', '📨 Offer posted. Your partner can accept or decline it'));
 }
 
 function workerMgmtHTML() {
@@ -2929,7 +2943,7 @@ function workerMgmtHTML() {
 
       <div class="section-box">
         <h3>${tr('📦 当前库存速览', '📦 Stock at a Glance')}</h3>
-        <div class="section-hint">${tr('分配生产任务会<strong>立即扣除</strong>对应材料，请先核对库存。', 'Assigning a task <strong>immediately consumes</strong> the materials — check your stock first.')}</div>
+        <div class="section-hint">${tr('分配生产任务会<strong>立即扣除</strong>对应材料，请先核对库存。', 'Assigning a task <strong>immediately consumes</strong> the materials, so check your stock first.')}</div>
         <div style="display:grid; grid-template-columns:1fr 1fr; gap:20px">
           <div>
             <div class="inv-section-title">${tr('原 材 料', 'MATERIALS')}</div>
@@ -2972,7 +2986,7 @@ function workerMgmtHTML() {
       ` : ''}
 
       <div style="text-align:center; margin-top:20px">
-        <button class="btn btn-lg" onclick="sendAction('ready_for_next_phase')" title="${tr('双方确认后进入贸易订单阶段', 'The Trade phase begins once both captains confirm')}">${tr('✅ 完成工匠管理，进入贸易', '✅ Done Managing — To Trade')}<span class="btn-sub">${tr('双方确认后同步推进', 'Advances when both confirm')}</span></button>
+        <button class="btn btn-lg" onclick="sendAction('ready_for_next_phase')" title="${tr('双方确认后进入贸易订单阶段', 'The Trade phase begins once both captains confirm')}">${tr('✅ 完成工匠管理，进入贸易', '✅ Done Managing → Trade')}<span class="btn-sub">${tr('双方确认后同步推进', 'Advances when both confirm')}</span></button>
       </div>
     </div>
   `;
@@ -3077,14 +3091,14 @@ function ordersHTML() {
       }).join('')}
     </div>
     <div style="text-align:center; margin-top:22px">
-      <button class="btn btn-lg" onclick="sendAction('ready_for_next_phase')" title="${tr('确认后进入结算：生产入库、支付工资与维护费', 'Confirm to enter Upkeep: production arrives, wages and upkeep are paid')}">${tr('✅ 完成交易，进入结算', '✅ Done Trading — To Upkeep')}<span class="btn-sub">${tr('双方确认后同步推进', 'Advances when both confirm')}</span></button>
+      <button class="btn btn-lg" onclick="sendAction('ready_for_next_phase')" title="${tr('确认后进入结算：生产入库、支付工资与维护费', 'Confirm to enter Upkeep: production arrives, wages and upkeep are paid')}">${tr('✅ 完成交易，进入结算', '✅ Done Trading → Upkeep')}<span class="btn-sub">${tr('双方确认后同步推进', 'Advances when both confirm')}</span></button>
     </div>
   `;
 }
 
 function maintenanceHTML() {
   const g = serverState.yourGame;
-  const cost = g.fixedCost + (g.maintenancePenalty || 0);
+  const cost = pendingMaintenance(g);
   const safe = g.money >= cost;
   const m = g.monsoon_state || {};
   const riskPct = Math.round((g.pirateRiskEffective ?? m.pirateRisk ?? 0) * 100);
@@ -3104,7 +3118,7 @@ function maintenanceHTML() {
         <h3>${tr('🔧 待支付：船队维护费', '🔧 Due Now: Fleet Upkeep')}</h3>
         <div class="stat-row" style="font-size:14px"><span>${tr('维护费', 'Upkeep')}</span><strong>${cost} ${tr('金币', 'gold')}</strong></div>
         <div class="stat-row" style="font-size:14px"><span>${tr('当前现金', 'Gold on hand')}</span><strong style="color:${safe ? '#059669' : '#e11d48'}">${g.money} ${tr('金币', 'gold')}</strong></div>
-        ${!safe ? `<div style="background:var(--grad-danger);color:#fff;border-radius:10px;padding:8px 12px;font-size:12px;margin-top:8px;font-weight:700">${tr('🚨 现金不足以支付维护费——支付后将破产出局！', "🚨 You can't cover the upkeep — paying it will bankrupt your fleet!")}</div>` : ''}
+        ${!safe ? `<div style="background:var(--grad-danger);color:#fff;border-radius:10px;padding:8px 12px;font-size:12px;margin-top:8px;font-weight:700">${tr('🚨 现金不足以支付维护费，支付后将破产出局！', "🚨 You can't cover the upkeep. Paying it will bankrupt your fleet!")}</div>` : ''}
         <div class="section-hint" style="margin-top:8px">${tr('支付维护费后还将按本回合净利润缴纳约10%所得税（持「免税令」福缘时为5%）。', "After upkeep, ~10% income tax is levied on this round's net profit (5% with the Tax Exemption fortune).")}</div>
       </div>
       <div class="section-box">
@@ -3302,12 +3316,12 @@ function bankruptcyHTML() {
     <div class="center-block" style="text-align:center">
       <div style="font-size:80px">💥</div>
       <div class="hero-title" style="-webkit-text-fill-color:initial;background:none;color:#e11d48">${tr('💥 船队破产', '💥 Fleet Bankrupt')}</div>
-      <p style="color:var(--ink-soft);margin:8px 0">${tr('现金无法覆盖工资或维护费，商队被迫清算。', 'Your gold could not cover wages or upkeep — the fleet has been liquidated.')}</p>
+      <p style="color:var(--ink-soft);margin:8px 0">${tr('现金无法覆盖工资或维护费，商队被迫清算。', 'Your gold could not cover wages or upkeep, so the fleet has been liquidated.')}</p>
       <div class="section-box" style="max-width:420px;margin:14px auto">
         <div class="stat-row" style="font-size:14px"><span>${tr('最终现金', 'Final gold')}</span><strong>${g.money} ${tr('金币', 'gold')}</strong></div>
         <div class="stat-row" style="font-size:14px"><span>${tr('最终声望', 'Final renown')}</span><strong>${g.score}</strong></div>
       </div>
-      ${pm1HintHTML(tr('破产并不可怕——多半是工资与维护费规划失衡。', "Bankruptcy isn't the end — it usually comes down to wage and upkeep planning."))}
+      ${pm1HintHTML(tr('破产并不可怕，多半是工资与维护费规划失衡。', "Bankruptcy isn't the end. It usually comes down to wage and upkeep planning."))}
       <p style="color:var(--ink-soft);margin:8px 0">${tr(`本局已结束，需等待 <strong>${escapeHtml(name)}</strong> 完成或结束比赛后才能重新起航。`,
         `Your game is over. Once <strong>${escapeHtml(name)}</strong> finishes their voyage, you can both set sail again.`)}</p>
       <div style="display:flex;justify-content:center;gap:10px;flex-wrap:wrap">
@@ -3353,7 +3367,7 @@ function renderControls() {
     const partnerPlaying = serverState.otherGame && !serverState.otherGame.gameOver;
     c.innerHTML = `
       <span class="sync-chip">${isBankrupt ? tr('💥 船队破产', '💥 Fleet Bankrupt') : tr('🏁 本局已结束', '🏁 Game Over')}</span>
-      ${partnerPlaying ? `<span class="control-hint">${tr('💡 伙伴仍在航行中，可打开观战窗口实时围观', "💡 Your partner is still sailing — open the spectator window to watch live")}</span>` : ''}
+      ${partnerPlaying ? `<span class="control-hint">${tr('💡 伙伴仍在航行中，可打开观战窗口实时围观', "💡 Your partner is still sailing. Open the spectator window to watch live")}</span>` : ''}
       <div class="control-spacer"></div>
       ${isBankrupt && partnerPlaying ? `<button class="btn btn-ghost" onclick="openSpectate()">${tr('👀 观战伙伴', '👀 Spectate Partner')}</button>` : ''}
       <button class="btn btn-danger" onclick="confirmRestart()">${tr('🔄 重新起航', '🔄 Set Sail Again')}</button>
@@ -3367,14 +3381,14 @@ function renderControls() {
   let hint = '';
   if (phase === 0) {
     primary = serverState.youReady
-      ? `<button class="btn btn-grey btn-lg" disabled>${tr('⌛ 已确认，等待伙伴', '⌛ Confirmed — waiting for partner')}</button>`
+      ? `<button class="btn btn-grey btn-lg" disabled>${tr('⌛ 已确认，等待伙伴', '⌛ Confirmed: waiting for partner')}</button>`
       : `<button class="btn btn-success btn-lg" onclick="sendAction('startBoon')">${tr('🧭 扬帆起航，抽取福缘', '🧭 Set Sail & Draw Fortunes')}</button>`;
     hint = serverState.youReady ? tr('等待对方确认后进入福缘抽取', 'Waiting for your partner to confirm') : tr('双方都确认后进入福缘抽取', 'Fortune draw begins once both confirm');
   } else if (phase === 5) {
     hint = tr('请在上方卡片中选择并锁定一项福缘', 'Pick and lock one fortune card above');
   } else if (phase === 1) {
     primary = `<button class="btn btn-lg" onclick="sendAction('ready_for_next_phase')">${tr('✅ 完成采购', '✅ Done Procuring')}</button>`;
-    hint = tr('采购完成后确认，双方就绪即进入互市', 'Confirm when done buying — Barter starts when both are ready');
+    hint = tr('采购完成后确认，双方就绪即进入互市', 'Confirm when done buying. Barter starts when both are ready');
   } else if (phase === 'trade') {
     hint = tr('在互市界面发布/响应交易，谈妥后点「准备就绪」', 'Post or answer offers above, then click Ready when trades are settled');
   } else if (phase === 'worker_mgmt') {
@@ -3736,8 +3750,8 @@ const manualContentEn = () => ({
     </table>
     <h4>💰 Income Sources</h4>
     <ul>
-      <li><strong>Material orders</strong>: reward = demand ×5 + 10–25 variance; low effort, thin margins.</li>
-      <li><strong>Product orders</strong>: settled at market price (Hemp Garb 30–42 / Cloth Tunic 50–65 / Fine Brocade 70–90 / Sachet 95–120), and remain your main profit source even after VAT.</li>
+      <li><strong>Material orders</strong>: reward = demand ×5 + 10-25 variance; low effort, thin margins.</li>
+      <li><strong>Product orders</strong>: settled at market price (Hemp Garb 30-42 / Cloth Tunic 50-65 / Fine Brocade 70-90 / Sachet 95-120), and remain your main profit source even after VAT.</li>
       <li><strong>Barter</strong>: strike good deals with your partner to cover each other's gaps.</li>
     </ul>
     <h4>📈 Buying Tip</h4>
@@ -3754,10 +3768,10 @@ const manualContentEn = () => ({
     <h4>🧵 Recipes & Values</h4>
     <table>
       <tr><th>Product</th><th>Materials</th><th>Base value</th><th>Market range</th></tr>
-      <tr><td>👔 Hemp Garb</td><td>Hemp Cloth ×2</td><td>15</td><td>30 – 42</td></tr>
-      <tr><td>👕 Cloth Tunic</td><td>Hemp Cloth ×2 + Silk ×1</td><td>35</td><td>50 – 65</td></tr>
-      <tr><td>👗 Fine Brocade</td><td>Silk ×3</td><td>60</td><td>70 – 90</td></tr>
-      <tr><td>🌸 Scented Sachet</td><td>Silk ×1 + Tea ×2</td><td>80</td><td>95 – 120</td></tr>
+      <tr><td>👔 Hemp Garb</td><td>Hemp Cloth ×2</td><td>15</td><td>30 - 42</td></tr>
+      <tr><td>👕 Cloth Tunic</td><td>Hemp Cloth ×2 + Silk ×1</td><td>35</td><td>50 - 65</td></tr>
+      <tr><td>👗 Fine Brocade</td><td>Silk ×3</td><td>60</td><td>70 - 90</td></tr>
+      <tr><td>🌸 Scented Sachet</td><td>Silk ×1 + Tea ×2</td><td>80</td><td>95 - 120</td></tr>
     </table>
     <h4>⚙️ Production Rules</h4>
     <ul>
@@ -3823,19 +3837,19 @@ const manualContentEn = () => ({
     <h4>📦 New Resources</h4>
     <table>
       <tr><th>Resource</th><th>Unlocked by</th><th>Home ports</th><th>Reference price</th></tr>
-      <tr><td>🧱 Porcelain Clay</td><td>New Maritime Edict</td><td>Quanzhou, Fuzhou</td><td>8 – 12</td></tr>
-      <tr><td>⛏️ Copper Ore</td><td>New Maritime Edict</td><td>Guangzhou, Goryeo</td><td>10 – 15</td></tr>
-      <tr><td>🌶️ Spices</td><td>Ten Thousand Kingdoms Trade</td><td>Srivijaya, Dashi</td><td>14 – 20</td></tr>
-      <tr><td>🦪 Pearls</td><td>Ten Thousand Kingdoms Trade</td><td>Guangzhou, Srivijaya</td><td>16 – 24</td></tr>
+      <tr><td>🧱 Porcelain Clay</td><td>New Maritime Edict</td><td>Quanzhou, Fuzhou</td><td>8 - 12</td></tr>
+      <tr><td>⛏️ Copper Ore</td><td>New Maritime Edict</td><td>Guangzhou, Goryeo</td><td>10 - 15</td></tr>
+      <tr><td>🌶️ Spices</td><td>Ten Thousand Kingdoms Trade</td><td>Srivijaya, Dashi</td><td>14 - 20</td></tr>
+      <tr><td>🦪 Pearls</td><td>Ten Thousand Kingdoms Trade</td><td>Guangzhou, Srivijaya</td><td>16 - 24</td></tr>
     </table>
 
     <h4>🏺 New Products</h4>
     <table>
       <tr><th>Product</th><th>Unlocked by</th><th>Materials</th><th>Base value</th><th>Market range</th><th>Crafted by</th></tr>
-      <tr><td>🪞 Bronze Mirror</td><td>New Maritime Edict</td><td>Copper Ore ×3</td><td>45</td><td>55 – 72</td><td>Coppersmith</td></tr>
-      <tr><td>🏺 Celadon Porcelain</td><td>New Maritime Edict</td><td>Porcelain Clay ×3</td><td>65</td><td>78 – 100</td><td>Potter</td></tr>
-      <tr><td>🧴 Foreign Perfume Oil</td><td>Ten Thousand Kingdoms Trade</td><td>Spices ×2 + Silk ×1</td><td>85</td><td>100 – 130</td><td>Perfumer</td></tr>
-      <tr><td>📿 Pearl Necklace</td><td>Ten Thousand Kingdoms Trade</td><td>Pearls ×2 + Silk ×1</td><td>105</td><td>125 – 160</td><td>Jeweler</td></tr>
+      <tr><td>🪞 Bronze Mirror</td><td>New Maritime Edict</td><td>Copper Ore ×3</td><td>45</td><td>55 - 72</td><td>Coppersmith</td></tr>
+      <tr><td>🏺 Celadon Porcelain</td><td>New Maritime Edict</td><td>Porcelain Clay ×3</td><td>65</td><td>78 - 100</td><td>Potter</td></tr>
+      <tr><td>🧴 Foreign Perfume Oil</td><td>Ten Thousand Kingdoms Trade</td><td>Spices ×2 + Silk ×1</td><td>85</td><td>100 - 130</td><td>Perfumer</td></tr>
+      <tr><td>📿 Pearl Necklace</td><td>Ten Thousand Kingdoms Trade</td><td>Pearls ×2 + Silk ×1</td><td>105</td><td>125 - 160</td><td>Jeweler</td></tr>
     </table>
 
     <h4>👷 New Artisans</h4>
@@ -3892,7 +3906,7 @@ const manualContentEn = () => ({
     </table>
     <ul>
       <li>Shipping never drops below 5 gold (certain fortunes/modules can push it to 0).</li>
-      <li>Upgrades are a <strong>permanent investment</strong>: the more orders you deliver, the faster they pay off. Aim for Lv.1–2 around rounds 2–4.</li>
+      <li>Upgrades are a <strong>permanent investment</strong>: the more orders you deliver, the faster they pay off. Aim for Lv.1-2 around rounds 2-4.</li>
       <li>Late upgrades in the final round or two rarely pay for themselves, so keep that gold for stock instead.</li>
       <li>Once a slot is unlocked you can "Choose Ship Modules" at the Shipyard. Each round's 3 options are <strong>fixed</strong> (closing and reopening shows the same batch), and you get one <strong>Change Batch</strong> reroll per round.</li>
     </ul>
@@ -3954,19 +3968,19 @@ function maybeShowOnboarding() {
   showModal(`
     <h2>${tr('🧭 欢迎登船，船长！', '🧭 Welcome Aboard, Captain!')}</h2>
     <div class="manual-body" style="max-height:46vh">
-      <p>${tr('这里是 <strong>PortMasters 2</strong> —— 海上丝绸之路双人联机贸易战略。开始前 60 秒了解三件事：',
-        'This is <strong>PortMasters 2</strong> — a 2-player co-op trading strategy on the Maritime Silk Road. Sixty seconds, three things to know:')}</p>
+      <p>${tr('这里是 <strong>PortMasters 2</strong>，海上丝绸之路双人联机贸易战略。开始前 60 秒了解三件事：',
+        'This is <strong>PortMasters 2</strong>, a 2-player co-op trading strategy on the Maritime Silk Road. Sixty seconds, three things to know:')}</p>
       <p class="muted">${tr('小提示：每一局有轻松、标准、高难三档难度，默认是轻松，由邀请时双方商定。觉得吃力就保持轻松，它只包含基础货物，更适合上手；想要更多挑战可以拾级而上。',
         'Tip: each session has Easy, Standard and Hard difficulties, Easy by default, agreed between the two of you when the invite is sent. If it feels like a lot, stay on Easy, which keeps to the founding set of goods and is friendlier for getting started, and climb the ladder when you want more.')}</p>
       <h4>${tr('1️⃣ 一切围绕现金流', '1️⃣ Cash flow is everything')}</h4>
       <p>${tr('每回合必须支付<strong>工匠工资</strong>与 <strong>15 金币维护费</strong>，付不起立即破产。左侧面板会实时核算「本回合应付款项」，时刻盯紧它。',
-        'Every round you must pay <strong>artisan wages</strong> plus <strong>15 gold upkeep</strong> — miss it and you go bankrupt instantly. The left panel tallies "Due This Round" live; keep an eye on it.')}</p>
+        'Every round you must pay <strong>artisan wages</strong> plus <strong>15 gold upkeep</strong>. Miss it and you go bankrupt instantly. The left panel tallies "Due This Round" live; keep an eye on it.')}</p>
       <h4>${tr('2️⃣ 与伙伴同船同行', '2️⃣ You sail in lockstep with a partner')}</h4>
       <p>${tr('每个阶段都需<strong>双方确认</strong>才推进（看底部「双方就绪 n/2」）。右侧面板可随时查看伙伴的存款、声望、货物、工匠与增益；互市阶段可自由交易，💬 聊天随时沟通。',
         "Every phase advances only when <strong>both captains confirm</strong> (see 'Ready n/2' at the bottom). The right panel shows your partner's gold, renown, cargo, artisans and buffs; trade freely during Barter and talk any time via 💬.")}</p>
       <h4>${tr('3️⃣ 生产成品才赚大钱', '3️⃣ Real money is in finished goods')}</h4>
       <p>${tr('雇工匠把原料加工成成品（香囊市价 95-120！），再交付订单。注意成品要缴约 5% 增值税，回合末还有约 10% 所得税。',
-        'Hire artisans to turn materials into products (Sachets fetch 95–120!) and deliver them on orders. Mind the ~5% VAT on products and ~10% income tax at round end.')}</p>
+        'Hire artisans to turn materials into products (Sachets fetch 95-120!) and deliver them on orders. Mind the ~5% VAT on products and ~10% income tax at round end.')}</p>
       <div class="pm-banner">
         <span class="pm-icon">💡</span>
         <span>${tr(`本作上手门槛较高。若中途感到吃力，可先体验
@@ -3976,7 +3990,7 @@ function maybeShowOnboarding() {
       </div>
     </div>
     <div style="text-align:center;margin-top:16px;display:flex;gap:10px;justify-content:center;flex-wrap:wrap">
-      <button class="btn btn-success btn-lg" onclick="finishOnboarding(false)">${tr('⚓ 我已了解，开始航行', "⚓ Got it — let's sail")}</button>
+      <button class="btn btn-success btn-lg" onclick="finishOnboarding(false)">${tr('⚓ 我已了解，开始航行', "⚓ Got it, let's sail")}</button>
       <button class="btn btn-gold btn-lg" onclick="finishOnboarding(true)">${tr('📖 先看完整手册', '📖 Read the full manual first')}</button>
     </div>
   `, true);
@@ -4036,7 +4050,7 @@ function initTooltips() {
     const text = el.getAttribute('data-tip');
     if (!text) return;
     current = el;
-    bubble.textContent = text;             // text only — mirrors the old attr(data-tip); no HTML injection
+    bubble.textContent = text;             // text only, mirroring the old attr(data-tip); prevents HTML injection
     bubble.classList.remove('tip-hidden');  // must be displayed to be measured
 
     // max-width is fixed, so wrapping (and thus height) is identical wherever we place it.
@@ -4045,7 +4059,7 @@ function initTooltips() {
     const vw = document.documentElement.clientWidth;
     const vh = document.documentElement.clientHeight;
 
-    // Vertical — prefer above; flip below only when there is no room above but room below.
+    // Vertical placement: prefer above; flip below only when there is no room above but room below.
     let placement = 'above';
     let top = a.top - GAP - b.height;
     if (top < MARGIN && a.bottom + GAP + b.height <= vh - MARGIN) {
@@ -4054,7 +4068,7 @@ function initTooltips() {
     }
     top = Math.max(MARGIN, Math.min(top, vh - MARGIN - b.height));
 
-    // Horizontal — centre on the element, then clamp the whole bubble inside the viewport.
+    // Horizontal placement: centre on the element, then clamp the whole bubble inside the viewport.
     const anchorCenter = a.left + a.width / 2;
     let left = Math.max(MARGIN, Math.min(anchorCenter - b.width / 2, vw - MARGIN - b.width));
 
@@ -4085,7 +4099,7 @@ function initTooltips() {
     if (e.relatedTarget && el.contains(e.relatedTarget)) return; // moving within the same element
     hide();
   });
-  // A fixed bubble can't track a scrolling/resizing anchor — hide so it never floats detached.
+  // A fixed bubble can't track a scrolling/resizing anchor, so hide it before it floats detached.
   window.addEventListener('scroll', () => { if (current) hide(); }, true);
   window.addEventListener('resize', () => { if (current) hide(); });
 }
