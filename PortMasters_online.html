@@ -6,7 +6,7 @@
 <title>PortMasters 2 · Maritime Silk Road (2-Player Online)</title>
 <style>
 /* ============================================================
-   PortMasters 2 — Design System
+   PortMasters 2 Design System
    Bright and natural, ocean-glass feel, smooth gradients, near-future (~2030) aesthetic
    Layer hierarchy (low to high): background decor < chat window < fullscreen overlay < dialogs < notifications
    ============================================================ */
@@ -272,19 +272,20 @@ a { color: var(--ocean-700); }
 /* ---- Tooltips (recognition over recall: bring the explanation to the user) ----
    One shared bubble is appended to <body> and positioned by JS (see initTooltips).
    The old `.tip::after` pseudo-element was structurally trapped, which is why hints
-   were cut off no matter how the copy was tuned:
-     • clipped by every scrolling/clipping ancestor — .side-panel, .phase-panel and
-       .card all set `overflow` other than visible, and an absolutely-positioned
-       descendant cannot escape an ancestor's overflow box (no z-index fixes this);
+   were cut off regardless of how the copy was tuned:
+     • clipped by every scrolling/clipping ancestor: .side-panel, .phase-panel and
+       .card all set `overflow` to something other than visible, and an absolutely
+       positioned descendant cannot escape an ancestor's overflow box (no z-index fix
+       gets around this);
      • pinned beneath ancestor stacking contexts (.phase-view animation, .card:hover
-       transform), so even where it wasn't clipped it could render behind siblings;
+       transform), so even when it wasn't clipped it could render behind siblings;
      • hard-centered (left:50%) with a fixed max-width and no edge detection, so a
-       hint near any viewport edge overflowed — and a width that fit English spilled
-       over in 中文 (and vice-versa), which is the "works in one language only" symptom.
-   A body-level position:fixed bubble is measured against the viewport instead: no
+       hint near any viewport edge overflowed, and a width that fit English text
+       spilled over in 中文 (and the reverse), the "works in one language only" symptom.
+   A body-level position:fixed bubble is measured against the viewport instead, so no
    ancestor can clip it or trap its stacking, and runtime collision detection
-   (flip above/below + horizontal clamp) keeps every hint fully on-screen in both
-   languages. Markup is unchanged — any current/future [data-tip] is covered. */
+   (flip above/below plus horizontal clamp) keeps every hint fully on-screen in both
+   languages. Markup is unchanged: any current or future [data-tip] is covered. */
 .tip { cursor: help; border-bottom: 1px dashed rgba(100, 116, 139, .55); }
 
 .tip-bubble {
@@ -1276,7 +1277,7 @@ a { color: var(--ocean-700); }
    Architecture convention: the online protocol and server state always identify
    items, ports and similar data using "canonical Chinese keys" (changing these
    keys would break protocol and save compatibility); language belongs only to the
-   presentation layer — each client translates independently when rendering, so
+   presentation layer, since each client translates independently when rendering, so
    the two players in a session can use different languages. The default language
    is English, and players can switch at any time, with the choice persisted to
    localStorage.
@@ -1593,6 +1594,20 @@ const WORKER_TYPES = [
 ];
 const wName = key => pf((WORKER_TYPES.find(w => w.key === key) || {}).name) || key;
 
+function workerWageRate(key, g) {
+  const base = WAGES[key];
+  const hasWorkshop = (g.equippedModules || []).some(m => m.id === 'artisans_workshop');
+  return hasWorkshop ? Math.floor(base * 1.2) : base; // matches server pay_wages()
+}
+
+function pendingWages(g) {
+  return WORKER_TYPES.reduce((sum, wt) => sum + (g[wt.listKey] || []).length * workerWageRate(wt.key, g), 0);
+}
+
+function pendingMaintenance(g) {
+  return g.fixedCost + (g.maintenancePenalty || 0); // matches server pay_maintenance()
+}
+
 const RECIPE_MATS = {
   "麻衣":     [["麻布", 2]],
   "布衣":     [["麻布", 2], ["丝绸", 1]],
@@ -1611,7 +1626,7 @@ const PHASE_FLOW = [
              en: "A new round begins. Once both captains confirm, you'll draw your fortunes." } },
   { key: 5, icon: "🧭", name: { zh: "福缘", en: "Fortune" },
     brief: { zh: "航海家的罗盘从福缘池中为你随机抽出4张（双方抽到的组合不同），选择一项仅本回合生效的增益。要采购多就选折扣，要生产多就选匠人灵感。",
-             en: "The Navigator's Compass deals you 4 random fortunes (each captain gets a different draw). Pick one buff for this round only — discounts if you plan to buy big, Artisan's Inspiration if you plan to produce." } },
+             en: "The Navigator's Compass deals you 4 random fortunes (each captain gets a different draw). Pick one buff for this round only: discounts if you plan to buy big, or Artisan's Inspiration if you plan to produce." } },
   { key: 1, icon: "🛒", name: { zh: "采购", en: "Procure" },
     brief: { zh: "用金币购入原料或成品。在商品的特产港口采购单价更低；可在「牙行密语」面板花金币打探未来订单需求；注意为工资和维护费留足现金。",
              en: "Spend gold on materials or finished goods. Prices are lower at a commodity's home port; the Broker's Whisper panel sells intel on upcoming demand. Keep enough cash for wages and upkeep!" } },
@@ -1626,7 +1641,7 @@ const PHASE_FLOW = [
              en: "Fulfill port orders from your cargo for gold. Product orders pay ~5% VAT; every delivery also costs shipping." } },
   { key: 3, icon: "🔧", name: { zh: "结算", en: "Upkeep" },
     brief: { zh: "工匠产出入库、自动支付工资，然后支付维护费。现金不足以支付即破产，务必提前规划！",
-             en: "Production arrives, wages are paid automatically, then you pay fleet upkeep. If you can't cover it, you go bankrupt — plan ahead!" } },
+             en: "Production arrives, wages are paid automatically, then you pay fleet upkeep. If you can't cover it, you go bankrupt, so plan ahead!" } },
   { key: 4, icon: "🚢", name: { zh: "船坞", en: "Shipyard" },
     brief: { zh: "可花费金币升级商船：每级永久减运费5金币并增加1个模块槽位。",
              en: "Optionally upgrade your ship: each level permanently cuts shipping by 5 gold and adds a module slot." } }
@@ -1652,27 +1667,27 @@ function phaseName(key) {
 const SERVER_TEXT_RULES = [
   [/^💰 福缘：获得 (\d+) 金币$/, m => `💰 Fortune: gained ${m[1]} gold`],
   [/^❌ 资金不足！需要(\d+)金币$/, m => `❌ Not enough gold! ${m[1]} needed`],
-  [/^🛒 采购完成，花费(\d+)金币$/, m => `🛒 Purchase complete — ${m[1]} gold spent`],
+  [/^🛒 采购完成，花费(\d+)金币$/, m => `🛒 Purchase complete: ${m[1]} gold spent`],
   [/^❌ 库存不足：(.+)×(\d+)$/, m => `❌ Not enough stock: ${tn(m[1])} ×${m[2]}`],
   [/^♻️ 打捞起重机退还(\d+)金币$/, m => `♻️ Salvage Crane refunded ${m[1]} gold in shipping`],
-  [/^🚨 避税账本触发，罚款20金币！$/, () => `🚨 Hidden Ledger audit — fined 20 gold!`],
-  [/^📦 订单完成，净利润(-?\d+)金币$/, m => `📦 Order delivered — net profit ${m[1]} gold`],
-  [/^❌ 旗舰尚无模块槽位，请先升级船坞$/, () => `❌ No module slots yet — upgrade your ship first`],
+  [/^🚨 避税账本触发，罚款20金币！$/, () => `🚨 Hidden Ledger audit: fined 20 gold!`],
+  [/^📦 订单完成，净利润(-?\d+)金币$/, m => `📦 Order delivered: net profit ${m[1]} gold`],
+  [/^❌ 旗舰尚无模块槽位，请先升级船坞$/, () => `❌ No module slots yet. Upgrade your ship first`],
   [/^🔄 将 (.+) 替换为 (.+)！$/, m => `🔄 Swapped ${tn(m[1])} for ${tn(m[2])}!`],
   [/^✅ 安装了 (.+)！$/, m => `✅ Installed ${tn(m[1])}!`],
-  [/^❌ 没有空置槽位，必须替换现有模块$/, () => `❌ No empty slot — you must replace an existing module`],
+  [/^❌ 没有空置槽位，必须替换现有模块$/, () => `❌ No empty slot. You must replace an existing module`],
   [/^🔮 牙行已无更多密语\.\.\.$/, () => `🔮 The brokers have no more whispers...`],
   [/^❌ 需要(\d+)金币才能购买消息$/, m => `❌ You need ${m[1]} gold to buy intel`],
-  [/^🗣️ 牙行密语：'来自(.+)的消息，对(.+)的需求很大！'$/, m => `🗣️ Broker's Whisper: 'Word from ${tn(m[1])} — strong demand for ${tn(m[2])}!'`],
+  [/^🗣️ 牙行密语：'来自(.+)的消息，对(.+)的需求很大！'$/, m => `🗣️ Broker's Whisper: 'Word from ${tn(m[1])}, strong demand for ${tn(m[2])}!'`],
   [/^👥 雇佣了新工匠（(\w+)）$/, m => `👥 Hired a new artisan (${wName(m[1])})`],
   [/^❌ 资金不足，无法雇佣$/, () => `❌ Not enough gold to hire`],
-  [/^💔 解雇了(\w+)，支付(\d+)金币$/, m => `💔 Dismissed a ${wName(m[1])} — ${m[2]} gold severance paid`],
+  [/^💔 解雇了(\w+)，支付(\d+)金币$/, m => `💔 Dismissed a ${wName(m[1])}: ${m[2]} gold severance paid`],
   [/^❌ 资金不足，无法解雇$/, () => `❌ Not enough gold to pay severance`],
   [/^❌ 材料不足，无法生产(.+)$/, m => `❌ Not enough materials to craft ${tn(m[1])}`],
   [/^📋 分配任务：生产(.+)$/, m => `📋 Task assigned: craft ${tn(m[1])}`],
   [/^❌ 所有工匠都在忙$/, () => `❌ All artisans are busy`],
   [/^⚠️ 工资不足，(\d+)金币$/, m => `⚠️ Cannot cover wages of ${m[1]} gold`],
-  [/^⚠️ 维护费不足，破产$/, () => `⚠️ Cannot cover upkeep — bankrupt`],
+  [/^⚠️ 维护费不足，破产$/, () => `⚠️ Cannot cover upkeep: bankrupt`],
   [/^🛡️ 护航舰队已就位$/, () => `🛡️ Escort fleet is already in position`],
   [/^❌ 需要(\d+)金币才能雇佣护航$/, m => `❌ You need ${m[1]} gold to hire an escort`],
   [/^🛡️ 雇佣护航，花费(\d+)金币$/, m => `🛡️ Hired an escort for ${m[1]} gold`],
@@ -1683,29 +1698,29 @@ const SERVER_TEXT_RULES = [
   /* Sync waiting hints */
   [/^请点击“准备就绪”以进入工匠管理$/, () => `Click "Ready" to proceed to artisan management`],
   [/^等待对方也点击准备就绪\.\.\.$/, () => `Waiting for your partner to click Ready...`],
-  [/^已准备，等待对方点击继续\.\.\.$/, () => `Ready — waiting for your partner to continue...`],
+  [/^已准备，等待对方点击继续\.\.\.$/, () => `Ready: waiting for your partner to continue...`],
   /* System messages */
-  [/^对方重新开始了游戏，双方进度已重置$/, () => `Your partner restarted the game — both voyages have been reset`],
+  [/^对方重新开始了游戏，双方进度已重置$/, () => `Your partner restarted the game. Both voyages have been reset`],
   [/^需等待对方完成本局后才能重新起航$/, () => `You can set sail again once your partner finishes this game`],
   [/^❌ 对方拒绝了你的互市提案（出 (.+) ⇄ 换 (.+)）$/, m => `❌ Your partner declined your barter offer (give ${lstNames(m[1])} ⇄ get ${lstNames(m[2])})`],
   [/^该邀请已失效$/, () => `That invitation has expired`],
-  [/^对方已离线，邀请失效$/, () => `The other player went offline — invitation void`],
+  [/^对方已离线，邀请失效$/, () => `The other player went offline, so the invitation is void`],
   [/^无法建立会话：其中一方已在游戏中$/, () => `Cannot start a session: one of you is already in a game`],
   [/^你还没有游戏伙伴，无法发送消息$/, () => `You don't have a partner yet, so messages can't be sent`],
-  [/^对方已离线，无法发送消息$/, () => `Your partner is offline — message not sent`],
+  [/^对方已离线，无法发送消息$/, () => `Your partner is offline, so the message wasn't sent`],
   /* Invite results */
   [/^无效的邀请对象$/, () => `Invalid invitation target`],
   [/^你已在游戏会话中，无法发出邀请$/, () => `You're already in a game session and can't send invitations`],
-  [/^你已向 (.+) 发出邀请，请等待对方回应或超时$/, m => `You've already invited ${m[1]} — wait for a response or timeout`],
-  [/^每分钟只能发出一次邀请，请 (\d+) 秒后再试$/, m => `Only one invitation per minute — try again in ${m[1]}s`],
+  [/^你已向 (.+) 发出邀请，请等待对方回应或超时$/, m => `You've already invited ${m[1]}. Wait for a response or for it to time out`],
+  [/^每分钟只能发出一次邀请，请 (\d+) 秒后再试$/, m => `Only one invitation per minute. Try again in ${m[1]}s`],
   [/^(.+) 不在线，无法邀请$/, m => `${m[1]} is offline and can't be invited`],
   [/^(.+) 正在游戏中，无法邀请$/, m => `${m[1]} is in a game and can't be invited`],
-  [/^邀请已发送给 (.+)，等待回应（(\d+) 秒内有效）$/, m => `Invitation sent to ${m[1]} — awaiting response (valid for ${m[2]}s)`],
+  [/^邀请已发送给 (.+)，等待回应（(\d+) 秒内有效）$/, m => `Invitation sent to ${m[1]}. Awaiting response (valid for ${m[2]}s)`],
   /* Register / Login */
-  [/^用户名需为 3-20 个字符$/, () => `Username must be 3–20 characters`],
+  [/^用户名需为 3-20 个字符$/, () => `Username must be 3-20 characters`],
   [/^密码至少 6 位$/, () => `Password must be at least 6 characters`],
   [/^该用户名已被注册$/, () => `That username is already taken`],
-  [/^注册成功，请登录$/, () => `Account created — please log in`],
+  [/^注册成功，请登录$/, () => `Account created. Please log in`],
   [/^用户名或密码错误$/, () => `Incorrect username or password`],
   [/^登录成功$/, () => `Logged in`],
   [/^该账号已在其他设备登录$/, () => `This account is already logged in on another device`],
@@ -1749,8 +1764,8 @@ function applyLanguage() {
   const langTitle = LANG === 'en' ? '切换为中文界面 / Switch to Chinese' : 'Switch to English / 切换为英文界面';
 
   /* Header */
-  set('hdr-subtitle', tr('海上丝绸之路 · 双人联机贸易战略 — 采购 · 互市 · 生产 · 远航',
-                         'Maritime Silk Road · 2-Player Co-op Trading — Procure · Barter · Produce · Voyage'));
+  set('hdr-subtitle', tr('海上丝绸之路 · 双人联机贸易战略：采购 · 互市 · 生产 · 远航',
+                         'Maritime Silk Road · 2-Player Co-op Trading: Procure · Barter · Produce · Voyage'));
   set('btn-lang', langLabel, langTitle);
   set('btn-manual', tr('📖 手册', '📖 Manual'), tr('打开游戏手册（快捷键 F1）', 'Open the game manual (F1)'));
   set('btn-chat', tr('💬 聊天', '💬 Chat'), tr('与伙伴聊天', 'Chat with your partner'));
@@ -1770,7 +1785,7 @@ function applyLanguage() {
   set('btn-lang-login', langLabel, langTitle);
   set('lg-note', tr(
     `💡 <strong>本作为 PortMasters 2</strong>，引入了税务、工资、双人同步互市等更复杂的机制，<strong>上手门槛较高</strong>。如果是初次接触本系列，建议先体验上一代 <a href="${pm1Url()}" target="_blank" rel="noopener">${pm1Label()}</a> 熟悉基础玩法。`,
-    `💡 <strong>This is PortMasters 2</strong> — it adds taxes, wages and synchronized two-captain bartering, so the learning curve is <strong>steeper than the original</strong>. New to the series? Start with <a href="${pm1Url()}" target="_blank" rel="noopener">${pm1Label()}</a> to learn the basics.`));
+    `💡 <strong>This is PortMasters 2</strong>, which adds taxes, wages and synchronized two-captain bartering, so the learning curve is <strong>steeper than the original</strong>. New to the series? Start with <a href="${pm1Url()}" target="_blank" rel="noopener">${pm1Label()}</a> to learn the basics.`));
 
   /* Lobby */
   set('lb-title', tr('🏠 游戏大厅', '🏠 Game Lobby'));
@@ -1781,7 +1796,7 @@ function applyLanguage() {
   set('lb-online-title', tr('🧑‍✈️ 在线玩家', '🧑‍✈️ Players Online'));
   set('lb-banner', tr(
     `<strong>新船长须知：</strong>PortMasters 2 的经济系统（增值税 / 所得税 / 工资 / 维护费）比一代更复杂。开局后可随时按 <span class="kbd">F1</span> 查看完整手册；若感到吃力，可先游玩 <a href="${pm1Url()}" target="_blank" rel="noopener">${pm1Label()}</a>`,
-    `<strong>Note for new captains:</strong> the economy in PortMasters 2 (VAT / income tax / wages / upkeep) is more complex than the original. Press <span class="kbd">F1</span> any time for the full manual — or warm up with <a href="${pm1Url()}" target="_blank" rel="noopener">${pm1Label()}</a>`));
+    `<strong>Note for new captains:</strong> the economy in PortMasters 2 (VAT / income tax / wages / upkeep) is more complex than the original. Press <span class="kbd">F1</span> any time for the full manual, or warm up with <a href="${pm1Url()}" target="_blank" rel="noopener">${pm1Label()}</a>`));
 
   /* Chat window */
   set('chat-title', tr(`💬 与 <span id="chat-partner">${escapeHtml(chatPartner || '')}</span> 的船桥通话`,
@@ -2425,11 +2440,8 @@ function renderStatus() {
   `;
 
   if (![0, 5, 'endgame', 'bankruptcy'].includes(g.phase) && !g.gameOver) {
-    const ww = g.weavers.length * WAGES.weaver;
-    const mw = g.masterWeavers.length * WAGES.master;
-    const sw = g.sachetMakers.length * WAGES.sachet_maker;
-    const pendWages = ww + mw + sw;
-    const pendMaint = g.fixedCost + (g.maintenancePenalty || 0);
+    const pendWages = pendingWages(g);
+    const pendMaint = pendingMaintenance(g);
     const pendTotal = pendWages + pendMaint;
     const safe = g.money >= pendTotal;
     html += `
@@ -3084,7 +3096,7 @@ function ordersHTML() {
 
 function maintenanceHTML() {
   const g = serverState.yourGame;
-  const cost = g.fixedCost + (g.maintenancePenalty || 0);
+  const cost = pendingMaintenance(g);
   const safe = g.money >= cost;
   const m = g.monsoon_state || {};
   const riskPct = Math.round((g.pirateRiskEffective ?? m.pirateRisk ?? 0) * 100);

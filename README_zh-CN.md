@@ -205,7 +205,7 @@
 
 ## 👤 8. 版权与许可
 - **开发者**：`Joe Zhou, Aaron Zhu`
-- **版本**：`PortMasters 2 v1.0.0a4 预览版`
+- **版本**：`PortMasters 2 v1.0.0b1 预览版`
 - **语言支持**：英文（默认）和简体中文，游戏里随时切换
 - **许可协议**：MIT 开源协议。个人或商业项目都可以自由使用、修改、分发。
 - 初次接触这个系列？[PortMasters 1（中文版）](https://lostinhustle.github.io/PortMasters/PortMasters_Web_Edition/PortMasters_MandarinEdition_v1.4.0) 是更轻松的单人入门选择。

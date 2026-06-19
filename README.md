@@ -205,7 +205,7 @@ A longer voyage with richer goods earns far more renown, so each difficulty has 
 
 ## 👤 8. Credits & License
 - **Developers**: `Joe Zhou, Aaron Zhu`
-- **Version**: `PortMasters 2 v1.0.0a4 preview`
+- **Version**: `PortMasters 2 v1.0.0b1 preview`
 - **Language Support**: English (default) and Simplified Chinese, switchable inside the game
 - **License**: MIT License. Use it, change it, share it, for personal or commercial projects.
 - New to the series? [PortMasters 1](https://lostinhustle.github.io/PortMasters/PortMasters_Web_Edition/PortMasters_v1.4.0) is a gentler, single player place to start.
