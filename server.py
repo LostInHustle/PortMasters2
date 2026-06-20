@@ -489,7 +489,7 @@ class PlayerGame:
         self.lastRoundSummary = None
         self.lastLogs = []
         self.logSeq = 0  # monotonic count of all log lines this game; lets the client toast only new ones
-        # Slot info, injected by SharedSession
+        # Slot info, injected by GameSession
         self.slot = None
 
     def log(self, msg):
@@ -1221,23 +1221,37 @@ def sanitize_trade_items(items):
     return clean
 
 
-class SharedSession:
-    """Shared session for two players: both stay in sync on the same round and phase."""
-    def __init__(self, user_a, user_b, difficulty=DEFAULT_DIFFICULTY):
-        self.players = [user_a, user_b]
-        # The agreed difficulty is the session's single source of truth; both fleets and
-        # any later restart are built from it, so the two captains can never drift apart.
+class GameSession:
+    """A game room of 2-5 players: every member stays in sync on the same round and phase.
+    A session starts as an unstarted lobby (players may freely join/leave, see
+    create_room/join_room/leave_room below) and becomes a live game once start() runs."""
+    def __init__(self, host, difficulty=DEFAULT_DIFFICULTY, max_players=2):
+        self.host = host
+        self.players = [host]
+        self.max_players = max_players
+        # The agreed difficulty is the session's single source of truth; every fleet and
+        # any later restart are built from it, so members can never drift apart.
         self.difficulty = normalize_difficulty(difficulty)
         self.tier_unlock = difficulty_tier_unlock(self.difficulty)
-        self.games = [PlayerGame(self.difficulty), PlayerGame(self.difficulty)]
-        self.games[0].slot = 1
-        self.games[1].slot = 2
+        self.started = False
+        self.games = []
         self.trade_orders = []
         self.trade_id_counter = 0
-        self.trade_ready = [False, False]   # whether each player has clicked ready during the barter phase
+        self.trade_ready = []               # per-slot: whether each player has clicked ready during the barter phase
         self.ready = set()                  # slots that have clicked "continue" in the current phase
         self.chat_history = []
         self.monsoon_state = MONSOON_STATES[0].copy()
+        self.monsoon_cycle_cache = {}
+
+    def start(self):
+        """Builds per-player game state from the current roster and moves the room from lobby to live play."""
+        self.games = [PlayerGame(self.difficulty) for _ in self.players]
+        for i, g in enumerate(self.games):
+            g.slot = i + 1
+        self.trade_ready = [False] * len(self.players)
+        self.trade_orders = []
+        self.ready = set()
+        self.started = True
         self.monsoon_cycle_cache = {}
         self.sync_monsoon_state()
 
@@ -1245,14 +1259,11 @@ class SharedSession:
     def slot_of(self, username):
         return self.players.index(username)
 
-    def partner_of(self, username):
-        return self.players[1 - self.slot_of(username)]
-
     # ---------- Synchronized progression ----------
     def _active_phase(self):
-        for i in (0, 1):
-            if not self.games[i].gameOver:
-                return self.games[i].phase
+        for g in self.games:
+            if not g.gameOver:
+                return g.phase
         return self.games[0].phase
 
     def _set_phase(self, phase):
@@ -1277,19 +1288,19 @@ class SharedSession:
             g.set_monsoon_state(self.monsoon_state)
 
     def gate_complete(self):
-        # Bankrupt/finished players count as auto-ready so they never block their partner
-        return all((i in self.ready) or self.games[i].gameOver for i in (0, 1))
+        # Bankrupt/finished players count as auto-ready so they never block the rest of the room
+        return all((i in self.ready) or g.gameOver for i, g in enumerate(self.games))
 
     def trade_gate_complete(self):
-        return all(self.trade_ready[i] or self.games[i].gameOver for i in (0, 1))
+        return all(self.trade_ready[i] or g.gameOver for i, g in enumerate(self.games))
 
     def phase_ready_count(self):
         if self._active_phase() == "trade":
-            return sum(1 for i in (0, 1) if self.trade_ready[i] or self.games[i].gameOver)
-        return sum(1 for i in (0, 1) if (i in self.ready) or self.games[i].gameOver)
+            return sum(1 for i, g in enumerate(self.games) if self.trade_ready[i] or g.gameOver)
+        return sum(1 for i, g in enumerate(self.games) if (i in self.ready) or g.gameOver)
 
     def advance(self):
-        """Once both players are ready, the whole session advances to the next phase together."""
+        """Once every player is ready, the whole room advances to the next phase together."""
         phase = self._active_phase()
         if phase == 0:
             self.sync_monsoon_state()
@@ -1317,7 +1328,7 @@ class SharedSession:
                     g._reveal_intel(free_intel)
         elif phase == 1:
             self._set_phase("trade")
-            self.trade_ready = [False, False]
+            self.trade_ready = [False] * len(self.players)
             self.trade_orders = []
         elif phase == "worker_mgmt":
             self._set_phase(2)
@@ -1362,20 +1373,13 @@ class SharedSession:
 
     def complete_trade_gate(self):
         self._set_phase("worker_mgmt")
-        self.trade_ready = [False, False]
+        self.trade_ready = [False] * len(self.players)
         self.trade_orders = []
         self.ready.clear()
 
     def restart(self):
-        # A restart keeps the difficulty the two captains originally agreed on.
-        self.games = [PlayerGame(self.difficulty), PlayerGame(self.difficulty)]
-        self.games[0].slot = 1
-        self.games[1].slot = 2
-        self.trade_orders = []
-        self.trade_ready = [False, False]
-        self.ready.clear()
-        self.monsoon_cycle_cache = {}
-        self.sync_monsoon_state()
+        # A restart keeps the difficulty and roster the room originally agreed on.
+        self.start()
 
     # ---------- Waiting hints ----------
     def waiting_message(self, slot):
@@ -1384,10 +1388,10 @@ class SharedSession:
             if not self.trade_ready[slot]:
                 return "请点击“准备就绪”以进入工匠管理"
             if not self.trade_gate_complete():
-                return "等待对方也点击准备就绪..."
+                return "等待其他玩家也点击准备就绪..."
             return None
         if slot in self.ready and not self.gate_complete():
-            return "已准备，等待对方点击继续..."
+            return "已准备，等待其他玩家点击继续..."
         return None
 
     # ---------- Barter trades ----------
@@ -1464,33 +1468,39 @@ class SharedSession:
 
     # ---------- State broadcast ----------
     async def broadcast_state(self):
-        for slot in (0, 1):
+        for slot in range(len(self.players)):
             uname = self.players[slot]
             ws = ONLINE.get(uname)
             if ws is None:
                 continue
             game = self.games[slot]
-            other = self.games[1 - slot]
             state = {
                 "tradeOrders": self.trade_orders,
                 "tradeReady": self.trade_ready,
                 "phaseReadyCount": self.phase_ready_count(),
+                "phaseTotalCount": len(self.players),
                 "yourGame": game.to_dict(),
-                "otherGame": other.to_dict(),
+                "otherGames": {self.players[i]: self.games[i].to_dict()
+                               for i in range(len(self.players)) if i != slot},
                 "waitingForOther": self.waiting_message(slot),
                 "youReady": slot in self.ready,
                 "yourSlot": slot + 1,
-                "partnerName": self.players[1 - slot],
-                "partnerOnline": self.players[1 - slot] in ONLINE
+                "host": self.host,
+                "maxPlayers": self.max_players,
+                "players": [{"name": u, "online": u in ONLINE, "isHost": u == self.host}
+                            for u in self.players],
             }
             await send_json(ws, {"type": "state", "data": state})
 
 # -------------------- Global state --------------------
 USERS = UserStore(USERS_FILE)
 ONLINE = {}            # username -> websocket
-SESSIONS = {}          # username -> SharedSession (both players point to the same session)
+SESSIONS = {}          # username -> GameSession (every member of a session/room points to the same object)
+ROOMS = {}             # host username -> GameSession, only while that room hasn't started (open to join)
 PENDING_INVITES = {}   # sender -> {"to": target, "task": asyncio.Task}
 LAST_INVITE_AT = {}    # sender -> time.monotonic() timestamp
+MIN_ROOM_PLAYERS = 2
+MAX_ROOM_PLAYERS = 5
 
 # -------------------- Send helpers --------------------
 async def send_json(ws, obj):
@@ -1571,7 +1581,9 @@ async def handle_respond_invite(responder, sender, accept):
         await send_to_user(responder, {"type": "system_message", "message": "无法建立会话：其中一方已在游戏中"})
         return
     difficulty = normalize_difficulty(inv.get("difficulty"))
-    sess = SharedSession(sender, responder, difficulty)
+    sess = GameSession(sender, difficulty, max_players=2)
+    sess.players.append(responder)
+    sess.start()
     SESSIONS[sender] = sess
     SESSIONS[responder] = sess
     await send_to_user(sender, {"type": "invite_accepted", "partner": responder, "difficulty": difficulty})
@@ -1579,27 +1591,130 @@ async def handle_respond_invite(responder, sender, accept):
     await broadcast_online_users()
     await sess.broadcast_state()
 
+# -------------------- Room (recruit) system --------------------
+# Alongside the 1:1 invite above, a player may host an open room for 2-5 players: anyone
+# online and not already in a session can join or leave freely while the room is still
+# waiting, and the host starts the voyage once at least two players are in.
+def room_roster_payload(room):
+    return {
+        "type": "room_roster",
+        "host": room.host,
+        "difficulty": room.difficulty,
+        "maxPlayers": room.max_players,
+        "players": [{"name": u, "online": u in ONLINE, "isHost": u == room.host} for u in room.players],
+    }
+
+def list_open_rooms():
+    return [{"host": r.host, "difficulty": r.difficulty, "count": len(r.players), "maxPlayers": r.max_players}
+            for r in ROOMS.values()]
+
+async def broadcast_open_rooms():
+    rooms = list_open_rooms()
+    for ws in list(ONLINE.values()):
+        await send_json(ws, {"type": "open_rooms_update", "rooms": rooms})
+
+async def broadcast_room_roster(room):
+    payload = room_roster_payload(room)
+    for u in room.players:
+        await send_to_user(u, payload)
+
+async def leave_pending_room(username):
+    """Removes username from their not-yet-started room, promoting the next member to host
+    or dissolving the room if it's now empty. Shared by the explicit leave_room action and by
+    disconnecting while still waiting in a room's lobby, since neither case has a live game
+    to preserve."""
+    room = SESSIONS.get(username)
+    if room is None or room.started:
+        return False
+    room.players.remove(username)
+    SESSIONS.pop(username, None)
+    if not room.players:
+        ROOMS.pop(room.host, None)
+    else:
+        if room.host == username:
+            ROOMS.pop(username, None)
+            room.host = room.players[0]
+            ROOMS[room.host] = room
+        await broadcast_room_roster(room)
+    await broadcast_open_rooms()
+    return True
+
+async def handle_create_room(username, max_players, difficulty):
+    if username in SESSIONS:
+        await send_to_user(username, {"type": "system_message", "message": "你已在游戏会话中，无法招募新航程"})
+        return
+    try:
+        max_players = int(max_players)
+    except (TypeError, ValueError):
+        max_players = MIN_ROOM_PLAYERS
+    max_players = max(MIN_ROOM_PLAYERS, min(MAX_ROOM_PLAYERS, max_players))
+    room = GameSession(username, difficulty, max_players)
+    ROOMS[username] = room
+    SESSIONS[username] = room
+    await broadcast_room_roster(room)
+    await broadcast_open_rooms()
+
+async def handle_join_room(username, host):
+    if username in SESSIONS:
+        await send_to_user(username, {"type": "system_message", "message": "你已在游戏会话中，无法加入其他航程"})
+        return
+    room = ROOMS.get(host)
+    if room is None or room.started:
+        await send_to_user(username, {"type": "system_message", "message": "该航程已不存在或已开始"})
+        await broadcast_open_rooms()
+        return
+    if len(room.players) >= room.max_players:
+        await send_to_user(username, {"type": "system_message", "message": "该航程的人数已满"})
+        return
+    room.players.append(username)
+    SESSIONS[username] = room
+    await broadcast_room_roster(room)
+    await broadcast_open_rooms()
+
+async def handle_leave_room(username):
+    left = await leave_pending_room(username)
+    if not left:
+        await send_to_user(username, {"type": "system_message", "message": "航程已开始，无法离开"})
+
+async def handle_start_room(username):
+    room = SESSIONS.get(username)
+    if room is None or room.started:
+        return
+    if room.host != username:
+        await send_to_user(username, {"type": "system_message", "message": "只有招募人可以开始航程"})
+        return
+    if len(room.players) < MIN_ROOM_PLAYERS:
+        await send_to_user(username, {"type": "system_message", "message": f"至少需要 {MIN_ROOM_PLAYERS} 名玩家才能开始"})
+        return
+    ROOMS.pop(room.host, None)
+    room.start()
+    await broadcast_open_rooms()
+    for u in room.players:
+        await send_to_user(u, {"type": "room_started", "difficulty": room.difficulty})
+    await room.broadcast_state()
+
 # -------------------- Chat system --------------------
 async def handle_send_chat(sender, message):
     sess = SESSIONS.get(sender)
     if sess is None:
         await send_to_user(sender, {"type": "system_message", "message": "你还没有游戏伙伴，无法发送消息"})
         return
-    partner = sess.partner_of(sender)
-    if partner not in ONLINE:
-        await send_to_user(sender, {"type": "system_message", "message": "对方已离线，无法发送消息"})
+    others = [u for u in sess.players if u != sender]
+    if not any(u in ONLINE for u in others):
+        await send_to_user(sender, {"type": "system_message", "message": "其他玩家都已离线，无法发送消息"})
         return
     message = str(message).strip()[:500]
     if not message:
         return
     sess.add_chat(sender, message)
-    await send_to_user(partner, {"type": "chat_message", "from": sender, "message": message})
+    for u in others:
+        await send_to_user(u, {"type": "chat_message", "from": sender, "message": message})
 
 # -------------------- In-game actions --------------------
 async def handle_game_action(username, data):
     action = data.get("action")
     sess = SESSIONS.get(username)
-    if sess is None:
+    if sess is None or not sess.started:
         return
     slot = sess.slot_of(username)
     game = sess.games[slot]
@@ -1736,14 +1851,15 @@ async def handle_game_action(username, data):
             game.reroll_module_draft()
             changed = True
     elif action == "restart":
-        # Only allow resetting the whole session once the partner has also finished (settled or bankrupt), keeping both players in sync
-        if sess.games[1 - slot].gameOver:
+        # Only allow resetting the whole room once every other player has also finished (settled or bankrupt), keeping the room in sync
+        if all(g.gameOver for i, g in enumerate(sess.games) if i != slot):
             sess.restart()
-            partner = sess.partner_of(username)
-            await send_to_user(partner, {"type": "system_message", "message": "对方重新开始了游戏，双方进度已重置"})
+            for u in sess.players:
+                if u != username:
+                    await send_to_user(u, {"type": "system_message", "message": "对方重新开始了游戏，双方进度已重置"})
             changed = True
         else:
-            await send_to_user(username, {"type": "system_message", "message": "需等待对方完成本局后才能重新起航"})
+            await send_to_user(username, {"type": "system_message", "message": "需等待其他玩家完成本局后才能重新起航"})
 
     if changed:
         await sess.broadcast_state()
@@ -1782,24 +1898,37 @@ async def handler(websocket):
                         await send_json(websocket, {"type": "login_result", "success": ok, "username": u, "message": msg})
                         if ok:
                             await broadcast_online_users()
+                            await send_json(websocket, {"type": "open_rooms_update", "rooms": list_open_rooms()})
                             sess = SESSIONS.get(u)
                             if sess is not None:
-                                partner = sess.partner_of(u)
-                                await send_json(websocket, {"type": "session_resumed", "partner": partner,
-                                                            "partnerOnline": partner in ONLINE})
-                                await send_to_user(partner, {"type": "partner_status", "username": u, "online": True})
-                                await sess.broadcast_state()
+                                if sess.started:
+                                    others = [p for p in sess.players if p != u]
+                                    await send_json(websocket, {"type": "session_resumed", "players": others})
+                                    for p in others:
+                                        if p in ONLINE:
+                                            await send_to_user(p, {"type": "partner_status", "username": u, "online": True})
+                                    await sess.broadcast_state()
+                                else:
+                                    await broadcast_room_roster(sess)
                     else:
                         await send_json(websocket, {"type": "error", "message": "请先登录"})
                     continue
 
-                # ---------- Logged in: lobby / invites / chat / game ----------
+                # ---------- Logged in: lobby / invites / rooms / chat / game ----------
                 if action == "get_online_users":
                     await send_json(websocket, {"type": "online_users", "users": [n for n in ONLINE if n != username]})
                 elif action == "send_invite":
                     await handle_send_invite(username, str(data.get("to", "")), data.get("difficulty"))
                 elif action == "respond_invite":
                     await handle_respond_invite(username, str(data.get("from", "")), bool(data.get("accept")))
+                elif action == "create_room":
+                    await handle_create_room(username, data.get("maxPlayers"), data.get("difficulty"))
+                elif action == "join_room":
+                    await handle_join_room(username, str(data.get("host", "")))
+                elif action == "leave_room":
+                    await handle_leave_room(username)
+                elif action == "start_room":
+                    await handle_start_room(username)
                 elif action == "send_chat":
                     await handle_send_chat(username, data.get("message", ""))
                 elif action == "get_chat_history":
@@ -1823,16 +1952,22 @@ async def handler(websocket):
                 inv["task"].cancel()
                 await send_to_user(inv["to"], {"type": "invite_cancelled", "from": username})
             await broadcast_online_users()
-            # Notify the session partner; recycle the session if both players are offline
+            # A not-yet-started room has no live game to preserve, so disconnecting from one
+            # is treated exactly like an explicit leave (frees the slot, may promote a host).
             sess = SESSIONS.get(username)
-            if sess is not None:
-                partner = sess.partner_of(username)
-                if partner in ONLINE:
-                    await send_to_user(partner, {"type": "partner_status", "username": username, "online": False})
+            if sess is not None and not sess.started:
+                await leave_pending_room(username)
+            elif sess is not None:
+                # Notify the rest of the room; recycle the session once everyone is offline
+                others = [p for p in sess.players if p != username]
+                if any(p in ONLINE for p in others):
+                    for p in others:
+                        if p in ONLINE:
+                            await send_to_user(p, {"type": "partner_status", "username": username, "online": False})
                     await sess.broadcast_state()
                 else:
-                    SESSIONS.pop(username, None)
-                    SESSIONS.pop(partner, None)
+                    for p in sess.players:
+                        SESSIONS.pop(p, None)
 
 # -------------------- HTTP static file serving (shares the WebSocket port) --------------------
 # Serving static files on the same port as the WebSocket server lets a single ngrok tunnel
