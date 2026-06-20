@@ -1239,6 +1239,7 @@ class GameSession:
         self.trade_id_counter = 0
         self.trade_ready = []               # per-slot: whether each player has clicked ready during the barter phase
         self.ready = set()                  # slots that have clicked "continue" in the current phase
+        self.end_votes = set()              # slots that have agreed to end the session and return to the lobby
         self.chat_history = []
         self.monsoon_state = MONSOON_STATES[0].copy()
         self.monsoon_cycle_cache = {}
@@ -1251,9 +1252,18 @@ class GameSession:
         self.trade_ready = [False] * len(self.players)
         self.trade_orders = []
         self.ready = set()
+        self.end_votes = set()
         self.started = True
         self.monsoon_cycle_cache = {}
         self.sync_monsoon_state()
+
+    # ---------- Ending the session early (distinct from finishing it) ----------
+    def end_vote_complete(self):
+        # Unlike gate_complete(), bankrupt/finished players do NOT auto-count here: ending the
+        # whole session is a real decision every player still has a stake in (a bankrupt
+        # player may still want to wait and restart with the room rather than disband it),
+        # so it requires an explicit vote from every single player, with no auto-yes shortcut.
+        return len(self.end_votes) == len(self.players)
 
     # ---------- Identity ----------
     def slot_of(self, username):
@@ -1489,6 +1499,9 @@ class GameSession:
                 "maxPlayers": self.max_players,
                 "players": [{"name": u, "online": u in ONLINE, "isHost": u == self.host}
                             for u in self.players],
+                "endSessionVotes": len(self.end_votes),
+                "endSessionTotal": len(self.players),
+                "youVotedEnd": slot in self.end_votes,
             }
             await send_json(ws, {"type": "state", "data": state})
 
@@ -1710,6 +1723,14 @@ async def handle_send_chat(sender, message):
     for u in others:
         await send_to_user(u, {"type": "chat_message", "from": sender, "message": message})
 
+async def end_game_session(sess):
+    """Tears the room down once every player has voted to end it, sending everyone back to
+    the lobby. Unlike a finished/bankrupt game, an ended session leaves no resumable state:
+    there is no "session_resumed" path back into it, by design symmetry with start()."""
+    for u in sess.players:
+        SESSIONS.pop(u, None)
+        await send_to_user(u, {"type": "session_ended"})
+
 # -------------------- In-game actions --------------------
 async def handle_game_action(username, data):
     action = data.get("action")
@@ -1721,8 +1742,9 @@ async def handle_game_action(username, data):
     phase = game.phase
     changed = False
 
-    # Players in an end state (bankrupt/finished) may only perform read-only spectator actions and restart
-    if game.gameOver and action not in ("join_game", "restart"):
+    # Players in an end state (bankrupt/finished) may only perform read-only spectator actions,
+    # restart, or vote to end the session entirely (they still have a real say in that decision)
+    if game.gameOver and action not in ("join_game", "restart", "end_session"):
         return
 
     if action == "join_game":
@@ -1860,6 +1882,13 @@ async def handle_game_action(username, data):
             changed = True
         else:
             await send_to_user(username, {"type": "system_message", "message": "需等待其他玩家完成本局后才能重新起航"})
+    elif action == "end_session":
+        if slot not in sess.end_votes:
+            sess.end_votes.add(slot)
+            if sess.end_vote_complete():
+                await end_game_session(sess)
+                return
+            changed = True
 
     if changed:
         await sess.broadcast_state()

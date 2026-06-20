@@ -1270,6 +1270,7 @@ a { color: var(--ocean-700); }
       <button class="btn btn-ghost" id="btn-lang" onclick="toggleLang()">🌐 中文</button>
       <button class="btn btn-ghost" id="btn-manual" onclick="showManual()">📖 Manual</button>
       <button class="btn btn-ghost" id="btn-chat" onclick="toggleChat()">💬 Chat</button>
+      <button class="btn btn-warning" id="btn-end-session" onclick="confirmEndSession()">🚪 End Session</button>
       <button class="btn btn-ghost" id="btn-logout" onclick="logout()">🚪 Log Out</button>
     </div>
   </div>
@@ -1311,8 +1312,9 @@ a { color: var(--ocean-700); }
   <div class="lobby-box">
     <h2 id="lb-title">🏠 Game Lobby</h2>
     <p class="lobby-sub" id="lb-sub"></p>
-    <div style="text-align:center;margin:4px 0">
+    <div style="text-align:center;margin:4px 0;display:flex;gap:8px;justify-content:center">
       <button class="btn btn-ghost" id="btn-lang-lobby" onclick="toggleLang()">🌐 中文</button>
+      <button class="btn btn-ghost" id="btn-logout-lobby" onclick="logout()">🚪 Log Out</button>
     </div>
     <div class="separator"></div>
     <div id="room-browse-view">
@@ -1854,6 +1856,7 @@ function applyLanguage() {
   set('btn-manual', tr('📖 手册', '📖 Manual'), tr('打开游戏手册（快捷键 F1）', 'Open the game manual (F1)'));
   set('btn-chat', tr('💬 聊天', '💬 Chat'), tr('与同行船队聊天', 'Chat with your fellow captains'));
   set('btn-logout', tr('🚪 退出', '🚪 Log Out'), tr('退出登录并返回登录页', 'Log out and return to the login page'));
+  renderEndSessionButton();
 
   /* Login page */
   set('lg-tagline', tr('海上丝绸之路 · 双人联机贸易战略', 'Maritime Silk Road · 2-Player Co-op Trading Strategy'));
@@ -1877,6 +1880,7 @@ function applyLanguage() {
     `欢迎，<strong>${escapeHtml(currentUser || '')}</strong>！邀请一名在线玩家即可开始<strong>双人共享航程</strong>，或招募一支 2-5 人的船队：<br>全员将始终处于同一回合、同一阶段，并可在互市阶段自由交易、全程互见彼此经营状况。`,
     `Welcome, <strong>${escapeHtml(currentUser || '')}</strong>! Invite a player for a <strong>two-captain voyage</strong>, or host a room and recruit a 2-5 player crew:<br>everyone stays on the same round and phase, trades freely during Barter, and sees each other's operations throughout.`));
   set('btn-lang-lobby', langLabel, langTitle);
+  set('btn-logout-lobby', tr('🚪 退出', '🚪 Log Out'), tr('退出登录并返回登录页', 'Log out and return to the login page'));
   set('lb-online-title', tr('🧑‍✈️ 在线玩家', '🧑‍✈️ Players Online'));
   set('lb-rooms-title', tr('🧑‍🤝‍🧑 招募中的航程', '🧑‍🤝‍🧑 Open Voyages'));
   set('btn-host-room', tr('➕ 招募船队', '➕ Host a Voyage'), tr('创建一个 2-5 人的房间，其他玩家可自由加入', 'Create a 2-5 player room that others can freely join'));
@@ -2104,6 +2108,11 @@ function setupWebSocketHandlers() {
       maybeShowOnboarding();
     }
 
+    else if (msg.type === 'session_ended') {
+      enterLobbyView();
+      showNotification(tr('全员已同意结束会话，已返回大厅', 'Everyone agreed to end the session. Back in the lobby.'));
+    }
+
     else if (msg.type === 'invite_rejected') {
       showNotification(tr(`${msg.from} 拒绝了你的邀请`, `${msg.from} declined your invitation`), true);
       delete inviteStatus[msg.from];
@@ -2145,11 +2154,16 @@ function setupWebSocketHandlers() {
     }
 
     else if (msg.type === 'state') {
+      const prevEndVotes = (serverState && serverState.endSessionVotes) || 0;
       serverState = msg.data;
       if (serverState.yourGame) serverState.yourGame.slot = serverState.yourSlot;
       pendingRoom = null;
       updateChatSendState();
       maybeToastNewLogs();
+      if (serverState.endSessionVotes > prevEndVotes && !serverState.youVotedEnd) {
+        showNotification(tr(`🚪 已有 ${serverState.endSessionVotes}/${serverState.endSessionTotal} 人同意结束会话并返回大厅`,
+          `🚪 ${serverState.endSessionVotes}/${serverState.endSessionTotal} have agreed to end the session and return to the lobby`));
+      }
       renderAll();
     }
 
@@ -2170,6 +2184,24 @@ function enterGameView() {
   document.getElementById('app').style.display = 'grid';
   document.getElementById('current-user').textContent = `🧑‍✈️ ${currentUser}`;
   updateChatSendState();
+  renderEndSessionButton();
+}
+
+/* The reverse of enterGameView(): used once everyone has agreed to end the session. There is
+   no resumable state to carry back, so this fully resets the client's view of "the game"
+   (closes the chat/captain-viewer windows, drops serverState) before showing the lobby again. */
+function enterLobbyView() {
+  if (_viewerOpen) closeCaptainViewer();
+  setChatOpen(false);
+  serverState = null;
+  _lastMyJson = '';
+  _lastRosterJson = '';
+  pendingRoom = null;
+  document.getElementById('app').style.display = 'none';
+  document.getElementById('lobby-overlay').style.display = 'flex';
+  renderRoomLobby();
+  renderOnlineUsers();
+  renderOpenRooms();
 }
 
 /* ============================================================
@@ -2500,7 +2532,8 @@ function renderAll(force = false) {
   if (!serverState) return;
   const myJson = JSON.stringify([
     serverState.yourGame, serverState.tradeOrders, serverState.tradeReady,
-    serverState.phaseReadyCount, serverState.phaseTotalCount, serverState.waitingForOther, serverState.youReady
+    serverState.phaseReadyCount, serverState.phaseTotalCount, serverState.waitingForOther, serverState.youReady,
+    serverState.endSessionVotes, serverState.endSessionTotal, serverState.youVotedEnd
   ]);
   const rosterJson = JSON.stringify([serverState.otherGames, serverState.players]);
   const myChanged = force || myJson !== _lastMyJson;
@@ -2512,6 +2545,7 @@ function renderAll(force = false) {
     renderStatus();
     renderControls();
     renderLog();
+    renderEndSessionButton();
   }
   if (rosterChanged) renderRoster();
   if (myChanged) renderPhase();
@@ -3628,6 +3662,36 @@ function confirmRestart() {
   if (!confirm(tr('重新起航将把全员的进度都重置为第1程，确定继续吗？\n（需其他玩家也已结束本局才会生效）',
                   "Setting sail again resets everyone to Round 1. Continue?\n(Takes effect only once every other player's game is also over.)"))) return;
   sendAction('restart');
+}
+
+/* ---------- Ending the session early, with everyone's consent ---------- */
+function confirmEndSession() {
+  if (serverState && serverState.youVotedEnd) return; // already voted; nothing more to confirm
+  if (!confirm(tr('结束会话将使全员返回大厅，且无法恢复本局进度。需所有玩家都同意才会生效，确定要发起吗？',
+                  "Ending the session sends everyone back to the lobby, and this voyage can't be resumed. It only takes effect once every player agrees. Propose it now?"))) return;
+  sendAction('end_session');
+}
+
+function renderEndSessionButton() {
+  const btn = document.getElementById('btn-end-session');
+  if (!btn) return;
+  const s = serverState;
+  const votes = (s && s.endSessionVotes) || 0;
+  const total = (s && s.endSessionTotal) || 0;
+  if (s && s.youVotedEnd) {
+    btn.disabled = true;
+    btn.textContent = tr(`⏳ 等待同意 (${votes}/${total})`, `⏳ Waiting for agreement (${votes}/${total})`);
+    btn.title = tr('已同意结束，等待其他玩家', "You've agreed to end the session; waiting on everyone else");
+    return;
+  }
+  btn.disabled = false;
+  // Showing the live count even before you've voted yourself is the whole point: a vote
+  // that's invisible to everyone except whoever already clicked isn't really a consensus
+  // mechanism, just a guessing game.
+  btn.textContent = votes > 0
+    ? tr(`🚪 结束会话 (${votes}/${total} 已同意)`, `🚪 End Session (${votes}/${total} agreed)`)
+    : tr('🚪 结束会话', '🚪 End Session');
+  btn.title = tr('提议结束本局并返回大厅，需全员同意', 'Propose ending this session and returning to the lobby; everyone must agree');
 }
 
 /* ---------- Bottom action bar ---------- */
