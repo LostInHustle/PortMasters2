@@ -6,18 +6,18 @@
 
 ## 📖 1. Overview
 
-Welcome back to the Maritime Silk Road! PortMasters 2 takes the series online. Two captains sail one shared voyage, always on the same round and the same phase. You compete for renown, yet you also barter goods, gold and information with each other along the way. Draw a fortune from the Navigator's Compass, buy rumors from the brokers, fit your flagship with modules, and keep enough cash on hand for wages, upkeep and taxes through every voyage (8 rounds on Easy, 12 on Standard, 16 on Hard). The richer reputation wins.
+Welcome back to the Maritime Silk Road! PortMasters 2 takes the series online. Two to five captains sail one shared voyage, always on the same round and the same phase. You compete for renown, yet you also barter goods, gold and information with each other along the way. Draw a fortune from the Navigator's Compass, buy rumors from the brokers, fit your flagship with modules, and keep enough cash on hand for wages, upkeep and taxes through every voyage (8 rounds on Easy, 12 on Standard, 16 on Hard). The richer reputation wins.
 
 What's new since PortMasters 1:
 
-- 🌐 Online play for two, with accounts, a lobby, invitations, chat and reconnection.
-- 🤝 A barter phase where you and your partner trade goods and gold freely.
+- 🌐 Online play for two to five captains, with accounts, a lobby, invitations, open rooms, chat and reconnection.
+- 🤝 A barter phase where everyone in the room trades goods and gold freely.
 - 🧭 Fortunes: each round the Navigator's Compass deals every captain a private hand of 4 random buffs, and you lock in one.
 - 🗣️ The Broker's Whisper: pay for intel, and every clue turns into a guaranteed order later that round.
 - 🔧 Ship modules: draft and install up to 3 of them, from the Smuggler's Hold to the Overdrive Engine.
-- 👀 A spectator window, so a bankrupt captain can still watch the partner finish the voyage.
+- 👀 A spectator window, so a bankrupt captain can still watch the other captains finish the voyage.
 - 🌍 The whole interface is available in English (the default) and Simplified Chinese. Switch any time with the 🌐 button.
-- ⚖️ Three difficulty modes that form a ladder. Easy (8 rounds) keeps the voyage on the founding set of goods for a gentler game; Standard (12 rounds) opens the full trade at a brisker pace with no corrupt brokers; Hard (16 rounds) is the full challenge with the corrupt-broker hazard on. The inviting captain picks the level and the other confirms it, and every session starts on Easy unless it is changed.
+- ⚖️ Three difficulty modes that form a ladder. Easy (8 rounds) keeps the voyage on the founding set of goods for a gentler game; Standard (12 rounds) opens the full trade at a brisker pace with no corrupt brokers; Hard (16 rounds) is the full challenge with the corrupt broker hazard on. Whoever sends the invitation or opens the room picks the level, and every session starts on Easy unless it is changed.
 - 🗺️ The Silk Road Charter: the trade network expands in two waves, the "New Maritime Edict" and then "Ten Thousand Kingdoms Trade", adding 4 new resources, 4 new products, 4 new artisan types, 4 new ports (9 total), 6 new Fortunes, 6 new ship modules and 4 new Trade Winds (8 total). The waves arrive on Standard (Rounds 4 and 8) and Hard (Rounds 6 and 10); on Easy the voyage stays on the founding set the whole way through and these waves never arrive.
 
 ---
@@ -42,7 +42,7 @@ What's new since PortMasters 1:
    python server.py
    ```
 4. Each player opens **http://localhost:8080** in a browser (on a LAN, use the host machine's address and port 8080), registers an account and logs in.
-5. Invite someone from the lobby. Choose the difficulty for the session (Easy by default), and once they have read what it means and accepted, the shared voyage begins. 🌊
+5. Invite someone from the lobby, or open a room for two to five captains and wait for them to join. Choose the difficulty for the session (Easy by default), and once it is accepted the shared voyage begins. 🌊
 
 > 💡 Playing over the internet: the page and the WebSocket share port 8080, so a single tunnel such as `ngrok http 8080` carries the whole game, https and wss included.
 
@@ -50,14 +50,14 @@ What's new since PortMasters 1:
 
 ## 🎮 3. Gameplay Mechanics
 
-A game lasts **8 voyages** (rounds) on Easy, **12** on Standard or **16** on Hard, and each voyage runs through **8 phases**. No phase advances until both captains confirm.
+A game lasts **8 voyages** (rounds) on Easy, **12** on Standard or **16** on Hard, and each voyage runs through **8 phases**. No phase advances until every captain confirms.
 
 | Phase           | Description                                                                                                                                                                                                                     |
 | :-------------- | :------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | **⚓ Set Sail** | Confirm the start of the round. From round 2 on, this page also recaps how the previous round went.                                                                                                                             |
-| **🧭 Fortune**  | The compass deals you 4 of the 8 fortunes at random. Your partner gets a different hand. Lock one; it lasts this round only.                                                                                                    |
+| **🧭 Fortune**  | The compass deals you 4 of the 8 fortunes at random. Every captain gets a different hand. Lock one; it lasts this round only.                                                                                                   |
 | **🛒 Procure**  | Buy materials and goods from the supply cards (5 on Easy; on Standard and Hard the hand grows to 8 when Tier 1 opens and 11 when Tier 2 opens). The Broker's Whisper panel sits at the top and sells intel about coming demand. |
-| **🤝 Barter**   | Trade with your partner. Post an offer like "I give this for that" and it settles the moment they accept.                                                                                                                       |
+| **🤝 Barter**   | Trade with the room. Post an offer like "I give this for that" and it settles the moment someone accepts.                                                                                                                       |
 | **👥 Artisans** | Hire or dismiss artisans and hand out production tasks. Materials are consumed right away.                                                                                                                                      |
 | **📦 Trade**    | Deliver port orders from your stock. Clues you bought show up here as guaranteed orders marked 🗣️.                                                                                                                              |
 | **🔧 Upkeep**   | Production arrives and wages are paid on their own. Then you pay 15 gold of fleet upkeep. If you cannot, your fleet goes bankrupt.                                                                                              |
@@ -71,7 +71,7 @@ The difficulties form a ladder, and the game always starts on Easy unless someon
 - **⚖️ Standard** is the 12 round middle rung and opens the full trade, but with no corrupt brokers. The Silk Road Charter brings in Tier 1 at Round 4 and Tier 2 at Round 8, so you get every good, port and artisan at a brisker pace than Hard, with pirate raids that bite a little harder than Easy. It suits captains who know the basics and want a real challenge without committing to the long Hard voyage.
 - **🔥 Hard** is the longer 16 round voyage and opens the full trade. It plays exactly like the Silk Road Charter progression described below, bringing in the remaining raw materials, products, foreign ports, specialist artisans and the richer fortunes, modules and trade winds as the rounds go on. The first five rounds stay as relaxed as Easy mode, then there is far more to manage and the competition for cargo space and coin is much fiercer. Pirate raids and escort fees both scale with your wealth, and on the hard route some brokers are corrupt and secretly tip off pirates when you buy a whisper, raising your raid chance and making the escort call at Upkeep a real gamble.
 
-The difficulty is agreed before a voyage begins. When you invite another captain you choose the level, and they see a short explanation of what it changes and confirm it before the session starts. Both captains therefore always play the same voyage at the same difficulty, and a restart keeps that difficulty.
+The difficulty is settled before a voyage begins. Whoever sends the invitation or opens the room chooses the level, and an invited captain sees a short explanation of what it changes and confirms it before the session starts. Everyone therefore always plays the same voyage at the same difficulty, and a restart keeps that difficulty.
 
 ### 📦 Resources
 
@@ -119,12 +119,12 @@ Finished goods:
 | 💰 Emergency Loan                             | 40 gold, right now                                                    |
 | 📜 Tax Exemption                              | Income tax falls to 5%                                                |
 | 🧶 Hemp Monopoly                              | Hemp Cloth costs 2 gold less per unit                                 |
-| 🎓 Apprentice Legacy                          | Hiring wages are halved                                               |
+| 🎓 Apprentice Legacy                          | This round's artisan wages are halved                                 |
 | 🔮 Farsight _(Round 6+)_                      | Gain 1 free Broker's Whisper clue this round                          |
 | 🏮 Porcelain & Bronze Consortium _(Round 6+)_ | Celadon Porcelain and Bronze Mirror orders pay 15% more this round    |
-| 🧾 Frontier Tariff Relief _(Round 6+)_        | VAT on finished-goods deliveries is halved this round                 |
+| 🧾 Frontier Tariff Relief _(Round 6+)_        | VAT on finished goods deliveries is halved this round                 |
 | 💎 Treasures from Afar _(Round 10+)_          | Foreign Perfume Oil and Pearl Necklace orders pay 15% more this round |
-| 🛡️ Deep-Sea Escort Pact _(Round 10+)_         | Escort hiring costs half price and pirate risk is halved this round   |
+| 🛡️ Deep Sea Escort Pact _(Round 10+)_         | Escort hiring costs half price and pirate risk is halved this round   |
 | 🛍️ Merchants Converge _(Round 10+)_           | 1 extra order appears in the Trade phase this round                   |
 
 ### 🔧 Ship Modules (draft 3, install 1; slots equal your ship level)
@@ -139,12 +139,12 @@ Finished goods:
 | 🕵️ Broker's Network                              | Whispers cost just 2 gold and reveal 2 clues at a time                                                    |
 | ♻️ Salvage Crane                                 | A 30% chance your shipping fee comes back on delivery                                                     |
 | ⚡ Overdrive Engine                              | Shipping costs 5 gold less; upkeep costs 10 gold more                                                     |
-| 🎫 Trade Bureau Token _(Round 6+)_               | Orders for new trade-route goods (Porcelain Clay, Copper Ore and their products) pay 10% more             |
+| 🎫 Trade Bureau Token _(Round 6+)_               | Orders for new trade route goods (Porcelain Clay, Copper Ore and their products) pay 10% more             |
 | 🔥 Kiln Cellar _(Round 6+)_                      | Porcelain Clay and Copper Ore purchase price −2 gold per unit                                             |
-| 📡 Ocean-Going Interpreter _(Round 6+)_          | Each Broker's Whisper purchase reveals 1 extra clue at no added cost                                      |
+| 📡 Ocean Going Interpreter _(Round 6+)_          | Each Broker's Whisper purchase reveals 1 extra clue at no added cost                                      |
 | 🪪 Foreign Quarter Guild Pass _(Round 10+)_      | Spices and Pearls purchase price −3 gold per unit                                                         |
 | 🧿 Persian Dome Compass _(Round 10+)_            | Pirate risk reduced by 30%                                                                                |
-| ⛵ Fleet of Ten-Thousand Treasures _(Round 10+)_ | Shipping for Foreign Perfume Oil and Pearl Necklace is 3 gold cheaper per item                            |
+| ⛵ Fleet of Ten Thousand Treasures _(Round 10+)_ | Shipping for Foreign Perfume Oil and Pearl Necklace is 3 gold cheaper per item                            |
 
 ### 💰 Taxes & Finance
 
@@ -156,11 +156,11 @@ Finished goods:
 ### 🌐 Multiplayer
 
 - **Accounts**: a username and a password. Passwords are stored salted and hashed in `users.json`.
-- **Invitations**: one per minute from the lobby, and each expires after 60 seconds. When you invite someone you also choose the session difficulty, and they confirm it in the invitation window before the voyage starts.
-- **Staying in sync**: both captains share the round and the phase. The "Ready n / 2" chip shows who has confirmed. A bankrupt player counts as ready and never holds the partner up.
-- **Bankruptcy and spectating**: a bankrupt captain stays on the settlement page and can open the live 👀 spectator window to watch the partner play on.
-- **Reconnection**: sessions live on the server, so logging back in puts you right where you were. A session is only thrown away once both players are offline.
-- **Restart**: when both games have ended, either captain can reset the table for a new run.
+- **Invitations and rooms**: invitations go out one per minute from the lobby and expire after 60 seconds; alternatively you can open a room for two to five captains that others join freely. Either way the difficulty is chosen up front, and an invited captain confirms it in the invitation window before the voyage starts.
+- **Staying in sync**: every captain shares the round and the phase. The "Ready n / N" chip shows how many have confirmed. A bankrupt player counts as ready and never holds the others up.
+- **Bankruptcy and spectating**: a bankrupt captain stays on the settlement page and can open the live 👀 spectator window to watch any other captain play on.
+- **Reconnection**: sessions live on the server, so refreshing the page or logging back in puts you right where you were. A voyage is only recycled once every captain has been offline for a grace period.
+- **Restart**: once every game has ended, any captain can reset the table for a new run.
 
 ---
 
@@ -186,7 +186,7 @@ Finished goods:
 
 1. Mind your cash before anything else. Wages and upkeep come due every single round, and the "Due This Round" box on the left does the math for you.
 2. Whispers are money in the bank. Every clue becomes a real order for that exact item at that exact port. With the Broker's Network module the intel is almost free.
-3. Barter instead of buying. The partner panel shows exactly what the other fleet is missing and what it hoards. A good swap beats the market price.
+3. Barter instead of buying. The roster panel shows exactly what each other fleet is missing and what it hoards. A good swap beats the market price.
 4. Finished goods carry the margins. A sachet sells for 95 to 120 gold while flipping raw materials earns pocket change. Just remember the VAT.
 5. Upgrade the ship early. The discount pays for itself over many deliveries, so aim for level 1 or 2 by the middle rounds.
 6. Pick the fortune that matches your plan: the Charm for a buying round, Inspiration for a production round, the Loan when you are about to go under.
@@ -213,8 +213,8 @@ A longer voyage with richer goods earns far more renown, so each difficulty has 
 
 - **"Port 8080 already in use"**: something else has the port. Stop it, or change the port number in `server.py`.
 - **"This account is already logged in on another device"**: one connection per account. Close the other tab or device first.
-- **A button does nothing**: nine times out of ten you are waiting for your partner. Check "Ready n / 2" at the bottom and give them a nudge over 💬.
-- **Your partner dropped**: the session is safe on the server, and they just need to log back in. Chat and trades wait until then.
+- **A button does nothing**: nine times out of ten you are waiting for another captain. Check "Ready n / N" at the bottom and give them a nudge over 💬.
+- **A captain dropped**: the session is safe on the server, and they just need to log back in. Chat and trades wait until then.
 - **The server restarted**: accounts survive in `users.json`, but running voyages live in memory and are gone. Start a fresh session.
 - **Connection trouble over the internet**: tunnel the one port (`ngrok http 8080`) so the page and the WebSocket share a single https origin.
 
@@ -223,7 +223,7 @@ A longer voyage with richer goods earns far more renown, so each difficulty has 
 ## 👤 8. Credits & License
 
 - **Developers**: `Joe Zhou, Aaron Zhu`
-- **Version**: `PortMasters 2 v1.0.0b1 preview`
+- **Version**: `PortMasters 2 v1.0.0b4 preview`
 - **Language Support**: English (default) and Simplified Chinese, switchable inside the game
 - **License**: MIT License. Use it, change it, share it, for personal or commercial projects.
 - New to the series? [PortMasters 1](https://lostinhustle.github.io/PortMasters/PortMasters_Web_Edition/PortMasters_v1.4.0) is a gentler, single player place to start.
@@ -233,7 +233,7 @@ A longer voyage with richer goods earns far more renown, so each difficulty has 
 ## 🌟 Quick Reference
 
 - **Launch**: `python server.py`, then open `http://localhost:8080`
-- **Difficulty**: every session starts on Easy; the inviting captain can step up to Standard or Hard for the full trade, and the other captain confirms it before the voyage begins
+- **Difficulty**: every session starts on Easy; whoever sends the invitation or opens the room can step up to Standard or Hard for the full trade, and an invited captain confirms it before the voyage begins
 - **Core Loop**: Set Sail → Fortune → Procure → Barter → Artisans → Trade → Upkeep → Shipyard
 - **Best Sellers**: Scented Sachets and Fine Brocade (mind the VAT!)
 - **Sure Money**: buy whispers, and equip the Broker's Network
