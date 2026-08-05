@@ -537,7 +537,10 @@
         max-height: calc(100vh - 250px);
         position: relative;
       }
-      .phase-view {
+      /* The entrance animation belongs to a phase TRANSITION, not to every repaint. Leaving it
+   on .phase-view itself made the whole board fade in again on each state broadcast, which reads
+   as constant flashing while another captain is acting. */
+      .phase-view.phase-enter {
         animation: fadeUp 0.35s ease;
       }
       @keyframes fadeUp {
@@ -3083,20 +3086,30 @@
       const wName = (key) =>
         pf((WORKER_TYPES.find((w) => w.key === key) || {}).name) || key;
 
+      /* Mirrors server.py effective_wage(). Only the per-artisan figures in the hire and roster
+   tables are derived here; the round total comes straight from the server (see pendingWages)
+   so the preview and the actual charge cannot drift apart. */
       function workerWageRate(key, g) {
-        const base = WAGES[key];
+        let wage = WAGES[key];
         const hasWorkshop = (g.equippedModules || []).some(
           (m) => m.id === "artisans_workshop",
         );
-        return hasWorkshop ? Math.floor(base * 1.2) : base; // matches server pay_wages()
+        if (hasWorkshop) wage = Math.floor(wage * 1.2);
+        const discount = (g.modifierFlags || {}).hire_discount;
+        if (discount) wage = Math.floor(wage * discount);
+        return wage;
+      }
+
+      /* The same rate before this round's Fortune discount, for the struck-through "was" price. */
+      function undiscountedWageRate(key, g) {
+        const hasWorkshop = (g.equippedModules || []).some(
+          (m) => m.id === "artisans_workshop",
+        );
+        return hasWorkshop ? Math.floor(WAGES[key] * 1.2) : WAGES[key];
       }
 
       function pendingWages(g) {
-        return WORKER_TYPES.reduce(
-          (sum, wt) =>
-            sum + (g[wt.listKey] || []).length * workerWageRate(wt.key, g),
-          0,
-        );
+        return g.estimatedWages || 0;
       }
 
       function pendingMaintenance(g) {
@@ -3755,16 +3768,76 @@
           const msg = JSON.parse(e.data);
           if (msg.type === "login_result") {
             if (msg.success) {
-              currentUser = msg.username;
-              document.getElementById("login-overlay").style.display = "none";
-              document.getElementById("lobby-overlay").style.display = "flex";
-              applyLanguage(); // the lobby welcome message includes the username, so it needs refilling after login
-              setupWebSocketHandlers();
-              ws.send(JSON.stringify({ action: "get_online_users" }));
+              if (msg.token) storeSessionToken(msg.token);
+              enterLobbyAs(msg.username);
             } else {
               showNotification(lst(msg.message), true);
               ws.close();
             }
+          }
+        };
+      }
+
+      /* ---------- Resumable session ----------
+   The token the server hands out at login lives in localStorage, not sessionStorage, because
+   surviving a real page reload is the whole point: refreshing the tab must not cost the player
+   their login or their seat in a running voyage. */
+      const SESSION_TOKEN_KEY = "pm2_session_token";
+
+      function storedSessionToken() {
+        try {
+          return localStorage.getItem(SESSION_TOKEN_KEY);
+        } catch (e) {
+          return null; // private browsing or storage disabled: just show the login form
+        }
+      }
+
+      function storeSessionToken(token) {
+        try {
+          localStorage.setItem(SESSION_TOKEN_KEY, token);
+        } catch (e) {
+          /* storage unavailable: silent resume simply won't work next time */
+        }
+      }
+
+      function clearSessionToken() {
+        try {
+          localStorage.removeItem(SESSION_TOKEN_KEY);
+        } catch (e) {
+          /* nothing to clear if storage is unavailable */
+        }
+      }
+
+      /* Shared by the interactive login and the silent resume, so both land in exactly the
+   same state. */
+      function enterLobbyAs(name) {
+        currentUser = name;
+        document.getElementById("login-overlay").style.display = "none";
+        document.getElementById("lobby-overlay").style.display = "flex";
+        applyLanguage(); // the lobby welcome message includes the username, so it needs refilling
+        setupWebSocketHandlers();
+        ws.send(JSON.stringify({ action: "get_online_users" }));
+      }
+
+      /* Runs once at startup: if we are holding a token, try to re-identify silently before
+   showing the login form, so a refresh drops the player straight back into their room. */
+      function tryResumeSession() {
+        const token = storedSessionToken();
+        if (!token) return;
+        ws = new WebSocket(
+          `${location.protocol === "https:" ? "wss" : "ws"}://${location.host}`,
+        );
+        ws.onopen = () => {
+          ws.send(JSON.stringify({ action: "resume_token", token }));
+        };
+        ws.onmessage = (e) => {
+          const msg = JSON.parse(e.data);
+          if (msg.type !== "resume_result") return;
+          if (msg.success) {
+            enterLobbyAs(msg.username);
+          } else {
+            clearSessionToken(); // stale token (server restarted, or the player logged out)
+            ws.close();
           }
         };
       }
@@ -3779,6 +3852,12 @@
           )
         )
           return;
+        // Revoke before dropping the socket, otherwise the reload below would silently resume
+        // the session we were just asked to leave.
+        const token = storedSessionToken();
+        if (ws && ws.readyState === WebSocket.OPEN)
+          ws.send(JSON.stringify({ action: "logout", token }));
+        clearSessionToken();
         if (ws) ws.close();
         location.reload();
       }
@@ -4338,6 +4417,23 @@
       let _lastMyJson = "";
       let _lastRosterJson = "";
 
+      /* Repainting a panel with markup identical to what it already shows is pure cost: it
+   destroys and recreates every node, which restarts CSS entrance animations, drops focus and
+   hover state, and makes the board visibly flash every time another captain acts. Every state
+   broadcast reaches all players, so without this guard one captain clicking around redraws
+   everyone else's screen. Comparing the generated markup first leaves the DOM untouched unless
+   something actually changed. */
+      const _paintedHTML = new WeakMap();
+      function paintHTML(el, html) {
+        if (!el) return false;
+        if (_paintedHTML.get(el) === html) return false;
+        _paintedHTML.set(el, html);
+        el.innerHTML = html;
+        return true;
+      }
+
+      let _lastPhaseKey = null;
+
       function renderAll(force = false) {
         if (!serverState) return;
         const myJson = JSON.stringify([
@@ -4569,7 +4665,7 @@
       ${!safe ? `<div style="background:var(--grad-danger);color:white;border-radius:9px;padding:5px 9px;font-size:10.5px;margin-top:6px;text-align:center;font-weight:700">${tr("🚨 现金不足以支付本回合结算费用，请尽快回笼资金！", "🚨 You can't cover this round's settlement. Raise cash fast!")}</div>` : ""}
     </div>`;
         }
-        p.innerHTML = html;
+        paintHTML(p, html);
       }
 
       /* ---------- Roster: every other player in the room, each a collapsed widget ---------- */
@@ -4619,7 +4715,9 @@
         const others = players.filter((pl) => pl.name !== currentUser);
 
         if (!others.length) {
-          p.innerHTML = `
+          paintHTML(
+            p,
+            `
       <div class="crew-head partner">
         <div class="avatar">🧑‍✈️</div>
         <div class="who"><div class="nm">${tr("等待同行...", "Waiting for others...")}</div><div class="role">${tr("同行船队", "Fellow Captains")}</div></div>
@@ -4629,11 +4727,14 @@
         "进入共享会话后，这里会列出同行的每位船长，点击即可在独立窗口中查看声望、存款、货物、工匠与增益，方便协商互市。",
         "Once you're in a shared session, every other captain shows up here. Click one to open a window with their renown, gold, cargo, artisans and buffs, handy for negotiating trades.",
       )}</p>
-    `;
+    `,
+          );
           return;
         }
 
-        p.innerHTML = `
+        paintHTML(
+          p,
+          `
     <div class="crew-head partner">
       <div class="avatar">🧑‍✈️</div>
       <div class="who"><div class="nm">${tr("同行船队", "Fellow Captains")}</div><div class="role">${tr(`共 ${others.length} 位船长`, `${others.length} other captain(s)`)}</div></div>
@@ -4645,7 +4746,8 @@
         "💡 Spot what a fellow captain lacks or has in surplus, then strike a deal during <strong>Barter</strong>, or hit 💬 up top to talk it over.",
       )}</span>
     </div>
-  `;
+  `,
+        );
         p.querySelectorAll("[data-roster-view]").forEach((el) => {
           el.onclick = () => openCaptainViewer(el.dataset.rosterView);
         });
@@ -4768,9 +4870,21 @@
         /* The barter form preserves what the user has typed across re-renders (user freedom and control) */
         const formState = captureTradeForm();
         const scrollPos = p.scrollTop;
-        p.innerHTML = `<div class="phase-view">${stepperHTML(phase)}${inner}</div>`;
-        restoreTradeForm(formState);
-        p.scrollTop = scrollPos; // preserve scroll position after re-render so the page doesn't jump back to the top
+        const phaseChanged = phase !== _lastPhaseKey;
+        _lastPhaseKey = phase;
+        if (
+          paintHTML(
+            p,
+            `<div class="phase-view">${stepperHTML(phase)}${inner}</div>`,
+          )
+        ) {
+          /* Only a real phase transition earns the entrance animation. Replaying it on ordinary
+       data updates is what made the board flash on every partner action. */
+          if (phaseChanged && p.firstElementChild)
+            p.firstElementChild.classList.add("phase-enter");
+          restoreTradeForm(formState);
+          p.scrollTop = scrollPos; // preserve scroll position so the page doesn't jump back to the top
+        }
       }
 
       /* ---------- Per-phase views ---------- */
@@ -5231,8 +5345,7 @@
       function workerMgmtHTML() {
         const g = serverState.yourGame;
         const hireDiscount = g.modifierFlags && g.modifierFlags.hire_discount;
-        const costOf = (key) =>
-          hireDiscount ? Math.floor(WAGES[key] / 2) : WAGES[key];
+        const costOf = (key) => workerWageRate(key, g);
 
         return `
     ${phaseBriefHTML("worker_mgmt", hireDiscount ? `<span class="chip green">${tr("🎓 学徒传承：本回合雇佣半价", "🎓 Apprentice Legacy: hiring half price this round")}</span>` : "")}
@@ -5272,7 +5385,7 @@
               (wt) => `
             <tr style="border-top:1px solid rgba(148,163,184,.25)">
               <td style="padding:6px 4px;font-weight:700">${wt.icon} ${pf(wt.name)}</td>
-              <td>${costOf(wt.key)} 💰${hireDiscount ? ` <s class="muted">${WAGES[wt.key]}</s>` : ""}</td>
+              <td>${costOf(wt.key)} 💰${hireDiscount ? ` <s class="muted">${undiscountedWageRate(wt.key, g)}</s>` : ""}</td>
               <td>${wt.can.map((t) => `${ICONS[t]}${tn(t)}`).join(tr("、", ", "))}</td>
               <td style="text-align:right"><button class="btn btn-success" style="padding:6px 14px;font-size:12px" onclick="sendAction('hireWorker', {workerType: '${wt.key}'})" title="${pf(wt.tip)}">${tr("＋ 雇佣", "＋ Hire")}</button></td>
             </tr>
@@ -5840,13 +5953,16 @@
           const anyoneElsePlaying = Object.values(
             serverState.otherGames || {},
           ).some((og) => !og.gameOver);
-          c.innerHTML = `
+          paintHTML(
+            c,
+            `
       <span class="sync-chip">${isBankrupt ? tr("💥 船队破产", "💥 Fleet Bankrupt") : tr("🏁 本局已结束", "🏁 Game Over")}</span>
       ${anyoneElsePlaying ? `<span class="control-hint">${tr("💡 还有同行仍在航行中，可打开观战窗口实时围观", "💡 Others are still sailing. Open the spectator window to watch live")}</span>` : ""}
       <div class="control-spacer"></div>
       ${isBankrupt && anyoneElsePlaying ? `<button class="btn btn-ghost" onclick="openCaptainViewer()">${tr("👀 观战同行", "👀 Spectate")}</button>` : ""}
       <button class="btn btn-danger" onclick="confirmRestart()">${tr("🔄 重新起航", "🔄 Set Sail Again")}</button>
-      <button class="btn btn-ghost" onclick="showManual()">${tr("📖 手册", "📖 Manual")}</button>`;
+      <button class="btn btn-ghost" onclick="showManual()">${tr("📖 手册", "📖 Manual")}</button>`,
+          );
           return;
         }
         const phase = g.phase;
@@ -5910,13 +6026,16 @@
           );
         }
 
-        c.innerHTML = `
+        paintHTML(
+          c,
+          `
     <span class="sync-chip" title="${tr("全员确认后才会进入下一阶段", "The next phase starts once everyone confirms")}">${tr(`🔄 全员就绪 ${readyCount} / ${totalCount}`, `🔄 Ready ${readyCount} / ${totalCount}`)}</span>
     <span class="control-hint">💡 ${hint}</span>
     <div class="control-spacer"></div>
     ${primary}
     <button class="btn btn-ghost" onclick="showManual()" title="${tr("快捷键 F1", "Shortcut: F1")}">${tr("📖 手册", "📖 Manual")}</button>
-  `;
+  `,
+        );
       }
 
       function renderLog() {
@@ -5924,16 +6043,20 @@
           (serverState && serverState.yourGame && serverState.yourGame.logs) ||
           [];
         const l = document.getElementById("log-panel");
-        l.innerHTML =
+        const painted = paintHTML(
+          l,
           `<div class="log-title">${tr("📜 航海日志 · 最近操作记录", "📜 Captain's Log · Recent Actions")}</div>` +
-          (logs.length
-            ? logs
-                .map(
-                  (m) => `<div class="log-entry">${escapeHtml(lst(m))}</div>`,
-                )
-                .join("")
-            : `<div class="log-entry muted">${tr("暂无记录。你的采购、交易、生产等操作会记录在这里。", "Nothing yet. Your purchases, trades and production will be recorded here.")}</div>`);
-        l.scrollTop = l.scrollHeight;
+            (logs.length
+              ? logs
+                  .map(
+                    (m) => `<div class="log-entry">${escapeHtml(lst(m))}</div>`,
+                  )
+                  .join("")
+              : `<div class="log-entry muted">${tr("暂无记录。你的采购、交易、生产等操作会记录在这里。", "Nothing yet. Your purchases, trades and production will be recorded here.")}</div>`),
+        );
+        /* Only ride the log to the bottom when a new line actually arrived, so a partner's
+   unrelated action cannot yank the panel away from wherever the reader scrolled it. */
+        if (painted) l.scrollTop = l.scrollHeight;
       }
 
       function escapeHtml(s) {
@@ -6488,10 +6611,6 @@
       }
 
       /* Backward-compat for old entry points (F1, etc.) */
-      function showInstructions() {
-        showManual();
-      }
-
       /* ---------- Onboarding tour shown the first time a session is entered ---------- */
       function maybeShowOnboarding() {
         if (localStorage.getItem("pm2_onboarded") === "1") return;
@@ -6670,6 +6789,10 @@
 
       /* Startup: fill in all static UI text according to the persisted language preference (default English) */
       applyLanguage();
+
+      /* Then, before the player touches anything, try to re-identify with a stored token so a
+   page refresh returns them to their room instead of to the login form. */
+      tryResumeSession();
     </script>
   </body>
 </html>

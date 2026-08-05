@@ -590,11 +590,32 @@ class PlayerGame:
             cards.append(dict(card, resources=resources, finalCost=self.get_card_final_cost(card)))
         return cards
 
-    def get_hire_cost(self, wtype):
+    def effective_wage(self, wtype):
+        """What one worker of this type actually costs at the next Upkeep.
+
+        Single source of truth for wages: pay_wages() charges exactly this, get_hire_cost()
+        gates hiring on it, and estimated_wages() previews it, so the number the player is
+        shown can never drift from the number they are charged. The Apprentice Legacy boon
+        (hire_discount) is a modifier on this round's wage bill, which is what its description
+        promises and what the artisan table displays.
+        """
         wage = WAGES[wtype]
-        if self.modifierFlags.get("hire_discount"):
-            wage = int(wage * 0.5)
+        if self.has_module("artisans_workshop"):
+            wage = int(wage * 1.2)
+        discount = self.modifierFlags.get("hire_discount")
+        if discount:
+            wage = int(wage * discount)
         return wage
+
+    def estimated_wages(self):
+        """The whole roster's wage bill for the next Upkeep, as previewed in the status panel."""
+        return sum(
+            self.effective_wage(w_def["id"]) * len(getattr(self, w_def["attr"]))
+            for w_def in WORKER_TYPES_BACKEND
+        )
+
+    def get_hire_cost(self, wtype):
+        return self.effective_wage(wtype)
 
     def set_monsoon_state(self, state):
         self.monsoon_state = state.copy()
@@ -722,7 +743,10 @@ class PlayerGame:
 
     # ---------- Core actions ----------
     def apply_boon(self, boon):
-        self.modifierFlags = boon["modifiers"]
+        # Copy, never alias: BOONS is a module level table shared by every player in every
+        # session, so holding a reference to its dict would let one player's round modifiers
+        # leak into the global definition.
+        self.modifierFlags = dict(boon["modifiers"])
         if boon["modifiers"].get("instant_gold"):
             self.money += boon["modifiers"]["instant_gold"]
             self.log(f"💰 福缘：获得 {boon['modifiers']['instant_gold']} 金币")
@@ -951,15 +975,7 @@ class PlayerGame:
                     w["progress"] = 0
 
     def pay_wages(self):
-        total = 0
-        for w_def in WORKER_TYPES_BACKEND:
-            lst = getattr(self, w_def["attr"])
-            wtype = w_def["id"]
-            for _ in lst:
-                wage = WAGES[wtype]
-                if self.has_module("artisans_workshop"):
-                    wage = int(wage * 1.2)
-                total += wage
+        total = self.estimated_wages()
         if total == 0:
             return True
         if self.money >= total:
@@ -1135,6 +1151,7 @@ class PlayerGame:
             "fixedCost": self.fixedCost,
             "maintenancePenalty": self.maintenancePenalty,
             "workerWages": self.workerWages,
+            "estimatedWages": self.estimated_wages(),
             "roundRevenue": self.roundRevenue,
             "roundCosts": self.roundCosts,
             "shipUpgradeCost": self.shipUpgradeCost,
@@ -1234,6 +1251,9 @@ class GameSession:
         self.difficulty = normalize_difficulty(difficulty)
         self.tier_unlock = difficulty_tier_unlock(self.difficulty)
         self.started = False
+        # Set while every member is offline, counting down to recycling the voyage. A page
+        # refresh briefly takes the last player offline, so the session must outlive that gap.
+        self.reap_task = None
         self.games = []
         self.trade_orders = []
         self.trade_id_counter = 0
@@ -1531,6 +1551,80 @@ async def broadcast_online_users():
     names = list(ONLINE.keys())
     for uname, ws in list(ONLINE.items()):
         await send_json(ws, {"type": "online_users_update", "users": [n for n in names if n != uname]})
+
+# -------------------- Resumable session tokens --------------------
+# Issued on every successful login so the next fresh connection can re-identify itself silently
+# instead of making the player retype their password. In memory only, with the same lifetime as
+# ONLINE and SESSIONS: restarting the process ends every voyage anyway, so there is nothing to
+# resume into afterwards.
+SESSION_TOKENS = {}
+
+
+def issue_token(username):
+    token = secrets.token_hex(16)
+    SESSION_TOKENS[token] = username
+    return token
+
+
+def resolve_token(token):
+    return SESSION_TOKENS.get(token) if isinstance(token, str) else None
+
+
+def revoke_token(token):
+    if isinstance(token, str):
+        SESSION_TOKENS.pop(token, None)
+
+
+# How long a voyage survives with nobody connected. A page refresh drops the socket for a
+# fraction of a second, so recycling the moment the last player goes offline destroyed the game
+# the player was about to resume into. Long enough to cover a reload or a brief network drop,
+# short enough that genuinely abandoned rooms do not pile up.
+SESSION_REAP_GRACE = 90
+
+
+async def reap_session_later(sess):
+    """Recycle a session only if it is still deserted once the grace period expires."""
+    try:
+        await asyncio.sleep(SESSION_REAP_GRACE)
+    except asyncio.CancelledError:
+        return
+    sess.reap_task = None
+    if any(p in ONLINE for p in sess.players):
+        return
+    for p in sess.players:
+        if SESSIONS.get(p) is sess:
+            SESSIONS.pop(p, None)
+
+
+def cancel_session_reap(sess):
+    """Someone came back before the grace period ran out, so keep the voyage alive."""
+    if sess is not None and sess.reap_task is not None:
+        sess.reap_task.cancel()
+        sess.reap_task = None
+
+
+async def complete_authentication(websocket, u):
+    """Shared tail of login and resume_token, once the account slot has been claimed.
+
+    Announces the player as online and, when a live voyage is already on record for them,
+    pushes the full game state straight away so a reconnect lands back in the game rather
+    than in the lobby.
+    """
+    await broadcast_online_users()
+    await send_json(websocket, {"type": "open_rooms_update", "rooms": list_open_rooms()})
+    sess = SESSIONS.get(u)
+    if sess is None:
+        return
+    cancel_session_reap(sess)
+    if sess.started:
+        others = [p for p in sess.players if p != u]
+        await send_json(websocket, {"type": "session_resumed", "players": others})
+        for p in others:
+            if p in ONLINE:
+                await send_to_user(p, {"type": "partner_status", "username": u, "online": True})
+        await sess.broadcast_state()
+    else:
+        await broadcast_room_roster(sess)
 
 # -------------------- Invite system --------------------
 async def invite_timeout_task(sender, target):
@@ -1924,21 +2018,30 @@ async def handler(websocket):
                             # racing logins for the same account cannot both pass the check above.
                             username = u
                             ONLINE[u] = websocket
-                        await send_json(websocket, {"type": "login_result", "success": ok, "username": u, "message": msg})
+                        token = issue_token(u) if ok else None
+                        await send_json(websocket, {"type": "login_result", "success": ok, "username": u, "message": msg, "token": token})
                         if ok:
-                            await broadcast_online_users()
-                            await send_json(websocket, {"type": "open_rooms_update", "rooms": list_open_rooms()})
-                            sess = SESSIONS.get(u)
-                            if sess is not None:
-                                if sess.started:
-                                    others = [p for p in sess.players if p != u]
-                                    await send_json(websocket, {"type": "session_resumed", "players": others})
-                                    for p in others:
-                                        if p in ONLINE:
-                                            await send_to_user(p, {"type": "partner_status", "username": u, "online": True})
-                                    await sess.broadcast_state()
-                                else:
-                                    await broadcast_room_roster(sess)
+                            await complete_authentication(websocket, u)
+                    elif action == "resume_token":
+                        # The silent counterpart to login, sent automatically by a fresh
+                        # connection that still holds a token: a reconnect after a network blip,
+                        # or an actual page refresh.
+                        u = resolve_token(data.get("token"))
+                        if u is None:
+                            await send_json(websocket, {"type": "resume_result", "success": False})
+                        else:
+                            # A valid token is proof of identity, so this is the same account
+                            # re-identifying itself. Deliberately NOT refused when the name still
+                            # looks online: a refreshing browser opens the new socket before the
+                            # old one's close is processed, so the stale entry is usually still
+                            # in ONLINE right now, and refusing there logged players out by the
+                            # very act of refreshing. Taking the slot over is safe because the
+                            # disconnect cleanup ignores any socket that is no longer the
+                            # registered one, so the stale close cannot evict this connection.
+                            username = u
+                            ONLINE[u] = websocket
+                            await send_json(websocket, {"type": "resume_result", "success": True, "username": u})
+                            await complete_authentication(websocket, u)
                     else:
                         await send_json(websocket, {"type": "error", "message": "请先登录"})
                     continue
@@ -1946,6 +2049,11 @@ async def handler(websocket):
                 # ---------- Logged in: lobby / invites / rooms / chat / game ----------
                 if action == "get_online_users":
                     await send_json(websocket, {"type": "online_users", "users": [n for n in ONLINE if n != username]})
+                elif action == "logout":
+                    # Revokes the resume token so the reload the client performs right after
+                    # this cannot silently log the player back in. Going offline is still handled
+                    # by the normal disconnect cleanup once that reload drops the socket.
+                    revoke_token(data.get("token"))
                 elif action == "send_invite":
                     await handle_send_invite(username, str(data.get("to", "")), data.get("difficulty"))
                 elif action == "respond_invite":
@@ -1994,9 +2102,11 @@ async def handler(websocket):
                         if p in ONLINE:
                             await send_to_user(p, {"type": "partner_status", "username": username, "online": False})
                     await sess.broadcast_state()
-                else:
-                    for p in sess.players:
-                        SESSIONS.pop(p, None)
+                elif sess.reap_task is None:
+                    # Everyone is offline. Do not recycle straight away: a refreshing browser is
+                    # offline for a moment and would otherwise destroy the very voyage it is
+                    # about to resume into. Give it a grace period instead.
+                    sess.reap_task = asyncio.create_task(reap_session_later(sess))
 
 # -------------------- HTTP static file serving (shares the WebSocket port) --------------------
 # Serving static files on the same port as the WebSocket server lets a single ngrok tunnel
