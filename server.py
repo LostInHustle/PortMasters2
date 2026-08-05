@@ -104,7 +104,8 @@ def difficulty_broker_corruption(difficulty):
 
 def unlocked(tier0, tier1, tier2, round_no, tier_unlock):
     """Unlock content pools by round. Each tier in the difficulty's tier_unlock schedule joins
-    the pool on its scheduled round; a difficulty that lists no tiers (easy) stays on Tier 0."""
+    the pool on its scheduled round; a difficulty that lists no tiers (easy) stays on Tier 0.
+    """
     pools = {0: tier0, 1: tier1, 2: tier2}
     items = pools[0][:]
     for tier, unlock_round in tier_unlock.items():
@@ -115,7 +116,14 @@ def unlocked(tier0, tier1, tier2, round_no, tier_unlock):
 
 def unlocked_tier(round_no, tier_unlock):
     """Highest content tier in play this round for the given tier_unlock schedule."""
-    return max([0] + [tier for tier, unlock_round in tier_unlock.items() if round_no >= unlock_round])
+    return max(
+        [0]
+        + [
+            tier
+            for tier, unlock_round in tier_unlock.items()
+            if round_no >= unlock_round
+        ]
+    )
 
 
 # Each phase that deals a hand of market cards (the buying phase and the selling/Trade
@@ -127,7 +135,9 @@ PHASE_OPTIONS_PER_TIER = 3
 
 
 def phase_option_count(round_no, tier_unlock):
-    return PHASE_OPTIONS_BASE + PHASE_OPTIONS_PER_TIER * unlocked_tier(round_no, tier_unlock)
+    return PHASE_OPTIONS_BASE + PHASE_OPTIONS_PER_TIER * unlocked_tier(
+        round_no, tier_unlock
+    )
 
 
 # Pirate raids now bite a fraction of the captain's current gold rather than a flat toll,
@@ -172,9 +182,28 @@ BROKER_CORRUPTION_RISK = 0.20
 # round number, and every rung's cadence lives in one place with its other pacing dials.
 # Templates are ordered small -> large.
 EMPEROR_MANDATE_TEMPLATES = [
-    {"port": "泉州港", "reward": 135, "resources": [{"type": "丝绸", "required": 4}, {"type": "茶叶", "required": 3}]},
-    {"port": "扬州港", "reward": 260, "resources": [{"type": "绫罗绸缎", "required": 2}, {"type": "香囊", "required": 1}]},
-    {"port": "杭州港", "reward": 420, "resources": [{"type": "布衣", "required": 2}, {"type": "绫罗绸缎", "required": 2}, {"type": "香囊", "required": 2}]},
+    {
+        "port": "泉州港",
+        "reward": 135,
+        "resources": [{"type": "丝绸", "required": 4}, {"type": "茶叶", "required": 3}],
+    },
+    {
+        "port": "扬州港",
+        "reward": 260,
+        "resources": [
+            {"type": "绫罗绸缎", "required": 2},
+            {"type": "香囊", "required": 1},
+        ],
+    },
+    {
+        "port": "杭州港",
+        "reward": 420,
+        "resources": [
+            {"type": "布衣", "required": 2},
+            {"type": "绫罗绸缎", "required": 2},
+            {"type": "香囊", "required": 2},
+        ],
+    },
 ]
 
 
@@ -305,11 +334,23 @@ RECIPES = {
     "麻衣": {"materials": {"麻布": 2}, "value": 15, "worker_type": "weaver"},
     "布衣": {"materials": {"麻布": 2, "丝绸": 1}, "value": 35, "worker_type": "weaver"},
     "绫罗绸缎": {"materials": {"丝绸": 3}, "value": 60, "worker_type": "master"},
-    "香囊": {"materials": {"丝绸": 1, "茶叶": 2}, "value": 80, "worker_type": "sachet_maker"},
+    "香囊": {
+        "materials": {"丝绸": 1, "茶叶": 2},
+        "value": 80,
+        "worker_type": "sachet_maker",
+    },
     "紫铜镜": {"materials": {"铜矿": 3}, "value": 45, "worker_type": "coppersmith"},
     "青瓷器": {"materials": {"瓷土": 3}, "value": 65, "worker_type": "potter"},
-    "蕃香脂": {"materials": {"香料": 2, "丝绸": 1}, "value": 85, "worker_type": "perfumer"},
-    "珠链": {"materials": {"珍珠": 2, "丝绸": 1}, "value": 105, "worker_type": "jeweler"}
+    "蕃香脂": {
+        "materials": {"香料": 2, "丝绸": 1},
+        "value": 85,
+        "worker_type": "perfumer",
+    },
+    "珠链": {
+        "materials": {"珍珠": 2, "丝绸": 1},
+        "value": 105,
+        "worker_type": "jeweler",
+    },
 }
 
 COMMODITIES = {
@@ -319,18 +360,38 @@ COMMODITIES = {
     "瓷土": {"ports": ["泉州港", "福州港"], "basePrice": (8, 12)},
     "铜矿": {"ports": ["广州港", "高丽港"], "basePrice": (10, 15)},
     "香料": {"ports": ["三佛齐港", "大食港"], "basePrice": (14, 20)},
-    "珍珠": {"ports": ["广州港", "三佛齐港"], "basePrice": (16, 24)}
+    "珍珠": {"ports": ["广州港", "三佛齐港"], "basePrice": (16, 24)},
 }
 
 PRODUCT_PRICES = {
-    "麻衣": (30, 42), "布衣": (50, 65),
-    "绫罗绸缎": (70, 90), "香囊": (95, 120),
-    "紫铜镜": (55, 72), "青瓷器": (78, 100),
-    "蕃香脂": (100, 130), "珠链": (125, 160)
+    "麻衣": (30, 42),
+    "布衣": (50, 65),
+    "绫罗绸缎": (70, 90),
+    "香囊": (95, 120),
+    "紫铜镜": (55, 72),
+    "青瓷器": (78, 100),
+    "蕃香脂": (100, 130),
+    "珠链": (125, 160),
 }
 
-RESOURCE_PROBS = {"麻布": 0.30, "丝绸": 0.26, "茶叶": 0.18, "瓷土": 0.14, "铜矿": 0.12, "香料": 0.08, "珍珠": 0.06}
-WAGES = {"weaver": 8, "master": 12, "sachet_maker": 20, "coppersmith": 12, "potter": 14, "perfumer": 18, "jeweler": 24}
+RESOURCE_PROBS = {
+    "麻布": 0.30,
+    "丝绸": 0.26,
+    "茶叶": 0.18,
+    "瓷土": 0.14,
+    "铜矿": 0.12,
+    "香料": 0.08,
+    "珍珠": 0.06,
+}
+WAGES = {
+    "weaver": 8,
+    "master": 12,
+    "sachet_maker": 20,
+    "coppersmith": 12,
+    "potter": 14,
+    "perfumer": 18,
+    "jeweler": 24,
+}
 
 # Worker-type storage: each worker type maps to a worker-list attribute name on PlayerGame
 WORKER_TYPES_BACKEND = [
@@ -348,51 +409,209 @@ WORKER_IDS_TIER1 = ["coppersmith", "potter"]
 WORKER_IDS_TIER2 = ["perfumer", "jeweler"]
 
 BOONS_TIER0 = [
-    {"id": "silk_wind", "name": "丝路顺风", "icon": "🌬️", "desc": "本回合丝绸及成品运费减半。", "modifiers": {"transport_silk_discount": 0.5}},
-    {"id": "favorable_tides", "name": "顺风顺水", "icon": "🌊", "desc": "本回合基础运费减4金币。", "modifiers": {"transport_flat_discount": 4}},
-    {"id": "merchant_charm", "name": "商贾魅力", "icon": "✨", "desc": "本回合采购85折优惠。", "modifiers": {"purchase_discount": 0.15}},
-    {"id": "artisan_inspiration", "name": "匠人灵感", "icon": "🔨", "desc": "本回合所有工人多生产1件。", "modifiers": {"worker_bonus_production": 1}},
-    {"id": "emergency_loan", "name": "紧急钱庄", "icon": "💰", "desc": "立即获得40金币。", "modifiers": {"instant_gold": 40}},
-    {"id": "tax_shelter", "name": "免税令", "icon": "📜", "desc": "本回合所得税率降至5%。", "modifiers": {"income_tax_override": 0.05}},
-    {"id": "hemp_monopoly", "name": "麻布专营", "icon": "🧶", "desc": "麻布采购单价降低2金币。", "modifiers": {"hemp_price_reduction": 2}},
-    {"id": "master_apprentice", "name": "学徒传承", "icon": "🎓", "desc": "本回合雇佣工资减半。", "modifiers": {"hire_discount": 0.5}}
+    {
+        "id": "silk_wind",
+        "name": "丝路顺风",
+        "icon": "🌬️",
+        "desc": "本回合丝绸及成品运费减半。",
+        "modifiers": {"transport_silk_discount": 0.5},
+    },
+    {
+        "id": "favorable_tides",
+        "name": "顺风顺水",
+        "icon": "🌊",
+        "desc": "本回合基础运费减4金币。",
+        "modifiers": {"transport_flat_discount": 4},
+    },
+    {
+        "id": "merchant_charm",
+        "name": "商贾魅力",
+        "icon": "✨",
+        "desc": "本回合采购85折优惠。",
+        "modifiers": {"purchase_discount": 0.15},
+    },
+    {
+        "id": "artisan_inspiration",
+        "name": "匠人灵感",
+        "icon": "🔨",
+        "desc": "本回合所有工人多生产1件。",
+        "modifiers": {"worker_bonus_production": 1},
+    },
+    {
+        "id": "emergency_loan",
+        "name": "紧急钱庄",
+        "icon": "💰",
+        "desc": "立即获得40金币。",
+        "modifiers": {"instant_gold": 40},
+    },
+    {
+        "id": "tax_shelter",
+        "name": "免税令",
+        "icon": "📜",
+        "desc": "本回合所得税率降至5%。",
+        "modifiers": {"income_tax_override": 0.05},
+    },
+    {
+        "id": "hemp_monopoly",
+        "name": "麻布专营",
+        "icon": "🧶",
+        "desc": "麻布采购单价降低2金币。",
+        "modifiers": {"hemp_price_reduction": 2},
+    },
+    {
+        "id": "master_apprentice",
+        "name": "学徒传承",
+        "icon": "🎓",
+        "desc": "本回合雇佣工资减半。",
+        "modifiers": {"hire_discount": 0.5},
+    },
 ]
 
 BOONS_TIER1 = [
-    {"id": "farsight", "name": "千里眼", "icon": "🔮", "desc": "本回合免费获得1条牙行密语线索。", "modifiers": {"free_intel": 1}},
-    {"id": "porcelain_bronze_guild", "name": "陶铜联号", "icon": "🏮", "desc": "本回合「青瓷器」与「紫铜镜」订单报酬提高15%。", "modifiers": {"product_order_bonus": {"products": ["青瓷器", "紫铜镜"], "pct": 0.15}}},
-    {"id": "frontier_tariff_relief", "name": "拓商减负", "icon": "🧾", "desc": "本回合交付成品订单的增值税减半。", "modifiers": {"vat_discount": 0.5}},
+    {
+        "id": "farsight",
+        "name": "千里眼",
+        "icon": "🔮",
+        "desc": "本回合免费获得1条牙行密语线索。",
+        "modifiers": {"free_intel": 1},
+    },
+    {
+        "id": "porcelain_bronze_guild",
+        "name": "陶铜联号",
+        "icon": "🏮",
+        "desc": "本回合「青瓷器」与「紫铜镜」订单报酬提高15%。",
+        "modifiers": {
+            "product_order_bonus": {"products": ["青瓷器", "紫铜镜"], "pct": 0.15}
+        },
+    },
+    {
+        "id": "frontier_tariff_relief",
+        "name": "拓商减负",
+        "icon": "🧾",
+        "desc": "本回合交付成品订单的增值税减半。",
+        "modifiers": {"vat_discount": 0.5},
+    },
 ]
 
 BOONS_TIER2 = [
-    {"id": "exotic_treasures", "name": "蕃国奇珍", "icon": "💎", "desc": "本回合「蕃香脂」与「珠链」订单报酬提高15%。", "modifiers": {"product_order_bonus": {"products": ["蕃香脂", "珠链"], "pct": 0.15}}},
-    {"id": "deep_sea_escort_pact", "name": "远洋护航", "icon": "🛡️", "desc": "本回合雇佣护航费用减半，海盗风险减半。", "modifiers": {"escort_discount": 0.5, "pirate_risk_discount": 0.5}},
-    {"id": "merchants_converge", "name": "万商云集", "icon": "🛍️", "desc": "本回合贸易阶段额外出现1张订单。", "modifiers": {"extra_order": 1}},
+    {
+        "id": "exotic_treasures",
+        "name": "蕃国奇珍",
+        "icon": "💎",
+        "desc": "本回合「蕃香脂」与「珠链」订单报酬提高15%。",
+        "modifiers": {
+            "product_order_bonus": {"products": ["蕃香脂", "珠链"], "pct": 0.15}
+        },
+    },
+    {
+        "id": "deep_sea_escort_pact",
+        "name": "远洋护航",
+        "icon": "🛡️",
+        "desc": "本回合雇佣护航费用减半，海盗风险减半。",
+        "modifiers": {"escort_discount": 0.5, "pirate_risk_discount": 0.5},
+    },
+    {
+        "id": "merchants_converge",
+        "name": "万商云集",
+        "icon": "🛍️",
+        "desc": "本回合贸易阶段额外出现1张订单。",
+        "modifiers": {"extra_order": 1},
+    },
 ]
 
 BOONS = BOONS_TIER0 + BOONS_TIER1 + BOONS_TIER2
 
 MODULES_TIER0 = [
-    {"id": "smugglers_hold", "name": "走私暗舱", "icon": "🏴‍☠️", "desc": "采购成本−15%。所得税+20%。"},
-    {"id": "bulk_hauler", "name": "散货索具", "icon": "🏗️", "desc": "每件货物运费−1。船坞升级费用+15金币。"},
-    {"id": "artisans_workshop", "name": "工匠工坊", "icon": "🛠️", "desc": "工人产量+1。工资+20%。"},
-    {"id": "tax_evasion", "name": "避税账本", "icon": "📒", "desc": "所得税按增值税后利润计。15%概率在订单完成时罚款20金币(稽查)。"},
-    {"id": "silk_monopoly", "name": "丝路垄断", "icon": "🐍", "desc": "丝绸运费为0。丝绸产品订单收入+20%。"},
-    {"id": "brokers_network", "name": "牙行网络", "icon": "🕵️", "desc": "每次花费2金币。每次购买密语显示2条线索。"},
-    {"id": "salvage_crane", "name": "打捞起重机", "icon": "♻️", "desc": "30%概率在订单完成时退还运费。"},
-    {"id": "overdrive_engine", "name": "超载引擎", "icon": "⚡", "desc": "运费−5金币。维护费+10金币。"}
+    {
+        "id": "smugglers_hold",
+        "name": "走私暗舱",
+        "icon": "🏴‍☠️",
+        "desc": "采购成本−15%。所得税+20%。",
+    },
+    {
+        "id": "bulk_hauler",
+        "name": "散货索具",
+        "icon": "🏗️",
+        "desc": "每件货物运费−1。船坞升级费用+15金币。",
+    },
+    {
+        "id": "artisans_workshop",
+        "name": "工匠工坊",
+        "icon": "🛠️",
+        "desc": "工人产量+1。工资+20%。",
+    },
+    {
+        "id": "tax_evasion",
+        "name": "避税账本",
+        "icon": "📒",
+        "desc": "所得税按增值税后利润计。15%概率在订单完成时罚款20金币(稽查)。",
+    },
+    {
+        "id": "silk_monopoly",
+        "name": "丝路垄断",
+        "icon": "🐍",
+        "desc": "丝绸运费为0。丝绸产品订单收入+20%。",
+    },
+    {
+        "id": "brokers_network",
+        "name": "牙行网络",
+        "icon": "🕵️",
+        "desc": "每次花费2金币。每次购买密语显示2条线索。",
+    },
+    {
+        "id": "salvage_crane",
+        "name": "打捞起重机",
+        "icon": "♻️",
+        "desc": "30%概率在订单完成时退还运费。",
+    },
+    {
+        "id": "overdrive_engine",
+        "name": "超载引擎",
+        "icon": "⚡",
+        "desc": "运费−5金币。维护费+10金币。",
+    },
 ]
 
 MODULES_TIER1 = [
-    {"id": "bureau_token", "name": "市舶司令牌", "icon": "🎫", "desc": "新航线货品（瓷土、铜矿及其成品）订单收入+10%。"},
-    {"id": "kiln_cellar", "name": "陶土窖", "icon": "🔥", "desc": "瓷土与铜矿采购单价各降低2金币。"},
-    {"id": "ocean_relay", "name": "远洋通译", "icon": "📡", "desc": "牙行密语每次额外显示1条线索（不增加花费）。"},
+    {
+        "id": "bureau_token",
+        "name": "市舶司令牌",
+        "icon": "🎫",
+        "desc": "新航线货品（瓷土、铜矿及其成品）订单收入+10%。",
+    },
+    {
+        "id": "kiln_cellar",
+        "name": "陶土窖",
+        "icon": "🔥",
+        "desc": "瓷土与铜矿采购单价各降低2金币。",
+    },
+    {
+        "id": "ocean_relay",
+        "name": "远洋通译",
+        "icon": "📡",
+        "desc": "牙行密语每次额外显示1条线索（不增加花费）。",
+    },
 ]
 
 MODULES_TIER2 = [
-    {"id": "foreign_quarter_pass", "name": "蕃坊行会证", "icon": "🪪", "desc": "香料与珍珠采购单价各降低3金币。"},
-    {"id": "persian_dome_compass", "name": "波斯穹顶罗盘", "icon": "🧿", "desc": "海盗风险降低30%。"},
-    {"id": "fleet_of_treasures", "name": "万宝商船", "icon": "⛵", "desc": "「蕃香脂」与「珠链」每件运费降低3金币。"},
+    {
+        "id": "foreign_quarter_pass",
+        "name": "蕃坊行会证",
+        "icon": "🪪",
+        "desc": "香料与珍珠采购单价各降低3金币。",
+    },
+    {
+        "id": "persian_dome_compass",
+        "name": "波斯穹顶罗盘",
+        "icon": "🧿",
+        "desc": "海盗风险降低30%。",
+    },
+    {
+        "id": "fleet_of_treasures",
+        "name": "万宝商船",
+        "icon": "⛵",
+        "desc": "「蕃香脂」与「珠链」每件运费降低3金币。",
+    },
 ]
 
 MODULES = MODULES_TIER0 + MODULES_TIER1 + MODULES_TIER2
@@ -418,15 +637,19 @@ def charter_event(round_no, tier_unlock):
             return CHARTER_EVENTS.get(tier)
     return None
 
-INVITE_COOLDOWN = 60          # invite cooldown / expiry (seconds)
-CHAT_HISTORY_LIMIT = 200      # number of chat messages kept per session
+
+INVITE_COOLDOWN = 60  # invite cooldown / expiry (seconds)
+CHAT_HISTORY_LIMIT = 200  # number of chat messages kept per session
+
 
 # -------------------- Utility functions --------------------
 def rand(a, b):
     return random.randint(a, b)
 
+
 def choice(arr):
     return random.choice(arr)
+
 
 def weighted_choice(items):
     total = sum(w for _, w in items)
@@ -436,6 +659,7 @@ def weighted_choice(items):
         if r <= 0:
             return item
     return items[0][0]
+
 
 # -------------------- PlayerGame class --------------------
 class PlayerGame:
@@ -464,7 +688,7 @@ class PlayerGame:
         self.shipUpgradeCost = [15, 25, 40]
         self.shipUpgradePenalty = 0
         self.maintenancePenalty = 0
-        self.phase = 0          # 0:welcome, 5:boon, 1:purchase, 'trade':barter, 'worker_mgmt':artisans, 2:trade, 3:upkeep, 4:shipyard
+        self.phase = 0  # 0:welcome, 5:boon, 1:purchase, 'trade':barter, 'worker_mgmt':artisans, 2:trade, 3:upkeep, 4:shipyard
         self.resourceCards = []
         self.customerCards = []
         self.purchasedCards = set()
@@ -482,10 +706,10 @@ class PlayerGame:
         self.intelCost = 5
         self.boonChoices = []
         self.equippedModules = []
-        self.draftChoices = []          # this round's module batch; persists across cancel
-        self.draftOpen = False          # is the draft panel currently shown?
-        self.draftRolled = False        # has the batch been rolled this round?
-        self.draftRerolled = False      # has the once-per-round "Change Batch" been used?
+        self.draftChoices = []  # this round's module batch; persists across cancel
+        self.draftOpen = False  # is the draft panel currently shown?
+        self.draftRolled = False  # has the batch been rolled this round?
+        self.draftRerolled = False  # has the once-per-round "Change Batch" been used?
         self.lastRoundSummary = None
         self.lastLogs = []
         self.logSeq = 0  # monotonic count of all log lines this game; lets the client toast only new ones
@@ -500,16 +724,36 @@ class PlayerGame:
 
     # ---------- Silk Road Charter: content unlocks ----------
     def unlocked_resources(self):
-        return unlocked(RESOURCES_TIER0, RESOURCES_TIER1, RESOURCES_TIER2, self.currentRound, self.tier_unlock)
+        return unlocked(
+            RESOURCES_TIER0,
+            RESOURCES_TIER1,
+            RESOURCES_TIER2,
+            self.currentRound,
+            self.tier_unlock,
+        )
 
     def unlocked_products(self):
-        return unlocked(PRODUCTS_TIER0, PRODUCTS_TIER1, PRODUCTS_TIER2, self.currentRound, self.tier_unlock)
+        return unlocked(
+            PRODUCTS_TIER0,
+            PRODUCTS_TIER1,
+            PRODUCTS_TIER2,
+            self.currentRound,
+            self.tier_unlock,
+        )
 
     def unlocked_ports(self):
-        return unlocked(PORTS_TIER0, PORTS_TIER1, PORTS_TIER2, self.currentRound, self.tier_unlock)
+        return unlocked(
+            PORTS_TIER0, PORTS_TIER1, PORTS_TIER2, self.currentRound, self.tier_unlock
+        )
 
     def unlocked_worker_types(self):
-        return unlocked(WORKER_IDS_TIER0, WORKER_IDS_TIER1, WORKER_IDS_TIER2, self.currentRound, self.tier_unlock)
+        return unlocked(
+            WORKER_IDS_TIER0,
+            WORKER_IDS_TIER1,
+            WORKER_IDS_TIER2,
+            self.currentRound,
+            self.tier_unlock,
+        )
 
     # ---------- Cost calculations ----------
     def calc_transport_cost(self, total_items, has_silk=False, resources=None):
@@ -520,11 +764,16 @@ class PlayerGame:
         cost = max(5, base - discount)
         if has_silk and self.modifierFlags.get("transport_silk_discount"):
             cost = max(5, int(cost * self.modifierFlags["transport_silk_discount"]))
-        if self.has_module("bulk_hauler"): cost = max(0, cost - total_items)
-        if self.has_module("overdrive_engine"): cost = max(0, cost - 5)
-        if self.has_module("silk_monopoly") and has_silk: cost = 0
+        if self.has_module("bulk_hauler"):
+            cost = max(0, cost - total_items)
+        if self.has_module("overdrive_engine"):
+            cost = max(0, cost - 5)
+        if self.has_module("silk_monopoly") and has_silk:
+            cost = 0
         if self.has_module("fleet_of_treasures") and resources:
-            treasure_qty = sum(r["required"] for r in resources if r["type"] in ("蕃香脂", "珠链"))
+            treasure_qty = sum(
+                r["required"] for r in resources if r["type"] in ("蕃香脂", "珠链")
+            )
             cost = max(0, cost - 3 * treasure_qty)
         return max(0, cost)
 
@@ -538,17 +787,22 @@ class PlayerGame:
         taxable = selling_price - mat_cost - worker_cost
         if taxable > 0:
             vat = int(taxable * 0.05)
-            if self.has_module("tax_evasion"): vat = int(vat * 0.5)
-            if self.modifierFlags.get("vat_discount"): vat = int(vat * (1 - self.modifierFlags["vat_discount"]))
+            if self.has_module("tax_evasion"):
+                vat = int(vat * 0.5)
+            if self.modifierFlags.get("vat_discount"):
+                vat = int(vat * (1 - self.modifierFlags["vat_discount"]))
             return vat
         return 0
 
     def calc_income_tax(self, pre_tax):
-        if pre_tax <= 0: return 0
+        if pre_tax <= 0:
+            return 0
         rate = self.modifierFlags.get("income_tax_override", 0.1)
         tax = int(pre_tax * rate)
-        if self.has_module("smugglers_hold"): tax = int(tax * 1.2)
-        if self.has_module("tax_evasion"): tax = int(tax * 0.5)
+        if self.has_module("smugglers_hold"):
+            tax = int(tax * 1.2)
+        if self.has_module("tax_evasion"):
+            tax = int(tax * 0.5)
         return tax
 
     def has_module(self, mid):
@@ -557,7 +811,8 @@ class PlayerGame:
     def get_resource_unit_discount(self, rtype):
         """Flat per-unit gold discount on one resource/product type from the active boon
         and equipped modules. Shared by get_card_final_cost() (the real charge) and
-        resource_cards_for_client() (the displayed price), so the two can never drift apart."""
+        resource_cards_for_client() (the displayed price), so the two can never drift apart.
+        """
         discount = 0
         if rtype == "麻布" and self.modifierFlags.get("hemp_price_reduction"):
             discount += self.modifierFlags["hemp_price_reduction"]
@@ -580,14 +835,24 @@ class PlayerGame:
     def resource_cards_for_client(self):
         """Resource cards as the client should see them: each line and the card total carry
         the real, post-discount price (boons + modules already applied) right alongside the
-        sticker price, instead of the client re-deriving discounts from raw modifier flags."""
+        sticker price, instead of the client re-deriving discounts from raw modifier flags.
+        """
         cards = []
         for card in self.resourceCards:
             resources = [
-                dict(r, discountedPrice=max(0, r["price"] - self.get_resource_unit_discount(r["type"])))
+                dict(
+                    r,
+                    discountedPrice=max(
+                        0, r["price"] - self.get_resource_unit_discount(r["type"])
+                    ),
+                )
                 for r in card["resources"]
             ]
-            cards.append(dict(card, resources=resources, finalCost=self.get_card_final_cost(card)))
+            cards.append(
+                dict(
+                    card, resources=resources, finalCost=self.get_card_final_cost(card)
+                )
+            )
         return cards
 
     def effective_wage(self, wtype):
@@ -660,7 +925,8 @@ class PlayerGame:
             resources.append({"type": filter, "required": req})
         else:
             for _ in range(num):
-                if not available: break
+                if not available:
+                    break
                 r = choice(available)
                 available.remove(r)
                 req = rand(2, 5)
@@ -668,7 +934,13 @@ class PlayerGame:
                 resources.append({"type": r, "required": req})
         base = sum(r["required"] * 5 for r in resources)
         reward = self.env_reward(port, base + rand(10, 25))
-        return {"demandPort": port, "resources": resources, "reward": reward, "totalItems": total, "isProductOrder": False}
+        return {
+            "demandPort": port,
+            "resources": resources,
+            "reward": reward,
+            "totalItems": total,
+            "isProductOrder": False,
+        }
 
     def gen_product_order(self, filter=None):
         unlocked_prod = self.unlocked_products()
@@ -676,7 +948,13 @@ class PlayerGame:
         req = rand(1, 3)
         port = choice(self.unlocked_ports())
         base_price = rand(*PRODUCT_PRICES[product])
-        return {"demandPort": port, "resources": [{"type": product, "required": req}], "reward": self.env_reward(port, base_price * req), "totalItems": req, "isProductOrder": True}
+        return {
+            "demandPort": port,
+            "resources": [{"type": product, "required": req}],
+            "reward": self.env_reward(port, base_price * req),
+            "totalItems": req,
+            "isProductOrder": True,
+        }
 
     def gen_mixed_order(self):
         # Each purchased clue resolves into exactly one order, with matching good and port
@@ -690,7 +968,9 @@ class PlayerGame:
             order["demandPort"] = intel["port"]
             order["fromIntel"] = True
             return order
-        return self.gen_raw_order() if random.random() < 0.5 else self.gen_product_order()
+        return (
+            self.gen_raw_order() if random.random() < 0.5 else self.gen_product_order()
+        )
 
     def gen_resource_card(self):
         if random.random() < 0.3:
@@ -702,7 +982,8 @@ class PlayerGame:
         probs = [RESOURCE_PROBS[r] for r in available]
         port = choice(self.unlocked_ports())
         for _ in range(num):
-            if not available: break
+            if not available:
+                break
             chosen = weighted_choice(list(zip(available, probs)))
             idx = available.index(chosen)
             available.pop(idx)
@@ -714,7 +995,12 @@ class PlayerGame:
             price = self.env_purchase_price(chosen, price)
             resources.append({"type": chosen, "quantity": qty, "price": price})
         total = sum(r["quantity"] * r["price"] for r in resources)
-        return {"port": port, "resources": resources, "totalCost": total, "isProductCard": False}
+        return {
+            "port": port,
+            "resources": resources,
+            "totalCost": total,
+            "isProductCard": False,
+        }
 
     def gen_product_purchase_card(self):
         product = choice(self.unlocked_products())
@@ -729,16 +1015,23 @@ class PlayerGame:
             details.append(f"{m}×{a}")
         markup = 1.4 + random.random() * 0.4
         unit_price = int(mat_cost * markup)
-        unit_price = max(PRODUCT_PRICES[product][0], min(unit_price, PRODUCT_PRICES[product][1]))
+        unit_price = max(
+            PRODUCT_PRICES[product][0], min(unit_price, PRODUCT_PRICES[product][1])
+        )
         unit_price = self.env_purchase_price(product, unit_price)
         return {
             "port": port,
-            "resources": [{
-                "type": product, "quantity": qty, "price": unit_price,
-                "materialCost": mat_cost, "materialDetails": " + ".join(details)
-            }],
+            "resources": [
+                {
+                    "type": product,
+                    "quantity": qty,
+                    "price": unit_price,
+                    "materialCost": mat_cost,
+                    "materialDetails": " + ".join(details),
+                }
+            ],
             "totalCost": unit_price * qty,
-            "isProductCard": True
+            "isProductCard": True,
         }
 
     # ---------- Core actions ----------
@@ -771,15 +1064,22 @@ class PlayerGame:
             if self.inventory.get(r["type"], 0) < r["required"]:
                 self.log(f"❌ 库存不足：{r['type']}×{r['required']}")
                 return False
-        has_silk = any(r["type"] in ["丝绸", "绫罗绸缎", "香囊", "布衣"] for r in order["resources"])
-        transport = self.calc_transport_cost(order["totalItems"], has_silk, order["resources"])
+        has_silk = any(
+            r["type"] in ["丝绸", "绫罗绸缎", "香囊", "布衣"]
+            for r in order["resources"]
+        )
+        transport = self.calc_transport_cost(
+            order["totalItems"], has_silk, order["resources"]
+        )
         for r in order["resources"]:
             self.inventory[r["type"]] -= r["required"]
         reward = order["reward"]
         total_vat = 0
         if order.get("isProductOrder"):
             product = order["resources"][0]["type"]
-            unit_vat = self.calc_vat(product, reward // order["resources"][0]["required"])
+            unit_vat = self.calc_vat(
+                product, reward // order["resources"][0]["required"]
+            )
             total_vat = unit_vat * order["resources"][0]["required"]
             reward -= total_vat
             self.vatPaid += total_vat
@@ -791,7 +1091,9 @@ class PlayerGame:
         bonus = self.modifierFlags.get("product_order_bonus")
         if bonus and order["resources"][0]["type"] in bonus["products"]:
             reward = int(reward * (1 + bonus["pct"]))
-        if self.has_module("bureau_token") and order["resources"][0]["type"] in (PRODUCTS_TIER1 + PRODUCTS_TIER2):
+        if self.has_module("bureau_token") and order["resources"][0]["type"] in (
+            PRODUCTS_TIER1 + PRODUCTS_TIER2
+        ):
             reward = int(reward * 1.1)
         if self.has_module("salvage_crane") and random.random() < 0.3:
             self.money += transport
@@ -854,9 +1156,12 @@ class PlayerGame:
             if swap_idx < 0 or swap_idx >= len(self.equippedModules):
                 return False
             old = self.equippedModules[swap_idx]
-            if old["id"] == "bulk_hauler": self.shipUpgradePenalty -= 15
-            if old["id"] == "overdrive_engine": self.maintenancePenalty -= 10
-            if old["id"] == "brokers_network": self.intelCost = 5
+            if old["id"] == "bulk_hauler":
+                self.shipUpgradePenalty -= 15
+            if old["id"] == "overdrive_engine":
+                self.maintenancePenalty -= 10
+            if old["id"] == "brokers_network":
+                self.intelCost = 5
             self.equippedModules[swap_idx] = mod
             self.log(f"🔄 将 {old['name']} 替换为 {mod['name']}！")
         else:
@@ -866,9 +1171,12 @@ class PlayerGame:
             else:
                 self.log("❌ 没有空置槽位，必须替换现有模块")
                 return False
-        if mod["id"] == "bulk_hauler": self.shipUpgradePenalty += 15
-        if mod["id"] == "overdrive_engine": self.maintenancePenalty += 10
-        if mod["id"] == "brokers_network": self.intelCost = 2
+        if mod["id"] == "bulk_hauler":
+            self.shipUpgradePenalty += 15
+        if mod["id"] == "overdrive_engine":
+            self.maintenancePenalty += 10
+        if mod["id"] == "brokers_network":
+            self.intelCost = 2
         # The installed module leaves this round's batch so it can't be taken twice; close the panel.
         self.draftChoices = [m for m in self.draftChoices if m["id"] != mod["id"]]
         self.draftOpen = False
@@ -911,7 +1219,9 @@ class PlayerGame:
             return
         if random.random() < BROKER_CORRUPTION_CHANCE:
             self.broker_pirate_risk += BROKER_CORRUPTION_RISK
-            self.log(f"🕵️ 这名牙行形迹可疑，疑似走漏了你的行踪，本程海盗风险上升{round(BROKER_CORRUPTION_RISK * 100)}%！")
+            self.log(
+                f"🕵️ 这名牙行形迹可疑，疑似走漏了你的行踪，本程海盗风险上升{round(BROKER_CORRUPTION_RISK * 100)}%！"
+            )
 
     def hire_worker(self, wtype):
         if wtype not in self.unlocked_worker_types():
@@ -922,7 +1232,9 @@ class PlayerGame:
             self.log("❌ 资金不足，无法雇佣")
             return False
         lst = getattr(self, WORKER_ATTR[wtype])
-        lst.append({"task": None, "progress": 0, "producedCount": 0, "isSkilled": False})
+        lst.append(
+            {"task": None, "progress": 0, "producedCount": 0, "isSkilled": False}
+        )
         self.log(f"👥 雇佣了新工匠（{wtype}）")
         return True
 
@@ -1035,7 +1347,7 @@ class PlayerGame:
             return 0.0
         risk = self.pirate_threat()
         if self.modifierFlags.get("pirate_risk_discount"):
-            risk *= (1 - self.modifierFlags["pirate_risk_discount"])
+            risk *= 1 - self.modifierFlags["pirate_risk_discount"]
         if self.has_module("persian_dome_compass"):
             risk *= 0.7
         return max(0.0, min(1.0, risk))
@@ -1055,7 +1367,12 @@ class PlayerGame:
             self.log(f"🏴‍☠️ 海盗袭扰，损失{loss}金币（财富的{round(pct * 100)}%）")
 
     def end_round(self):
-        pre_tax = self.roundRevenue - self.roundCosts - self.maintenanceCosts - self.workerWages
+        pre_tax = (
+            self.roundRevenue
+            - self.roundCosts
+            - self.maintenanceCosts
+            - self.workerWages
+        )
         tax = self.calc_income_tax(pre_tax)
         paid_tax = 0
         if tax > 0 and self.money >= tax:
@@ -1137,7 +1454,9 @@ class PlayerGame:
             "modifierFlags": self.modifierFlags,
             "monsoon_state": self.monsoon_state,
             "pirate_immunity": self.pirate_immunity,
-            "pirateLossPct": pirate_loss_pct(self.difficulty, self.currentRound, self.maxRounds),
+            "pirateLossPct": pirate_loss_pct(
+                self.difficulty, self.currentRound, self.maxRounds
+            ),
             "pirateRiskEffective": self.effective_pirate_risk(),
             "brokerCorruption": difficulty_broker_corruption(self.difficulty),
             "escortCost": self.escort_cost(),
@@ -1158,14 +1477,17 @@ class PlayerGame:
             "shipUpgradePenalty": self.shipUpgradePenalty,
             "logs": self.lastLogs[-10:],
             "logSeq": self.logSeq,
-            "slot": self.slot          # identity slot
+            "slot": self.slot,  # identity slot
         }
+
 
 # -------------------- Account storage --------------------
 USERS_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "users.json")
 
+
 class UserStore:
     """Username + password account store. Each user has its own record, salted and hashed with PBKDF2."""
+
     def __init__(self, path):
         self.path = path
         self.users = {}
@@ -1187,7 +1509,9 @@ class UserStore:
 
     @staticmethod
     def _hash(password, salt):
-        return hashlib.pbkdf2_hmac("sha256", password.encode("utf-8"), bytes.fromhex(salt), 100_000).hex()
+        return hashlib.pbkdf2_hmac(
+            "sha256", password.encode("utf-8"), bytes.fromhex(salt), 100_000
+        ).hex()
 
     def register(self, username, password):
         if not isinstance(username, str) or not (3 <= len(username) <= 20):
@@ -1200,7 +1524,7 @@ class UserStore:
         self.users[username] = {
             "salt": salt,
             "hash": self._hash(password, salt),
-            "created_at": time.strftime("%Y-%m-%d %H:%M:%S")
+            "created_at": time.strftime("%Y-%m-%d %H:%M:%S"),
         }
         self.save()
         return True, "注册成功，请登录"
@@ -1213,6 +1537,7 @@ class UserStore:
         if not hmac.compare_digest(self._hash(password, rec["salt"]), rec["hash"]):
             return False, "用户名或密码错误"
         return True, "登录成功"
+
 
 # -------------------- Shared game session --------------------
 # Barter is the one place clients hand us item lists that we then apply to inventories, so it
@@ -1233,7 +1558,12 @@ def sanitize_trade_items(items):
         t = it.get("type")
         q = it.get("quantity")
         # bool is a subclass of int, so exclude it explicitly; quantity must be a positive int.
-        if t in TRADEABLE_TYPES and isinstance(q, int) and not isinstance(q, bool) and q > 0:
+        if (
+            t in TRADEABLE_TYPES
+            and isinstance(q, int)
+            and not isinstance(q, bool)
+            and q > 0
+        ):
             clean.append({"type": t, "quantity": q})
     return clean
 
@@ -1241,7 +1571,9 @@ def sanitize_trade_items(items):
 class GameSession:
     """A game room of 2-5 players: every member stays in sync on the same round and phase.
     A session starts as an unstarted lobby (players may freely join/leave, see
-    create_room/join_room/leave_room below) and becomes a live game once start() runs."""
+    create_room/join_room/leave_room below) and becomes a live game once start() runs.
+    """
+
     def __init__(self, host, difficulty=DEFAULT_DIFFICULTY, max_players=2):
         self.host = host
         self.players = [host]
@@ -1257,9 +1589,13 @@ class GameSession:
         self.games = []
         self.trade_orders = []
         self.trade_id_counter = 0
-        self.trade_ready = []               # per-slot: whether each player has clicked ready during the barter phase
-        self.ready = set()                  # slots that have clicked "continue" in the current phase
-        self.end_votes = set()              # slots that have agreed to end the session and return to the lobby
+        self.trade_ready = (
+            []
+        )  # per-slot: whether each player has clicked ready during the barter phase
+        self.ready = set()  # slots that have clicked "continue" in the current phase
+        self.end_votes = (
+            set()
+        )  # slots that have agreed to end the session and return to the lobby
         self.chat_history = []
         self.monsoon_state = MONSOON_STATES[0].copy()
         self.monsoon_cycle_cache = {}
@@ -1311,7 +1647,9 @@ class GameSession:
             state = MONSOON_TIER0[0]
         else:
             if cycle not in self.monsoon_cycle_cache:
-                self.monsoon_cycle_cache[cycle] = random.choice(monsoon_pool(active_round, self.tier_unlock))
+                self.monsoon_cycle_cache[cycle] = random.choice(
+                    monsoon_pool(active_round, self.tier_unlock)
+                )
             state = self.monsoon_cycle_cache[cycle]
         self.monsoon_state = state.copy()
         for g in self.games:
@@ -1326,8 +1664,12 @@ class GameSession:
 
     def phase_ready_count(self):
         if self._active_phase() == "trade":
-            return sum(1 for i, g in enumerate(self.games) if self.trade_ready[i] or g.gameOver)
-        return sum(1 for i, g in enumerate(self.games) if (i in self.ready) or g.gameOver)
+            return sum(
+                1 for i, g in enumerate(self.games) if self.trade_ready[i] or g.gameOver
+            )
+        return sum(
+            1 for i, g in enumerate(self.games) if (i in self.ready) or g.gameOver
+        )
 
     def advance(self):
         """Once every player is ready, the whole room advances to the next phase together."""
@@ -1338,7 +1680,9 @@ class GameSession:
             # Each player independently draws 4 random Fortunes from the pool; draws are hidden from and different between players
             for g in self.games:
                 if not g.gameOver:
-                    g.boonChoices = random.sample(boon_pool(g.currentRound, g.tier_unlock), 4)
+                    g.boonChoices = random.sample(
+                        boon_pool(g.currentRound, g.tier_unlock), 4
+                    )
         elif phase == 5:
             self._set_phase(1)
             for g in self.games:
@@ -1351,7 +1695,9 @@ class GameSession:
                     c["id"] = i
                     g.resourceCards.append(c)
                 demand_pool = g.unlocked_resources() + g.unlocked_products()
-                g.phase2DemandTags = random.sample(demand_pool, min(option_count, len(demand_pool)))
+                g.phase2DemandTags = random.sample(
+                    demand_pool, min(option_count, len(demand_pool))
+                )
                 g.revealedIntel = []
                 free_intel = g.modifierFlags.get("free_intel", 0)
                 if free_intel:
@@ -1373,7 +1719,9 @@ class GameSession:
                     o["id"] = next_id
                     g.customerCards.append(o)
                     next_id += 1
-                order_count = phase_option_count(g.currentRound, g.tier_unlock) + g.modifierFlags.get("extra_order", 0)
+                order_count = phase_option_count(
+                    g.currentRound, g.tier_unlock
+                ) + g.modifierFlags.get("extra_order", 0)
                 for i in range(next_id, order_count):
                     o = g.gen_mixed_order()
                     o["id"] = i
@@ -1425,17 +1773,43 @@ class GameSession:
         return None
 
     # ---------- Barter trades ----------
-    def create_trade_order(self, seller_slot, sell_items, buy_items):
+    def sanitize_target_slot(self, seller_slot, target):
+        """Which captain an offer is addressed to, or None for the whole room.
+
+        Anything that is not a real other slot in this room falls back to None, so a crafted
+        targetSlot can only ever widen an offer's audience, never point it at someone who is
+        not in the session.
+        """
+        if isinstance(target, bool) or not isinstance(target, int):
+            return None
+        if target < 0 or target >= len(self.players):
+            return None
+        if target == seller_slot:
+            return None
+        return target
+
+    def can_act_on_order(self, order, slot):
+        """An open offer is fair game for anyone but its author; a directed one is strictly
+        between its author and its target. Checked on the server, not just hidden in the UI,
+        so a crafted action cannot poach someone else's private deal."""
+        if order.get("targetSlot") is None:
+            return True
+        return slot == order["targetSlot"] or slot == order["sellerSlot"]
+
+    def create_trade_order(self, seller_slot, sell_items, buy_items, target_slot=None):
         sell = sanitize_trade_items(sell_items)
         buy = sanitize_trade_items(buy_items)
         if not sell and not buy:
-            return None  # nothing well-formed to trade; ignore the malformed/empty request
+            return (
+                None  # nothing well-formed to trade; ignore the malformed/empty request
+            )
         self.trade_id_counter += 1
         order = {
             "id": f"trade_{self.trade_id_counter}",
             "sellerSlot": seller_slot,
             "sell": sell,
-            "buy": buy
+            "buy": buy,
+            "targetSlot": self.sanitize_target_slot(seller_slot, target_slot),
         }
         self.trade_orders.append(order)
         return order
@@ -1443,6 +1817,8 @@ class GameSession:
     def accept_trade(self, order_id, buyer_slot):
         order = next((o for o in self.trade_orders if o["id"] == order_id), None)
         if not order or order["sellerSlot"] == buyer_slot:
+            return False
+        if not self.can_act_on_order(order, buyer_slot):
             return False
         seller_game = self.games[order["sellerSlot"]]
         buyer_game = self.games[buyer_slot]
@@ -1484,10 +1860,13 @@ class GameSession:
         buyer_game.log("🤝 互市成功！")
         return True
 
-    def reject_trade(self, order_id):
+    def reject_trade(self, order_id, rejecter_slot):
+        """Same audience rule as accepting: a captain a directed offer was never addressed to
+        cannot make it disappear."""
         order = next((o for o in self.trade_orders if o["id"] == order_id), None)
-        if order:
-            self.trade_orders.remove(order)
+        if not order or not self.can_act_on_order(order, rejecter_slot):
+            return None
+        self.trade_orders.remove(order)
         return order
 
     # ---------- Chat ----------
@@ -1510,30 +1889,41 @@ class GameSession:
                 "phaseReadyCount": self.phase_ready_count(),
                 "phaseTotalCount": len(self.players),
                 "yourGame": game.to_dict(),
-                "otherGames": {self.players[i]: self.games[i].to_dict()
-                               for i in range(len(self.players)) if i != slot},
+                "otherGames": {
+                    self.players[i]: self.games[i].to_dict()
+                    for i in range(len(self.players))
+                    if i != slot
+                },
                 "waitingForOther": self.waiting_message(slot),
                 "youReady": slot in self.ready,
                 "yourSlot": slot + 1,
                 "host": self.host,
                 "maxPlayers": self.max_players,
-                "players": [{"name": u, "online": u in ONLINE, "isHost": u == self.host}
-                            for u in self.players],
+                "players": [
+                    {"name": u, "online": u in ONLINE, "isHost": u == self.host}
+                    for u in self.players
+                ],
                 "endSessionVotes": len(self.end_votes),
                 "endSessionTotal": len(self.players),
                 "youVotedEnd": slot in self.end_votes,
             }
             await send_json(ws, {"type": "state", "data": state})
 
+
 # -------------------- Global state --------------------
 USERS = UserStore(USERS_FILE)
-ONLINE = {}            # username -> websocket
-SESSIONS = {}          # username -> GameSession (every member of a session/room points to the same object)
-ROOMS = {}             # host username -> GameSession, only while that room hasn't started (open to join)
-PENDING_INVITES = {}   # sender -> {"to": target, "task": asyncio.Task}
-LAST_INVITE_AT = {}    # sender -> time.monotonic() timestamp
+ONLINE = {}  # username -> websocket
+SESSIONS = (
+    {}
+)  # username -> GameSession (every member of a session/room points to the same object)
+ROOMS = (
+    {}
+)  # host username -> GameSession, only while that room hasn't started (open to join)
+PENDING_INVITES = {}  # sender -> {"to": target, "task": asyncio.Task}
+LAST_INVITE_AT = {}  # sender -> time.monotonic() timestamp
 MIN_ROOM_PLAYERS = 2
 MAX_ROOM_PLAYERS = 5
+
 
 # -------------------- Send helpers --------------------
 async def send_json(ws, obj):
@@ -1542,15 +1932,21 @@ async def send_json(ws, obj):
     except Exception:
         pass
 
+
 async def send_to_user(username, obj):
     ws = ONLINE.get(username)
     if ws is not None:
         await send_json(ws, obj)
 
+
 async def broadcast_online_users():
     names = list(ONLINE.keys())
     for uname, ws in list(ONLINE.items()):
-        await send_json(ws, {"type": "online_users_update", "users": [n for n in names if n != uname]})
+        await send_json(
+            ws,
+            {"type": "online_users_update", "users": [n for n in names if n != uname]},
+        )
+
 
 # -------------------- Resumable session tokens --------------------
 # Issued on every successful login so the next fresh connection can re-identify itself silently
@@ -1611,7 +2007,9 @@ async def complete_authentication(websocket, u):
     than in the lobby.
     """
     await broadcast_online_users()
-    await send_json(websocket, {"type": "open_rooms_update", "rooms": list_open_rooms()})
+    await send_json(
+        websocket, {"type": "open_rooms_update", "rooms": list_open_rooms()}
+    )
     sess = SESSIONS.get(u)
     if sess is None:
         return
@@ -1621,10 +2019,13 @@ async def complete_authentication(websocket, u):
         await send_json(websocket, {"type": "session_resumed", "players": others})
         for p in others:
             if p in ONLINE:
-                await send_to_user(p, {"type": "partner_status", "username": u, "online": True})
+                await send_to_user(
+                    p, {"type": "partner_status", "username": u, "online": True}
+                )
         await sess.broadcast_state()
     else:
         await broadcast_room_roster(sess)
+
 
 # -------------------- Invite system --------------------
 async def invite_timeout_task(sender, target):
@@ -1637,29 +2038,66 @@ async def invite_timeout_task(sender, target):
         await send_to_user(sender, {"type": "invite_timeout", "to": target})
         await send_to_user(target, {"type": "invite_cancelled", "from": sender})
 
+
 async def handle_send_invite(sender, target, difficulty=DEFAULT_DIFFICULTY):
     difficulty = normalize_difficulty(difficulty)
     if not target or target == sender:
-        await send_to_user(sender, {"type": "invite_result", "success": False, "message": "无效的邀请对象"})
+        await send_to_user(
+            sender,
+            {"type": "invite_result", "success": False, "message": "无效的邀请对象"},
+        )
         return
     if sender in SESSIONS:
-        await send_to_user(sender, {"type": "invite_result", "success": False, "message": "你已在游戏会话中，无法发出邀请"})
+        await send_to_user(
+            sender,
+            {
+                "type": "invite_result",
+                "success": False,
+                "message": "你已在游戏会话中，无法发出邀请",
+            },
+        )
         return
     if sender in PENDING_INVITES:
-        await send_to_user(sender, {"type": "invite_result", "success": False,
-                                    "message": f"你已向 {PENDING_INVITES[sender]['to']} 发出邀请，请等待对方回应或超时"})
+        await send_to_user(
+            sender,
+            {
+                "type": "invite_result",
+                "success": False,
+                "message": f"你已向 {PENDING_INVITES[sender]['to']} 发出邀请，请等待对方回应或超时",
+            },
+        )
         return
     elapsed = time.monotonic() - LAST_INVITE_AT.get(sender, -INVITE_COOLDOWN)
     if elapsed < INVITE_COOLDOWN:
         remain = math.ceil(INVITE_COOLDOWN - elapsed)
-        await send_to_user(sender, {"type": "invite_result", "success": False,
-                                    "message": f"每分钟只能发出一次邀请，请 {remain} 秒后再试"})
+        await send_to_user(
+            sender,
+            {
+                "type": "invite_result",
+                "success": False,
+                "message": f"每分钟只能发出一次邀请，请 {remain} 秒后再试",
+            },
+        )
         return
     if target not in ONLINE:
-        await send_to_user(sender, {"type": "invite_result", "success": False, "message": f"{target} 不在线，无法邀请"})
+        await send_to_user(
+            sender,
+            {
+                "type": "invite_result",
+                "success": False,
+                "message": f"{target} 不在线，无法邀请",
+            },
+        )
         return
     if target in SESSIONS:
-        await send_to_user(sender, {"type": "invite_result", "success": False, "message": f"{target} 正在游戏中，无法邀请"})
+        await send_to_user(
+            sender,
+            {
+                "type": "invite_result",
+                "success": False,
+                "message": f"{target} 正在游戏中，无法邀请",
+            },
+        )
         return
     LAST_INVITE_AT[sender] = time.monotonic()
     task = asyncio.create_task(invite_timeout_task(sender, target))
@@ -1667,14 +2105,25 @@ async def handle_send_invite(sender, target, difficulty=DEFAULT_DIFFICULTY):
     # built from what the invitee actually saw and agreed to, never from a value the
     # responder echoes back.
     PENDING_INVITES[sender] = {"to": target, "task": task, "difficulty": difficulty}
-    await send_to_user(target, {"type": "invite_received", "from": sender, "difficulty": difficulty})
-    await send_to_user(sender, {"type": "invite_result", "success": True,
-                                "message": f"邀请已发送给 {target}，等待回应（{INVITE_COOLDOWN} 秒内有效）"})
+    await send_to_user(
+        target, {"type": "invite_received", "from": sender, "difficulty": difficulty}
+    )
+    await send_to_user(
+        sender,
+        {
+            "type": "invite_result",
+            "success": True,
+            "message": f"邀请已发送给 {target}，等待回应（{INVITE_COOLDOWN} 秒内有效）",
+        },
+    )
+
 
 async def handle_respond_invite(responder, sender, accept):
     inv = PENDING_INVITES.get(sender)
     if not inv or inv["to"] != responder:
-        await send_to_user(responder, {"type": "system_message", "message": "该邀请已失效"})
+        await send_to_user(
+            responder, {"type": "system_message", "message": "该邀请已失效"}
+        )
         return
     PENDING_INVITES.pop(sender, None)
     inv["task"].cancel()
@@ -1682,10 +2131,15 @@ async def handle_respond_invite(responder, sender, accept):
         await send_to_user(sender, {"type": "invite_rejected", "from": responder})
         return
     if sender not in ONLINE:
-        await send_to_user(responder, {"type": "system_message", "message": "对方已离线，邀请失效"})
+        await send_to_user(
+            responder, {"type": "system_message", "message": "对方已离线，邀请失效"}
+        )
         return
     if sender in SESSIONS or responder in SESSIONS:
-        await send_to_user(responder, {"type": "system_message", "message": "无法建立会话：其中一方已在游戏中"})
+        await send_to_user(
+            responder,
+            {"type": "system_message", "message": "无法建立会话：其中一方已在游戏中"},
+        )
         return
     difficulty = normalize_difficulty(inv.get("difficulty"))
     sess = GameSession(sender, difficulty, max_players=2)
@@ -1693,10 +2147,17 @@ async def handle_respond_invite(responder, sender, accept):
     sess.start()
     SESSIONS[sender] = sess
     SESSIONS[responder] = sess
-    await send_to_user(sender, {"type": "invite_accepted", "partner": responder, "difficulty": difficulty})
-    await send_to_user(responder, {"type": "invite_accepted", "partner": sender, "difficulty": difficulty})
+    await send_to_user(
+        sender,
+        {"type": "invite_accepted", "partner": responder, "difficulty": difficulty},
+    )
+    await send_to_user(
+        responder,
+        {"type": "invite_accepted", "partner": sender, "difficulty": difficulty},
+    )
     await broadcast_online_users()
     await sess.broadcast_state()
+
 
 # -------------------- Room (recruit) system --------------------
 # Alongside the 1:1 invite above, a player may host an open room for 2-5 players: anyone
@@ -1708,22 +2169,36 @@ def room_roster_payload(room):
         "host": room.host,
         "difficulty": room.difficulty,
         "maxPlayers": room.max_players,
-        "players": [{"name": u, "online": u in ONLINE, "isHost": u == room.host} for u in room.players],
+        "players": [
+            {"name": u, "online": u in ONLINE, "isHost": u == room.host}
+            for u in room.players
+        ],
     }
 
+
 def list_open_rooms():
-    return [{"host": r.host, "difficulty": r.difficulty, "count": len(r.players), "maxPlayers": r.max_players}
-            for r in ROOMS.values()]
+    return [
+        {
+            "host": r.host,
+            "difficulty": r.difficulty,
+            "count": len(r.players),
+            "maxPlayers": r.max_players,
+        }
+        for r in ROOMS.values()
+    ]
+
 
 async def broadcast_open_rooms():
     rooms = list_open_rooms()
     for ws in list(ONLINE.values()):
         await send_json(ws, {"type": "open_rooms_update", "rooms": rooms})
 
+
 async def broadcast_room_roster(room):
     payload = room_roster_payload(room)
     for u in room.players:
         await send_to_user(u, payload)
+
 
 async def leave_pending_room(username):
     """Removes username from their not-yet-started room, promoting the next member to host
@@ -1746,9 +2221,13 @@ async def leave_pending_room(username):
     await broadcast_open_rooms()
     return True
 
+
 async def handle_create_room(username, max_players, difficulty):
     if username in SESSIONS:
-        await send_to_user(username, {"type": "system_message", "message": "你已在游戏会话中，无法招募新航程"})
+        await send_to_user(
+            username,
+            {"type": "system_message", "message": "你已在游戏会话中，无法招募新航程"},
+        )
         return
     try:
         max_players = int(max_players)
@@ -1761,37 +2240,57 @@ async def handle_create_room(username, max_players, difficulty):
     await broadcast_room_roster(room)
     await broadcast_open_rooms()
 
+
 async def handle_join_room(username, host):
     if username in SESSIONS:
-        await send_to_user(username, {"type": "system_message", "message": "你已在游戏会话中，无法加入其他航程"})
+        await send_to_user(
+            username,
+            {"type": "system_message", "message": "你已在游戏会话中，无法加入其他航程"},
+        )
         return
     room = ROOMS.get(host)
     if room is None or room.started:
-        await send_to_user(username, {"type": "system_message", "message": "该航程已不存在或已开始"})
+        await send_to_user(
+            username, {"type": "system_message", "message": "该航程已不存在或已开始"}
+        )
         await broadcast_open_rooms()
         return
     if len(room.players) >= room.max_players:
-        await send_to_user(username, {"type": "system_message", "message": "该航程的人数已满"})
+        await send_to_user(
+            username, {"type": "system_message", "message": "该航程的人数已满"}
+        )
         return
     room.players.append(username)
     SESSIONS[username] = room
     await broadcast_room_roster(room)
     await broadcast_open_rooms()
 
+
 async def handle_leave_room(username):
     left = await leave_pending_room(username)
     if not left:
-        await send_to_user(username, {"type": "system_message", "message": "航程已开始，无法离开"})
+        await send_to_user(
+            username, {"type": "system_message", "message": "航程已开始，无法离开"}
+        )
+
 
 async def handle_start_room(username):
     room = SESSIONS.get(username)
     if room is None or room.started:
         return
     if room.host != username:
-        await send_to_user(username, {"type": "system_message", "message": "只有招募人可以开始航程"})
+        await send_to_user(
+            username, {"type": "system_message", "message": "只有招募人可以开始航程"}
+        )
         return
     if len(room.players) < MIN_ROOM_PLAYERS:
-        await send_to_user(username, {"type": "system_message", "message": f"至少需要 {MIN_ROOM_PLAYERS} 名玩家才能开始"})
+        await send_to_user(
+            username,
+            {
+                "type": "system_message",
+                "message": f"至少需要 {MIN_ROOM_PLAYERS} 名玩家才能开始",
+            },
+        )
         return
     ROOMS.pop(room.host, None)
     room.start()
@@ -1800,22 +2299,32 @@ async def handle_start_room(username):
         await send_to_user(u, {"type": "room_started", "difficulty": room.difficulty})
     await room.broadcast_state()
 
+
 # -------------------- Chat system --------------------
 async def handle_send_chat(sender, message):
     sess = SESSIONS.get(sender)
     if sess is None:
-        await send_to_user(sender, {"type": "system_message", "message": "你还没有游戏伙伴，无法发送消息"})
+        await send_to_user(
+            sender,
+            {"type": "system_message", "message": "你还没有游戏伙伴，无法发送消息"},
+        )
         return
     others = [u for u in sess.players if u != sender]
     if not any(u in ONLINE for u in others):
-        await send_to_user(sender, {"type": "system_message", "message": "其他玩家都已离线，无法发送消息"})
+        await send_to_user(
+            sender,
+            {"type": "system_message", "message": "其他玩家都已离线，无法发送消息"},
+        )
         return
     message = str(message).strip()[:500]
     if not message:
         return
     sess.add_chat(sender, message)
     for u in others:
-        await send_to_user(u, {"type": "chat_message", "from": sender, "message": message})
+        await send_to_user(
+            u, {"type": "chat_message", "from": sender, "message": message}
+        )
+
 
 async def end_game_session(sess):
     """Tears the room down once every player has voted to end it, sending everyone back to
@@ -1824,6 +2333,7 @@ async def end_game_session(sess):
     for u in sess.players:
         SESSIONS.pop(u, None)
         await send_to_user(u, {"type": "session_ended"})
+
 
 # -------------------- In-game actions --------------------
 async def handle_game_action(username, data):
@@ -1868,7 +2378,9 @@ async def handle_game_action(username, data):
                 sess.advance()
     elif action == "purchase":
         if phase == 1:
-            card = next((c for c in game.resourceCards if c["id"] == data.get("cardId")), None)
+            card = next(
+                (c for c in game.resourceCards if c["id"] == data.get("cardId")), None
+            )
             if card and card["id"] not in game.purchasedCards:
                 game.purchase_card(card)
             changed = True
@@ -1886,7 +2398,7 @@ async def handle_game_action(username, data):
         if phase == "trade":
             sell = data.get("sell", [])
             buy = data.get("buy", [])
-            sess.create_trade_order(slot, sell, buy)
+            sess.create_trade_order(slot, sell, buy, data.get("targetSlot"))
             changed = True
     elif action == "acceptTrade":
         if phase == "trade":
@@ -1894,16 +2406,23 @@ async def handle_game_action(username, data):
             changed = True
     elif action == "rejectTrade":
         if phase == "trade":
-            order = sess.reject_trade(data.get("orderId"))
+            order = sess.reject_trade(data.get("orderId"), slot)
             if order:
                 seller = sess.players[order["sellerSlot"]]
                 if seller != username:
-                    sell_txt = "、".join(f"{i['type']}×{i['quantity']}" for i in order["sell"])
-                    buy_txt = "、".join(f"{i['type']}×{i['quantity']}" for i in order["buy"])
-                    await send_to_user(seller, {
-                        "type": "system_message",
-                        "message": f"❌ 对方拒绝了你的互市提案（出 {sell_txt} ⇄ 换 {buy_txt}）"
-                    })
+                    sell_txt = "、".join(
+                        f"{i['type']}×{i['quantity']}" for i in order["sell"]
+                    )
+                    buy_txt = "、".join(
+                        f"{i['type']}×{i['quantity']}" for i in order["buy"]
+                    )
+                    await send_to_user(
+                        seller,
+                        {
+                            "type": "system_message",
+                            "message": f"❌ 对方拒绝了你的互市提案（出 {sell_txt} ⇄ 换 {buy_txt}）",
+                        },
+                    )
             changed = True
     elif action == "hireWorker":
         if phase == "worker_mgmt" and data.get("workerType") in WAGES:
@@ -1914,12 +2433,18 @@ async def handle_game_action(username, data):
             game.fire_worker(data["workerType"], data.get("index", -1))
             changed = True
     elif action == "assignTask":
-        if phase == "worker_mgmt" and data.get("workerType") in WAGES and data.get("task") in RECIPES:
+        if (
+            phase == "worker_mgmt"
+            and data.get("workerType") in WAGES
+            and data.get("task") in RECIPES
+        ):
             game.assign_task(data["workerType"], data["task"])
             changed = True
     elif action == "completeOrder":
         if phase == 2:
-            order = next((o for o in game.customerCards if o["id"] == data.get("orderId")), None)
+            order = next(
+                (o for o in game.customerCards if o["id"] == data.get("orderId")), None
+            )
             if order and order["id"] not in game.completedOrders:
                 game.complete_order(order)
             changed = True
@@ -1954,13 +2479,18 @@ async def handle_game_action(username, data):
             if isinstance(idx, int) and 0 <= idx < len(game.draftChoices):
                 mod = game.draftChoices[idx]
                 swap_idx = data.get("swapIndex")
-                if not (isinstance(swap_idx, int) and 0 <= swap_idx < len(game.equippedModules)):
+                if not (
+                    isinstance(swap_idx, int)
+                    and 0 <= swap_idx < len(game.equippedModules)
+                ):
                     swap_idx = None
                 game.equip_module(mod, swap_idx)
             changed = True
     elif action == "cancelModuleDraft":
         if phase == 4:
-            game.draftOpen = False  # hide the panel; the batch persists so reopening can't reroll
+            game.draftOpen = (
+                False  # hide the panel; the batch persists so reopening can't reroll
+            )
             changed = True
     elif action == "rerollModuleDraft":
         if phase == 4:
@@ -1972,10 +2502,22 @@ async def handle_game_action(username, data):
             sess.restart()
             for u in sess.players:
                 if u != username:
-                    await send_to_user(u, {"type": "system_message", "message": "对方重新开始了游戏，双方进度已重置"})
+                    await send_to_user(
+                        u,
+                        {
+                            "type": "system_message",
+                            "message": "对方重新开始了游戏，双方进度已重置",
+                        },
+                    )
             changed = True
         else:
-            await send_to_user(username, {"type": "system_message", "message": "需等待其他玩家完成本局后才能重新起航"})
+            await send_to_user(
+                username,
+                {
+                    "type": "system_message",
+                    "message": "需等待其他玩家完成本局后才能重新起航",
+                },
+            )
     elif action == "end_session":
         if slot not in sess.end_votes:
             sess.end_votes.add(slot)
@@ -1986,6 +2528,7 @@ async def handle_game_action(username, data):
 
     if changed:
         await sess.broadcast_state()
+
 
 # -------------------- WebSocket handling --------------------
 async def handler(websocket):
@@ -2005,8 +2548,14 @@ async def handler(websocket):
                 # ---------- Not logged in: only accept register / login ----------
                 if username is None:
                     if action == "register":
-                        ok, msg = USERS.register(str(data.get("username", "")).strip(), str(data.get("password", "")))
-                        await send_json(websocket, {"type": "register_result", "success": ok, "message": msg})
+                        ok, msg = USERS.register(
+                            str(data.get("username", "")).strip(),
+                            str(data.get("password", "")),
+                        )
+                        await send_json(
+                            websocket,
+                            {"type": "register_result", "success": ok, "message": msg},
+                        )
                     elif action == "login":
                         u = str(data.get("username", "")).strip()
                         p = str(data.get("password", ""))
@@ -2019,7 +2568,16 @@ async def handler(websocket):
                             username = u
                             ONLINE[u] = websocket
                         token = issue_token(u) if ok else None
-                        await send_json(websocket, {"type": "login_result", "success": ok, "username": u, "message": msg, "token": token})
+                        await send_json(
+                            websocket,
+                            {
+                                "type": "login_result",
+                                "success": ok,
+                                "username": u,
+                                "message": msg,
+                                "token": token,
+                            },
+                        )
                         if ok:
                             await complete_authentication(websocket, u)
                     elif action == "resume_token":
@@ -2028,7 +2586,9 @@ async def handler(websocket):
                         # or an actual page refresh.
                         u = resolve_token(data.get("token"))
                         if u is None:
-                            await send_json(websocket, {"type": "resume_result", "success": False})
+                            await send_json(
+                                websocket, {"type": "resume_result", "success": False}
+                            )
                         else:
                             # A valid token is proof of identity, so this is the same account
                             # re-identifying itself. Deliberately NOT refused when the name still
@@ -2040,26 +2600,47 @@ async def handler(websocket):
                             # registered one, so the stale close cannot evict this connection.
                             username = u
                             ONLINE[u] = websocket
-                            await send_json(websocket, {"type": "resume_result", "success": True, "username": u})
+                            await send_json(
+                                websocket,
+                                {
+                                    "type": "resume_result",
+                                    "success": True,
+                                    "username": u,
+                                },
+                            )
                             await complete_authentication(websocket, u)
                     else:
-                        await send_json(websocket, {"type": "error", "message": "请先登录"})
+                        await send_json(
+                            websocket, {"type": "error", "message": "请先登录"}
+                        )
                     continue
 
                 # ---------- Logged in: lobby / invites / rooms / chat / game ----------
                 if action == "get_online_users":
-                    await send_json(websocket, {"type": "online_users", "users": [n for n in ONLINE if n != username]})
+                    await send_json(
+                        websocket,
+                        {
+                            "type": "online_users",
+                            "users": [n for n in ONLINE if n != username],
+                        },
+                    )
                 elif action == "logout":
                     # Revokes the resume token so the reload the client performs right after
                     # this cannot silently log the player back in. Going offline is still handled
                     # by the normal disconnect cleanup once that reload drops the socket.
                     revoke_token(data.get("token"))
                 elif action == "send_invite":
-                    await handle_send_invite(username, str(data.get("to", "")), data.get("difficulty"))
+                    await handle_send_invite(
+                        username, str(data.get("to", "")), data.get("difficulty")
+                    )
                 elif action == "respond_invite":
-                    await handle_respond_invite(username, str(data.get("from", "")), bool(data.get("accept")))
+                    await handle_respond_invite(
+                        username, str(data.get("from", "")), bool(data.get("accept"))
+                    )
                 elif action == "create_room":
-                    await handle_create_room(username, data.get("maxPlayers"), data.get("difficulty"))
+                    await handle_create_room(
+                        username, data.get("maxPlayers"), data.get("difficulty")
+                    )
                 elif action == "join_room":
                     await handle_join_room(username, str(data.get("host", "")))
                 elif action == "leave_room":
@@ -2070,7 +2651,13 @@ async def handler(websocket):
                     await handle_send_chat(username, data.get("message", ""))
                 elif action == "get_chat_history":
                     sess = SESSIONS.get(username)
-                    await send_json(websocket, {"type": "chat_history", "history": sess.chat_history if sess else []})
+                    await send_json(
+                        websocket,
+                        {
+                            "type": "chat_history",
+                            "history": sess.chat_history if sess else [],
+                        },
+                    )
                 else:
                     await handle_game_action(username, data)
             except websockets.exceptions.ConnectionClosed:
@@ -2087,7 +2674,9 @@ async def handler(websocket):
             inv = PENDING_INVITES.pop(username, None)
             if inv:
                 inv["task"].cancel()
-                await send_to_user(inv["to"], {"type": "invite_cancelled", "from": username})
+                await send_to_user(
+                    inv["to"], {"type": "invite_cancelled", "from": username}
+                )
             await broadcast_online_users()
             # A not-yet-started room has no live game to preserve, so disconnecting from one
             # is treated exactly like an explicit leave (frees the slot, may promote a host).
@@ -2100,7 +2689,14 @@ async def handler(websocket):
                 if any(p in ONLINE for p in others):
                     for p in others:
                         if p in ONLINE:
-                            await send_to_user(p, {"type": "partner_status", "username": username, "online": False})
+                            await send_to_user(
+                                p,
+                                {
+                                    "type": "partner_status",
+                                    "username": username,
+                                    "online": False,
+                                },
+                            )
                     await sess.broadcast_state()
                 elif sess.reap_task is None:
                     # Everyone is offline. Do not recycle straight away: a refreshing browser is
@@ -2108,11 +2704,13 @@ async def handler(websocket):
                     # about to resume into. Give it a grace period instead.
                     sess.reap_task = asyncio.create_task(reap_session_later(sess))
 
+
 # -------------------- HTTP static file serving (shares the WebSocket port) --------------------
 # Serving static files on the same port as the WebSocket server lets a single ngrok tunnel
 # (e.g. ngrok http 8080) expose both the web page and the WebSocket, with automatic
 # https/wss adaptation, avoiding browser mixed-content restrictions.
 WEB_ROOT = os.path.dirname(os.path.abspath(__file__))
+
 
 async def process_request(connection, request):
     # Let WebSocket upgrade requests through, to be handled by handler
@@ -2126,23 +2724,36 @@ async def process_request(connection, request):
         return connection.respond(http.HTTPStatus.NO_CONTENT, "")
 
     file_path = os.path.normpath(os.path.join(WEB_ROOT, path.lstrip("/")))
-    if not (file_path == WEB_ROOT or file_path.startswith(WEB_ROOT + os.sep)) or not os.path.isfile(file_path):
+    if not (
+        file_path == WEB_ROOT or file_path.startswith(WEB_ROOT + os.sep)
+    ) or not os.path.isfile(file_path):
         return connection.respond(http.HTTPStatus.NOT_FOUND, "Not Found")
 
     content_type, _ = mimetypes.guess_type(file_path)
     with open(file_path, "rb") as f:
         body = f.read()
     return Response(
-        http.HTTPStatus.OK, "OK",
-        Headers({"Content-Type": content_type or "application/octet-stream",
-                 "Content-Length": str(len(body))}),
-        body
+        http.HTTPStatus.OK,
+        "OK",
+        Headers(
+            {
+                "Content-Type": content_type or "application/octet-stream",
+                "Content-Length": str(len(body)),
+            }
+        ),
+        body,
     )
 
+
 async def main():
-    async with websockets.serve(handler, "0.0.0.0", 8080, process_request=process_request):
-        print(f"✅ Server started: web http://0.0.0.0:8080, WebSocket ws://0.0.0.0:8080")
+    async with websockets.serve(
+        handler, "0.0.0.0", 8080, process_request=process_request
+    ):
+        print(
+            f"✅ Server started: web http://0.0.0.0:8080, WebSocket ws://0.0.0.0:8080"
+        )
         await asyncio.Future()
+
 
 if __name__ == "__main__":
     try:
