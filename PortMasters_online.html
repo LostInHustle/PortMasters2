@@ -1804,11 +1804,13 @@
         pointer-events: none;
         max-width: 380px;
       }
+      /* Laid out as a row so the dismiss button sits beside the text and can never overlap it,
+   however long the message runs. */
       .notification {
         background: rgba(15, 23, 42, 0.92);
         backdrop-filter: blur(10px);
         color: #f0fdfa;
-        padding: 13px 20px 13px 16px;
+        padding: 11px 11px 11px 16px;
         border-radius: 14px;
         border-left: 4px solid #10b981;
         animation: slideIn 0.3s cubic-bezier(0.2, 0.8, 0.3, 1.1);
@@ -1817,6 +1819,75 @@
         max-width: 360px;
         line-height: 1.55;
         pointer-events: auto;
+        display: flex;
+        align-items: flex-start;
+        gap: 10px;
+      }
+      .toast-text {
+        flex: 1;
+        min-width: 0;
+        padding-top: 2px;
+      }
+      /* Every notice can be dismissed by hand, whatever kind it is. Waiting out a 10 second log
+   toast used to be the only way to clear the corner, since only toasts that happened to carry
+   an action could be clicked away. Kept always visible rather than revealed on hover, so the
+   affordance is discoverable and works on touch. */
+      .toast-close {
+        flex: none;
+        width: 22px;
+        height: 22px;
+        padding: 0;
+        border: none;
+        border-radius: 50%;
+        background: rgba(255, 255, 255, 0.14);
+        color: #e2e8f0;
+        font-size: 15px;
+        line-height: 1;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition:
+          background 0.15s ease,
+          color 0.15s ease,
+          transform 0.15s ease;
+      }
+      .toast-close:hover {
+        background: rgba(255, 255, 255, 0.3);
+        color: #fff;
+        transform: scale(1.12);
+      }
+      .toast-close:focus-visible {
+        outline: none;
+        box-shadow: 0 0 0 3px rgba(56, 189, 248, 0.6);
+      }
+      /* Clears a whole burst at once. Only earns its place while more than one notice is on
+   screen, so a lone toast is never accompanied by extra furniture. */
+      .toast-clear-all {
+        pointer-events: auto;
+        flex: none;
+        border: 1px solid rgba(255, 255, 255, 0.28);
+        background: rgba(15, 23, 42, 0.92);
+        backdrop-filter: blur(10px);
+        color: #f0fdfa;
+        border-radius: 999px;
+        padding: 5px 14px;
+        font-size: 11.5px;
+        font-weight: 700;
+        cursor: pointer;
+        box-shadow: 0 8px 22px rgba(0, 0, 0, 0.28);
+        animation: fadeIn 0.2s ease;
+        transition:
+          background 0.15s ease,
+          transform 0.15s ease;
+      }
+      .toast-clear-all:hover {
+        background: rgba(15, 23, 42, 0.99);
+        transform: translateX(-2px);
+      }
+      .toast-clear-all:focus-visible {
+        outline: none;
+        box-shadow: 0 0 0 3px rgba(56, 189, 248, 0.6);
       }
       .notification.error {
         border-left-color: #fb7185;
@@ -3752,32 +3823,99 @@
    then fades out. Used for invites/errors (short) and per-action log bubbles (~10s).
    onClick, when given, makes the toast clickable (e.g. a chat message opens the chat
    window) and dismisses it immediately on click instead of waiting for the fade timeout. */
-      function pushToast(message, kind = "", ttl = 10000, onClick = null) {
+      function toastStackEl() {
         let stack = document.getElementById("toast-stack");
         if (!stack) {
           stack = document.createElement("div");
           stack.id = "toast-stack";
           document.body.appendChild(stack);
         }
+        return stack;
+      }
+
+      /* Fades a notice out and takes it off screen. Guarded so the close button, the toast's
+   own action and the expiry timer can all ask for the same dismissal without racing. */
+      function dismissToastEl(el) {
+        if (!el || el.dataset.dismissing === "1") return;
+        el.dataset.dismissing = "1";
+        el.classList.add("fading");
+        setTimeout(() => {
+          const stack = el.parentElement;
+          el.remove();
+          if (stack) syncToastClearAll(stack);
+        }, 400);
+      }
+
+      /* The "clear all" pill only appears while a burst is on screen, so a single notice is
+   never accompanied by extra furniture. */
+      function syncToastClearAll(stack) {
+        const live = stack.querySelectorAll(
+          ".notification:not([data-dismissing])",
+        );
+        let bar = stack.querySelector(".toast-clear-all");
+        if (live.length > 1 && !bar) {
+          bar = document.createElement("button");
+          bar.className = "toast-clear-all";
+          bar.type = "button";
+          bar.textContent = tr("✕ 全部清除", "✕ Clear all");
+          bar.onclick = () => {
+            stack
+              .querySelectorAll(".notification")
+              .forEach((n) => dismissToastEl(n));
+          };
+          stack.insertBefore(bar, stack.firstChild);
+        } else if (live.length <= 1 && bar) {
+          bar.remove();
+        }
+      }
+
+      function pushToast(message, kind = "", ttl = 10000, onClick = null) {
+        const stack = toastStackEl();
         const el = document.createElement("div");
         el.className = "notification" + (kind ? " " + kind : "");
-        el.textContent = message;
+
+        const text = document.createElement("span");
+        text.className = "toast-text";
+        text.textContent = message;
+        el.appendChild(text);
+
+        /* Every notice gets its own close button, whatever kind it is: before this, only a
+     toast that happened to carry an action could be cleared, so an ordinary log line sat in
+     the corner blocking the view until its timer ran out. */
+        const close = document.createElement("button");
+        close.className = "toast-close";
+        close.type = "button";
+        close.textContent = "×";
+        const dismissLabel = tr("关闭此通知", "Dismiss this notification");
+        close.setAttribute("aria-label", dismissLabel);
+        close.title = dismissLabel;
+        close.onclick = (e) => {
+          e.stopPropagation(); // never trigger the toast's own action
+          dismissToastEl(el);
+        };
+        el.appendChild(close);
+
         if (onClick) {
           el.classList.add("clickable");
           el.setAttribute("role", "button");
           el.tabIndex = 0;
           el.onclick = () => {
             onClick();
-            el.remove();
+            dismissToastEl(el);
           };
+        } else {
+          el.setAttribute("role", "status");
         }
         stack.appendChild(el);
         // Cap visible toasts so a burst of actions can't fill the screen; drop the oldest.
-        while (stack.children.length > 6) stack.removeChild(stack.firstChild);
-        setTimeout(() => {
-          el.classList.add("fading");
-          setTimeout(() => el.remove(), 400);
-        }, ttl);
+        // Counts notices only, so the "clear all" pill is never mistaken for one.
+        let notices = stack.querySelectorAll(".notification");
+        while (notices.length > 6) {
+          notices[0].remove();
+          notices = stack.querySelectorAll(".notification");
+        }
+        syncToastClearAll(stack);
+        setTimeout(() => dismissToastEl(el), ttl);
       }
 
       function showNotification(message, isError = false, onClick = null) {
