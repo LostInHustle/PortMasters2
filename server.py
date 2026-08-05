@@ -1425,7 +1425,30 @@ class GameSession:
         return None
 
     # ---------- Barter trades ----------
-    def create_trade_order(self, seller_slot, sell_items, buy_items):
+    def sanitize_target_slot(self, seller_slot, target):
+        """Which captain an offer is addressed to, or None for the whole room.
+
+        Anything that is not a real other slot in this room falls back to None, so a crafted
+        targetSlot can only ever widen an offer's audience, never point it at someone who is
+        not in the session.
+        """
+        if isinstance(target, bool) or not isinstance(target, int):
+            return None
+        if target < 0 or target >= len(self.players):
+            return None
+        if target == seller_slot:
+            return None
+        return target
+
+    def can_act_on_order(self, order, slot):
+        """An open offer is fair game for anyone but its author; a directed one is strictly
+        between its author and its target. Checked on the server, not just hidden in the UI,
+        so a crafted action cannot poach someone else's private deal."""
+        if order.get("targetSlot") is None:
+            return True
+        return slot == order["targetSlot"] or slot == order["sellerSlot"]
+
+    def create_trade_order(self, seller_slot, sell_items, buy_items, target_slot=None):
         sell = sanitize_trade_items(sell_items)
         buy = sanitize_trade_items(buy_items)
         if not sell and not buy:
@@ -1435,7 +1458,8 @@ class GameSession:
             "id": f"trade_{self.trade_id_counter}",
             "sellerSlot": seller_slot,
             "sell": sell,
-            "buy": buy
+            "buy": buy,
+            "targetSlot": self.sanitize_target_slot(seller_slot, target_slot)
         }
         self.trade_orders.append(order)
         return order
@@ -1443,6 +1467,8 @@ class GameSession:
     def accept_trade(self, order_id, buyer_slot):
         order = next((o for o in self.trade_orders if o["id"] == order_id), None)
         if not order or order["sellerSlot"] == buyer_slot:
+            return False
+        if not self.can_act_on_order(order, buyer_slot):
             return False
         seller_game = self.games[order["sellerSlot"]]
         buyer_game = self.games[buyer_slot]
@@ -1484,10 +1510,13 @@ class GameSession:
         buyer_game.log("🤝 互市成功！")
         return True
 
-    def reject_trade(self, order_id):
+    def reject_trade(self, order_id, rejecter_slot):
+        """Same audience rule as accepting: a captain a directed offer was never addressed to
+        cannot make it disappear."""
         order = next((o for o in self.trade_orders if o["id"] == order_id), None)
-        if order:
-            self.trade_orders.remove(order)
+        if not order or not self.can_act_on_order(order, rejecter_slot):
+            return None
+        self.trade_orders.remove(order)
         return order
 
     # ---------- Chat ----------
@@ -1886,7 +1915,7 @@ async def handle_game_action(username, data):
         if phase == "trade":
             sell = data.get("sell", [])
             buy = data.get("buy", [])
-            sess.create_trade_order(slot, sell, buy)
+            sess.create_trade_order(slot, sell, buy, data.get("targetSlot"))
             changed = True
     elif action == "acceptTrade":
         if phase == "trade":
@@ -1894,7 +1923,7 @@ async def handle_game_action(username, data):
             changed = True
     elif action == "rejectTrade":
         if phase == "trade":
-            order = sess.reject_trade(data.get("orderId"))
+            order = sess.reject_trade(data.get("orderId"), slot)
             if order:
                 seller = sess.players[order["sellerSlot"]]
                 if seller != username:

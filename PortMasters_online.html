@@ -5415,7 +5415,13 @@
 
       /* Barter form state is preserved across re-renders */
       function captureTradeForm() {
-        const ids = ["sell-type", "sell-qty", "buy-type", "buy-qty"];
+        const ids = [
+          "sell-type",
+          "sell-qty",
+          "buy-type",
+          "buy-qty",
+          "target-slot",
+        ];
         const state = {};
         let any = false;
         ids.forEach((id) => {
@@ -5433,6 +5439,9 @@
           const el = document.getElementById(id);
           if (el) el.value = state[id];
         });
+        // The post button's wording follows the recipient, so it has to be resynced once the
+        // restored selection is back in place.
+        updateTradeTargetHint();
       }
 
       function tradePhaseHTML() {
@@ -5440,9 +5449,32 @@
         const orders = serverState.tradeOrders || [];
         const players = serverState.players || [];
         const mySlot = g.slot;
+        /* A directed offer is only visible to its addressee. The server enforces the same
+     rule, so this is presentation, not protection. */
         const receivedOrders = orders.filter(
-          (o) => o.sellerSlot !== mySlot - 1,
+          (o) =>
+            o.sellerSlot !== mySlot - 1 &&
+            (o.targetSlot === null ||
+              o.targetSlot === undefined ||
+              o.targetSlot === mySlot - 1),
         );
+        const nameOfSlot = (slot) =>
+          escapeHtml(
+            (players[slot] && players[slot].name) || tr("对方", "Someone"),
+          );
+        const targetOptionsHTML = [
+          `<option value="">${tr("🌐 所有船长（公开）", "🌐 Everyone (open offer)")}</option>`,
+        ]
+          .concat(
+            players
+              .map((p, i) => [p, i])
+              .filter(([, i]) => i !== mySlot - 1)
+              .map(
+                ([p, i]) =>
+                  `<option value="${i}">🎯 ${escapeHtml(p.name)}</option>`,
+              ),
+          )
+          .join("");
         const myOrders = orders.filter((o) => o.sellerSlot === mySlot - 1);
         const myReady = serverState.tradeReady[mySlot - 1];
 
@@ -5483,6 +5515,7 @@
                 );
                 return `
         <div class="trade-order">
+          ${o.targetSlot === null || o.targetSlot === undefined ? "" : `<div><span class="chip amber">${tr("🎯 只发给你", "🎯 Just for you")}</span></div>`}
           <div>${tr(`📤 ${sellerName} 给出：`, `📤 ${sellerName} gives: `)}<strong>${o.sell.map((i) => `${ICONS[i.type] || ""}${tn(i.type)} ×${i.quantity}`).join(sep)}</strong></div>
           <div>${tr("📥 希望换取你的：", "📥 In exchange for your: ")}<strong>${o.buy.map((i) => `${ICONS[i.type] || ""}${tn(i.type)} ×${i.quantity}`).join(sep)}</strong></div>
           <div class="actions">
@@ -5499,8 +5532,8 @@
     <div class="trade-section">
       <h3>${tr("📤 向船队发布交易订单", "📤 Post an Offer to the Room")}</h3>
       <div class="section-hint">${tr(
-        "下拉框中实时显示你的持有量，方便核对。订单发布后房间内任意其他玩家均可接受或拒绝；本阶段结束前未成交的订单自动作废。",
-        "The dropdowns show your current stock. Any other player in the room can accept or decline; unaccepted offers expire when this phase ends.",
+        "下拉框中实时显示你的持有量，方便核对。公开订单房间内任意其他玩家均可接受或拒绝，定向订单只有指定的那位船长看得到；本阶段结束前未成交的订单自动作废。",
+        "The dropdowns show your current stock. An open offer can be taken by any other captain, while a directed one is visible only to the captain you address it to; unaccepted offers expire when this phase ends.",
       )}</div>
       <div class="trade-create">
         <div>${tr("我 出售：", "I give: ")}
@@ -5511,7 +5544,10 @@
           <select id="buy-type" title="${tr("选择希望获得的物资或金币", "Choose what you want in return")}">${optionsHTML}</select>
           <input type="number" id="buy-qty" min="1" value="1" style="width:64px" title="${tr("索取数量", "Quantity requested")}"> ${tr("个", "pcs")}
         </div>
-        <button class="btn btn-gold" onclick="createTradeOrder()" title="${tr("发布后房间内其他人会立即看到此订单", "Everyone else in the room sees the offer immediately")}">${tr("📨 发布订单", "📨 Post Offer")}</button>
+        <div>${tr("发 给：", "Offer to: ")}
+          <select id="target-slot" onchange="updateTradeTargetHint()" title="${tr("公开发布，或只发给某一位船长", "Post it openly, or address it to one captain")}">${targetOptionsHTML}</select>
+        </div>
+        <button class="btn btn-gold" id="post-offer-btn" onclick="createTradeOrder()" title="${tr("发布后房间内其他人会立即看到此订单", "Everyone else in the room sees the offer immediately")}">${tr("📨 发布订单", "📨 Post Offer")}</button>
       </div>
     </div>
 
@@ -5523,7 +5559,7 @@
           : myOrders
               .map(
                 (o) => `
-        <div style="font-size:12.5px; margin:5px 0">${tr("📤 出", "📤 Give")} ${o.sell.map((i) => `${tn(i.type)}×${i.quantity}`).join(sep)} ⇄ ${tr("换", "for")} ${o.buy.map((i) => `${tn(i.type)}×${i.quantity}`).join(sep)} <span class="muted">${tr("（等待其他人接受或拒绝）", "(awaiting a response)")}</span></div>
+        <div style="font-size:12.5px; margin:5px 0">${tr("📤 出", "📤 Give")} ${o.sell.map((i) => `${tn(i.type)}×${i.quantity}`).join(sep)} ⇄ ${tr("换", "for")} ${o.buy.map((i) => `${tn(i.type)}×${i.quantity}`).join(sep)} <span class="muted">${o.targetSlot === null || o.targetSlot === undefined ? tr("（等待其他人接受或拒绝）", "(awaiting a response)") : tr(`（只发给 ${nameOfSlot(o.targetSlot)}，等待回应）`, `(only to ${nameOfSlot(o.targetSlot)}, awaiting a response)`)}</span></div>
       `,
               )
               .join("")
@@ -5567,16 +5603,54 @@
           );
           return;
         }
+        const targetRaw = (document.getElementById("target-slot") || {}).value;
+        const targetSlot =
+          targetRaw === "" || targetRaw === undefined
+            ? null
+            : Number(targetRaw);
         sendAction("createTradeOrder", {
           sell: [{ type: sellType, quantity: sellQty }],
           buy: [{ type: buyType, quantity: buyQty }],
+          targetSlot,
         });
-        showNotification(
-          tr(
-            "📨 订单已发布，房间内其他人可接受或拒绝",
-            "📨 Offer posted. Anyone else in the room can accept or decline it",
-          ),
-        );
+        if (targetSlot === null) {
+          showNotification(
+            tr(
+              "📨 订单已发布，房间内其他人可接受或拒绝",
+              "📨 Offer posted. Anyone else in the room can accept or decline it",
+            ),
+          );
+        } else {
+          const players = (serverState && serverState.players) || [];
+          const to = (players[targetSlot] && players[targetSlot].name) || "";
+          showNotification(
+            tr(
+              `📨 订单已发给 ${to}，只有对方能接受`,
+              `📨 Offer sent to ${to}, only they can accept it`,
+            ),
+          );
+        }
+      }
+
+      /* Keeps the post button honest about what it is about to do, so the difference between an
+   open offer and a directed one is visible before it is sent. */
+      function updateTradeTargetHint() {
+        const sel = document.getElementById("target-slot");
+        const btn = document.getElementById("post-offer-btn");
+        if (!sel || !btn) return;
+        const directed = sel.value !== "";
+        btn.textContent = directed
+          ? tr("🎯 定向发送", "🎯 Send Direct")
+          : tr("📨 发布订单", "📨 Post Offer");
+        btn.title = directed
+          ? tr(
+              "只有指定的那位船长能看到并接受此订单",
+              "Only the captain you chose can see and accept this offer",
+            )
+          : tr(
+              "发布后房间内其他人会立即看到此订单",
+              "Everyone else in the room sees the offer immediately",
+            );
       }
 
       function workerMgmtHTML() {
