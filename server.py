@@ -373,14 +373,14 @@ BOONS_TIER2 = [
 BOONS = BOONS_TIER0 + BOONS_TIER1 + BOONS_TIER2
 
 MODULES_TIER0 = [
-    {"id": "smugglers_hold", "name": "走私暗舱", "icon": "🏴‍☠️", "desc": "采购成本-15%。所得税+20%。"},
-    {"id": "bulk_hauler", "name": "散货索具", "icon": "🏗️", "desc": "每件货物运费-1。船坞升级费用+15金币。"},
+    {"id": "smugglers_hold", "name": "走私暗舱", "icon": "🏴‍☠️", "desc": "采购成本−15%。所得税+20%。"},
+    {"id": "bulk_hauler", "name": "散货索具", "icon": "🏗️", "desc": "每件货物运费−1。船坞升级费用+15金币。"},
     {"id": "artisans_workshop", "name": "工匠工坊", "icon": "🛠️", "desc": "工人产量+1。工资+20%。"},
     {"id": "tax_evasion", "name": "避税账本", "icon": "📒", "desc": "所得税按增值税后利润计。15%概率在订单完成时罚款20金币(稽查)。"},
     {"id": "silk_monopoly", "name": "丝路垄断", "icon": "🐍", "desc": "丝绸运费为0。丝绸产品订单收入+20%。"},
     {"id": "brokers_network", "name": "牙行网络", "icon": "🕵️", "desc": "每次花费2金币。每次购买密语显示2条线索。"},
     {"id": "salvage_crane", "name": "打捞起重机", "icon": "♻️", "desc": "30%概率在订单完成时退还运费。"},
-    {"id": "overdrive_engine", "name": "超载引擎", "icon": "⚡", "desc": "运费-5金币。维护费+10金币。"}
+    {"id": "overdrive_engine", "name": "超载引擎", "icon": "⚡", "desc": "运费−5金币。维护费+10金币。"}
 ]
 
 MODULES_TIER1 = [
@@ -870,7 +870,7 @@ class PlayerGame:
         if self.money < self.intelCost:
             self.log(f"❌ 需要{self.intelCost}金币才能购买消息")
             return False
-        # Each purchase costs gold only once; with Broker's Network equipped it reveals 2 clues at a time, and Ocean-Going Interpreter reveals 1 more on top of that
+        # Each purchase costs gold only once; with Broker's Network equipped it reveals 2 clues at a time, and Ocean Going Interpreter reveals 1 more on top of that
         count = 2 if self.has_module("brokers_network") else 1
         if self.has_module("ocean_relay"):
             count += 1
@@ -1174,9 +1174,9 @@ class UserStore:
 
     def register(self, username, password):
         if not isinstance(username, str) or not (3 <= len(username) <= 20):
-            return False, "用户名需为 3-20 个字符"
+            return False, "用户名需为 3 到 20 个字符"
         if not isinstance(password, str) or not (6 <= len(password) <= 128):
-            return False, "密码需为 6-128 位"
+            return False, "密码需为 6 到 128 位"
         if username in self.users:
             return False, "该用户名已被注册"
         salt = secrets.token_hex(16)
