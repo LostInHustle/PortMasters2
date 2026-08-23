@@ -5823,10 +5823,6 @@
         sendAction("fireWorker", { workerType: type, index });
       }
 
-      function estimateTransport(g, totalItems) {
-        return Math.max(5, totalItems * 2 - g.shipLevel * 5);
-      }
-
       function ordersHTML() {
         const g = serverState.yourGame;
         const cards = g.customerCards || [];
@@ -5840,10 +5836,15 @@
             (r) => (g.inventory[r.type] || 0) >= r.required,
           );
           const completed = g.completedOrders.includes(o.id);
-          const est = estimateTransport(g, o.totalItems);
+          /* The server sends the real figure (see order_transport_cost in server.py). This
+     used to be worked out here as max(5, items * 2 - level * 5), which only matches a
+     captain carrying no transport module and no transport boon. */
+          const shipping = o.transportCost ?? 0;
           const isGolden = o.kind === "EmperorMandate";
+          /* The server decides which mandate closes the voyage, since the schedule is its
+     data. See gen_emperor_mandate_order in server.py. */
           const cardClass =
-            `${isGolden ? "golden-order-card" : ""} ${isGolden && g.currentRound >= 8 ? "final-mandate" : ""}`.trim();
+            `${isGolden ? "golden-order-card" : ""} ${isGolden && o.isFinalMandate ? "final-mandate" : ""}`.trim();
           return `
           <div class="card ${cardClass}">
             <div class="card-header">
@@ -5879,8 +5880,8 @@
                 .join("")}
               <div class="card-total"><span>${tr("💰 订单报酬", "💰 Order Reward")}</span><span>${o.reward} 💰</span></div>
               <div class="stat-row" style="margin-top:3px">
-                <span class="tip" data-tip="${tr("运费 = max(5, 件数×2 − 船级×5)，福缘可进一步减免；成品另缴约5%增值税", "Shipping = max(5, items ×2 − ship level ×5); fortunes can reduce it further. Product orders also pay ~5% VAT")}">${tr("📦 预计运费", "📦 Est. shipping")}</span>
-                <span class="muted">≈ ${est} 💰${o.isProductOrder ? tr(" + 增值税", " + VAT") : ""}</span>
+                <span class="tip" data-tip="${tr("交付本单实际扣除的运费，已计入船级、福缘与已装模块的全部减免；成品另缴约5%增值税", "The shipping this delivery actually costs, with your ship level, fortunes and installed modules already counted. Product orders also pay ~5% VAT")}">${tr("📦 运费", "📦 Shipping")}</span>
+                <span class="muted">${shipping} 💰${o.isProductOrder ? tr(" + 增值税", " + VAT") : ""}</span>
               </div>
             </div>
             <div class="card-footer">

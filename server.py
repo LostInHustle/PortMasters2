@@ -899,6 +899,7 @@ class PlayerGame:
         tpl = EMPEROR_MANDATE_TEMPLATES[size]
         resources = [dict(r) for r in tpl["resources"]]
         total = sum(r["required"] for r in resources)
+        mandate_rounds = difficulty_cfg(self.difficulty)["mandates"].keys()
         return {
             "kind": "EmperorMandate",
             "demandPort": tpl["port"],
@@ -906,6 +907,13 @@ class PlayerGame:
             "reward": self.env_reward(tpl["port"], tpl["reward"]),
             "totalItems": total,
             "isProductOrder": any(r["type"] in PRODUCTS for r in resources),
+            # Whether this is the closing commission of the voyage, which the Trade board gives
+            # its own treatment. Decided here because the schedule lives here: the client used
+            # to test `currentRound >= 8`, which is right on Easy and lands on Standard by
+            # coincidence, but on Hard the mandates fall on rounds 6, 12 and 16, so it crowned
+            # the round 12 order as the finale and then did it again four rounds later.
+            "isFinalMandate": bool(mandate_rounds)
+            and self.currentRound == max(mandate_rounds),
         }
 
     # ---------- Card generation ----------
@@ -1056,18 +1064,42 @@ class PlayerGame:
         self.log(f"🛒 采购完成，花费{cost}金币")
         return True
 
+    def order_has_silk(self, order):
+        return any(
+            r["type"] in ["丝绸", "绫罗绸缎", "香囊", "布衣"]
+            for r in order["resources"]
+        )
+
+    def order_transport_cost(self, order):
+        """What delivering this order actually charges in shipping, ship level, boons and
+        modules all counted.
+
+        Shared with customer_cards_for_client so the figure on the Trade board is the figure
+        that gets charged. The board used to work it out itself as max(5, items * 2 - level * 5),
+        which only matches a captain carrying no transport module and no transport boon: a Bulk
+        Hauler was quoted 7 on a delivery that charged 1, and Silk Monopoly was quoted 7 on one
+        that shipped free.
+        """
+        return self.calc_transport_cost(
+            order["totalItems"], self.order_has_silk(order), order["resources"]
+        )
+
+    def customer_cards_for_client(self):
+        """The round's orders with their real shipping cost stamped on, mirroring what
+        resource_cards_for_client does for purchase cards. self.customerCards is left untouched.
+        """
+        return [
+            dict(o, transportCost=self.order_transport_cost(o))
+            for o in self.customerCards
+        ]
+
     def complete_order(self, order):
         for r in order["resources"]:
             if self.inventory.get(r["type"], 0) < r["required"]:
                 self.log(f"❌ 库存不足：{r['type']}×{r['required']}")
                 return False
-        has_silk = any(
-            r["type"] in ["丝绸", "绫罗绸缎", "香囊", "布衣"]
-            for r in order["resources"]
-        )
-        transport = self.calc_transport_cost(
-            order["totalItems"], has_silk, order["resources"]
-        )
+        has_silk = self.order_has_silk(order)
+        transport = self.order_transport_cost(order)
         for r in order["resources"]:
             self.inventory[r["type"]] -= r["required"]
         reward = order["reward"]
@@ -1436,7 +1468,7 @@ class PlayerGame:
             "draftRerolled": self.draftRerolled,
             "phase": self.phase,
             "resourceCards": self.resource_cards_for_client(),
-            "customerCards": self.customerCards,
+            "customerCards": self.customer_cards_for_client(),
             "purchaseCount": self.purchaseCount,
             "orderCount": self.orderCount,
             "purchasedCards": list(self.purchasedCards),
