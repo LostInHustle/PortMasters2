@@ -4351,7 +4351,8 @@
         <span class="diff-tagline">${info.tagline()}</span>
       </button>`;
         };
-        showModal(`
+        showModal(
+          `
     <h2>${tr("📨 发出航程邀请", "📨 Send a Voyage Invitation")}</h2>
     <p style="text-align:center;font-size:14px;line-height:1.8">${tr(
       `你正在邀请 <strong>${escapeHtml(to)}</strong> 共启一段航程。请先为本局选择难度，对方需要看到说明并同意后，航程才会开始。`,
@@ -4363,7 +4364,10 @@
       <button class="btn btn-success btn-lg" onclick="confirmSendInvite()">${tr("📨 发送邀请", "📨 Send Invitation")}</button>
       <button class="btn btn-ghost btn-lg" onclick="closeModal()">${tr("取消", "Cancel")}</button>
     </div>
-  `);
+  `,
+          false,
+          "invite-composer",
+        );
       }
 
       function confirmSendInvite() {
@@ -4388,7 +4392,8 @@
       function showInviteModal(from, difficulty) {
         pendingInviteFrom = from;
         const info = difficultyInfo(difficulty);
-        showModal(`
+        showModal(
+          `
     <h2>${tr("📨 航程邀请", "📨 Voyage Invitation")}</h2>
     <p style="text-align:center;font-size:14px;line-height:1.8">
       ${tr(
@@ -4411,7 +4416,10 @@
       <button class="btn btn-success btn-lg" onclick="respondInvite(true)">${tr("✅ 同意并接受", "✅ Agree and Accept")}</button>
       <button class="btn btn-danger btn-lg" onclick="respondInvite(false)">${tr("❌ 婉拒", "❌ Decline")}</button>
     </div>
-  `);
+  `,
+          false,
+          "invite-received",
+        );
       }
 
       function respondInvite(accept) {
@@ -4497,7 +4505,8 @@
         };
         const sizeButton = (n) =>
           `<button type="button" class="diff-option${hostComposerMaxPlayers === n ? " selected" : ""}" style="padding:10px" onclick="setHostComposerMaxPlayers(${n})">${n}</button>`;
-        showModal(`
+        showModal(
+          `
     <h2>${tr("🧑‍🤝‍🧑 招募船队", "🧑‍🤝‍🧑 Host a Voyage")}</h2>
     <p style="text-align:center;font-size:14px;line-height:1.8">${tr(
       "设置房间人数上限与难度。其他在线玩家可随时加入或离开，凑够 2 人后，你可以随时开始航程。",
@@ -4511,7 +4520,10 @@
       <button class="btn btn-gold btn-lg" onclick="confirmHostRoom()">${tr("📨 创建房间", "📨 Create Room")}</button>
       <button class="btn btn-ghost btn-lg" onclick="closeModal()">${tr("取消", "Cancel")}</button>
     </div>
-  `);
+  `,
+          false,
+          "host-composer",
+        );
       }
 
       function confirmHostRoom() {
@@ -6059,10 +6071,18 @@
         const others = Object.keys(
           (serverState && serverState.otherGames) || {},
         );
-        viewerTarget = target && others.includes(target) ? target : others[0];
-        if (!viewerTarget) return;
+        const next = target && others.includes(target) ? target : others[0];
+        if (!next) return;
+        const switched = _viewerOpen && next !== viewerTarget;
+        viewerTarget = next;
         _viewerOpen = true;
         renderCaptainViewer();
+        /* Reading a different captain starts at the top of their sheet. Live updates to the
+     captain already on screen deliberately leave the scroll alone. */
+        if (switched) {
+          const detail = document.getElementById("sp-detail");
+          if (detail) detail.scrollTop = 0;
+        }
       }
 
       function closeCaptainViewer() {
@@ -6071,6 +6091,14 @@
         document.getElementById("captain-viewer-root").innerHTML = "";
       }
 
+      /* This window is live: every broadcast from any other captain used to rewrite the whole
+   thing, overlay and all. Rebuilding an element that covers the viewport restarts its CSS
+   entrance animation, so watching someone play meant the window faded and slid in again on
+   every single click they made, while the detail pane jumped back to the top and any hover
+   was lost. The frame is now built once, when the window opens, which is where an entrance
+   animation belongs, and each later render only repaints the regions whose markup actually
+   changed, through the same paintHTML guard the panels already use. A broadcast that does
+   not touch the captain being watched now leaves this window completely alone. */
       function renderCaptainViewer() {
         if (!_viewerOpen) return;
         const others = (serverState && serverState.otherGames) || {};
@@ -6101,11 +6129,45 @@
           })
           .join("");
 
-        document.getElementById("captain-viewer-root").innerHTML = `
+        /* The frame: overlay, window, the pulsing LIVE badge and the close button. None of it
+     depends on which captain is being watched, so it is built once per open and then left
+     alone. sp-head-live is display:contents, so the title and the offline chip painted into
+     it stay direct flex children of .spectate-head and the header lays out exactly as
+     before. */
+        const root = document.getElementById("captain-viewer-root");
+        if (!root.querySelector(".spectate-window")) {
+          root.innerHTML = `
     <div class="spectate-overlay" onclick="if(event.target===this)closeCaptainViewer()">
       <div class="spectate-window">
         <div class="spectate-head">
           <span class="sp-live"><span class="sp-live-dot"></span>LIVE</span>
+          <div id="sp-head-live" style="display:contents"></div>
+          <button class="sp-close" onclick="closeCaptainViewer()">×</button>
+        </div>
+        <div class="spectate-body">
+          <div class="sp-names" id="sp-names"></div>
+          <div class="sp-detail" id="sp-detail"></div>
+        </div>
+        <div class="spectate-foot" id="sp-foot"></div>
+      </div>
+    </div>`;
+          /* One delegated handler for the whole name list, bound once with the frame. The old
+       code walked every [data-viewer-name] element in the document after each render, which
+       both did that work on every broadcast and reached outside this window. */
+          document.getElementById("sp-names").onclick = (e) => {
+            const item = e.target.closest("[data-viewer-name]");
+            if (item) openCaptainViewer(item.dataset.viewerName);
+          };
+        }
+
+        root.querySelector(".sp-close").title = tr(
+          "关闭窗口（Esc）",
+          "Close window (Esc)",
+        );
+
+        paintHTML(
+          document.getElementById("sp-head-live"),
+          `
           <div class="sp-title">
             ${tr(`👀 ${name} 的商队`, `👀 ${name}'s Fleet`)}
             <div class="sp-sub">${tr(
@@ -6113,12 +6175,14 @@
               `Round ${og.currentRound} / ${og.maxRounds} · ${phaseName(og.phase)} phase · read only, updates live`,
             )}</div>
           </div>
-          ${targetOnline ? "" : `<span class="chip amber">${tr("对方离线", "Offline")}</span>`}
-          <button class="sp-close" onclick="closeCaptainViewer()" title="${tr("关闭窗口（Esc）", "Close window (Esc)")}">×</button>
-        </div>
-        <div class="spectate-body">
-          <div class="sp-names">${nameListHTML}</div>
-          <div class="sp-detail">
+          ${targetOnline ? "" : `<span class="chip amber">${tr("对方离线", "Offline")}</span>`}`,
+        );
+
+        paintHTML(document.getElementById("sp-names"), nameListHTML);
+
+        paintHTML(
+          document.getElementById("sp-detail"),
+          `
             <div class="sp-hero">
               <div class="sp-tile gold">
                 <div class="k">${tr("现金", "Gold")}</div>
@@ -6172,17 +6236,16 @@
                       .join("")
                   : `<span class="muted">${tr("暂无动态", "Nothing yet")}</span>`
               }
-            </div>
-          </div>
-        </div>
-        <div class="spectate-foot">
-          ${tr("💡 此窗口可随时关闭再打开；等待全员结束本局后即可一同重新起航。", "💡 Open or close this window any time. Once everyone else finishes their game, you can set sail together again.")}
-        </div>
-      </div>
-    </div>`;
-        document.querySelectorAll("[data-viewer-name]").forEach((el) => {
-          el.onclick = () => openCaptainViewer(el.dataset.viewerName);
-        });
+            </div>`,
+        );
+
+        paintHTML(
+          document.getElementById("sp-foot"),
+          tr(
+            "💡 此窗口可随时关闭再打开；等待全员结束本局后即可一同重新起航。",
+            "💡 Open or close this window any time. Once everyone else finishes their game, you can set sail together again.",
+          ),
+        );
       }
 
       function bankruptcyHTML() {
@@ -6949,6 +7012,7 @@
     </div>
   `,
           true,
+          "manual",
         );
       }
 
@@ -7010,6 +7074,7 @@
     </div>
   `,
           true,
+          "onboarding",
         );
       }
 
@@ -7019,18 +7084,50 @@
         if (openManual) showManual("start");
       }
 
-      /* ---------- Generic dialogs ---------- */
-      function showModal(html, wide) {
-        document.getElementById("modal-root").innerHTML = `
+      /* ---------- Generic dialogs ----------
+   Some dialogs redraw themselves while they are open: both composers redraw on every
+   difficulty and room size click, and the manual redraws when the language changes. Each of
+   those went through showModal again, and the old version rebuilt the overlay from scratch
+   every time. The overlay covers the whole viewport and carries a fade in, and the box
+   itself carries a slide up, so a rebuild replayed both: choosing a difficulty made the
+   entire screen fade out and back in, which is what players were seeing.
+
+   The overlay and the box are now built once, when a dialog actually opens, and every later
+   call only repaints the body through paintHTML, which leaves the DOM alone when the markup
+   has not changed. The entrance animation therefore plays on opening, which is what it is
+   for, and never again while the dialog is being used.
+
+   dialogId names which dialog is on screen. Repainting the same dialog keeps the reading
+   position, since a difficulty click should not yank a summary someone is halfway through
+   back to the top; swapping in a different dialog scrolls to the top the way a fresh open
+   would. */
+      let _openDialogId = null;
+
+      function showModal(html, wide, dialogId) {
+        const root = document.getElementById("modal-root");
+        let body = document.getElementById("modal-body");
+        const fresh = !body;
+        if (fresh) {
+          root.innerHTML = `
     <div class="modal-overlay" onclick="if(event.target===this)closeModal()">
-      <div class="modal ${wide ? "modal-wide" : ""}">
+      <div class="modal">
         <button class="modal-x" onclick="closeModal()" title="${tr("关闭（Esc）", "Close (Esc)")}">×</button>
-        ${html}
+        <div id="modal-body"></div>
       </div>
     </div>`;
+          body = document.getElementById("modal-body");
+        }
+        const box = root.querySelector(".modal");
+        box.classList.toggle("modal-wide", !!wide);
+        box.querySelector(".modal-x").title = tr("关闭（Esc）", "Close (Esc)");
+        paintHTML(body, html);
+        /* A freshly built box is already at the top, so only a swap needs handling. */
+        if (!fresh && dialogId !== _openDialogId) box.scrollTop = 0;
+        _openDialogId = dialogId;
       }
 
       function closeModal() {
+        _openDialogId = null;
         document.getElementById("modal-root").innerHTML = "";
       }
 
