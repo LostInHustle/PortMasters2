@@ -1511,7 +1511,15 @@ class PlayerGame:
 
 
 # -------------------- Account storage --------------------
-USERS_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "users.json")
+# Configurable so a hosting provider can point this at a mounted persistent volume. A platform
+# such as Railway rebuilds the container on every deploy and wipes its filesystem with it, so an
+# accounts file sitting next to this script would take every registered captain with it. Set
+# USERS_FILE_PATH to something on the volume (for example /data/users.json) and accounts survive
+# a redeploy. Unset, it keeps the original behaviour of writing alongside the script, which is
+# what you want when running locally.
+USERS_FILE = os.environ.get("USERS_FILE_PATH") or os.path.join(
+    os.path.dirname(os.path.abspath(__file__)), "users.json"
+)
 
 
 class UserStore:
@@ -2792,12 +2800,19 @@ async def process_request(connection, request):
     )
 
 
+# The port comes from the environment when one is provided. Hosting platforms hand the process
+# a port to listen on rather than letting it choose, and Railway in particular sets PORT and
+# routes to it, so a hardcoded 8080 would simply never receive traffic there. Locally, with
+# nothing set, it stays on 8080 exactly as before.
+PORT = int(os.environ.get("PORT") or 8080)
+
+
 async def main():
     async with websockets.serve(
-        handler, "0.0.0.0", 8080, process_request=process_request
+        handler, "0.0.0.0", PORT, process_request=process_request
     ):
         print(
-            f"✅ Server started: web http://0.0.0.0:8080, WebSocket ws://0.0.0.0:8080"
+            f"✅ Server started: web http://0.0.0.0:{PORT}, WebSocket ws://0.0.0.0:{PORT}"
         )
         await asyncio.Future()
 
