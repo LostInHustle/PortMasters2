@@ -43,7 +43,6 @@ PRODUCTS = PRODUCTS_TIER0 + PRODUCTS_TIER1 + PRODUCTS_TIER2
 PORTS_TIER0 = ["泉州港", "广州港", "宁波港", "扬州港", "杭州港"]
 PORTS_TIER1 = ["福州港", "高丽港"]
 PORTS_TIER2 = ["三佛齐港", "大食港"]
-PORTS = PORTS_TIER0 + PORTS_TIER1 + PORTS_TIER2
 
 # -------------------- Difficulty --------------------
 # A difficulty is the whole per-session pacing profile, and this table is its single source
@@ -614,8 +613,6 @@ MODULES_TIER2 = [
     },
 ]
 
-MODULES = MODULES_TIER0 + MODULES_TIER1 + MODULES_TIER2
-
 
 def boon_pool(round_no, tier_unlock):
     return unlocked(BOONS_TIER0, BOONS_TIER1, BOONS_TIER2, round_no, tier_unlock)
@@ -902,6 +899,7 @@ class PlayerGame:
         tpl = EMPEROR_MANDATE_TEMPLATES[size]
         resources = [dict(r) for r in tpl["resources"]]
         total = sum(r["required"] for r in resources)
+        mandate_rounds = difficulty_cfg(self.difficulty)["mandates"].keys()
         return {
             "kind": "EmperorMandate",
             "demandPort": tpl["port"],
@@ -909,6 +907,13 @@ class PlayerGame:
             "reward": self.env_reward(tpl["port"], tpl["reward"]),
             "totalItems": total,
             "isProductOrder": any(r["type"] in PRODUCTS for r in resources),
+            # Whether this is the closing commission of the voyage, which the Trade board gives
+            # its own treatment. Decided here because the schedule lives here: the client used
+            # to test `currentRound >= 8`, which is right on Easy and lands on Standard by
+            # coincidence, but on Hard the mandates fall on rounds 6, 12 and 16, so it crowned
+            # the round 12 order as the finale and then did it again four rounds later.
+            "isFinalMandate": bool(mandate_rounds)
+            and self.currentRound == max(mandate_rounds),
         }
 
     # ---------- Card generation ----------
@@ -1059,18 +1064,42 @@ class PlayerGame:
         self.log(f"🛒 采购完成，花费{cost}金币")
         return True
 
+    def order_has_silk(self, order):
+        return any(
+            r["type"] in ["丝绸", "绫罗绸缎", "香囊", "布衣"]
+            for r in order["resources"]
+        )
+
+    def order_transport_cost(self, order):
+        """What delivering this order actually charges in shipping, ship level, boons and
+        modules all counted.
+
+        Shared with customer_cards_for_client so the figure on the Trade board is the figure
+        that gets charged. The board used to work it out itself as max(5, items * 2 - level * 5),
+        which only matches a captain carrying no transport module and no transport boon: a Bulk
+        Hauler was quoted 7 on a delivery that charged 1, and Silk Monopoly was quoted 7 on one
+        that shipped free.
+        """
+        return self.calc_transport_cost(
+            order["totalItems"], self.order_has_silk(order), order["resources"]
+        )
+
+    def customer_cards_for_client(self):
+        """The round's orders with their real shipping cost stamped on, mirroring what
+        resource_cards_for_client does for purchase cards. self.customerCards is left untouched.
+        """
+        return [
+            dict(o, transportCost=self.order_transport_cost(o))
+            for o in self.customerCards
+        ]
+
     def complete_order(self, order):
         for r in order["resources"]:
             if self.inventory.get(r["type"], 0) < r["required"]:
                 self.log(f"❌ 库存不足：{r['type']}×{r['required']}")
                 return False
-        has_silk = any(
-            r["type"] in ["丝绸", "绫罗绸缎", "香囊", "布衣"]
-            for r in order["resources"]
-        )
-        transport = self.calc_transport_cost(
-            order["totalItems"], has_silk, order["resources"]
-        )
+        has_silk = self.order_has_silk(order)
+        transport = self.order_transport_cost(order)
         for r in order["resources"]:
             self.inventory[r["type"]] -= r["required"]
         reward = order["reward"]
@@ -1439,7 +1468,7 @@ class PlayerGame:
             "draftRerolled": self.draftRerolled,
             "phase": self.phase,
             "resourceCards": self.resource_cards_for_client(),
-            "customerCards": self.customerCards,
+            "customerCards": self.customer_cards_for_client(),
             "purchaseCount": self.purchaseCount,
             "orderCount": self.orderCount,
             "purchasedCards": list(self.purchasedCards),
@@ -1482,7 +1511,15 @@ class PlayerGame:
 
 
 # -------------------- Account storage --------------------
-USERS_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "users.json")
+# Configurable so a hosting provider can point this at a mounted persistent volume. A platform
+# such as Railway rebuilds the container on every deploy and wipes its filesystem with it, so an
+# accounts file sitting next to this script would take every registered captain with it. Set
+# USERS_FILE_PATH to something on the volume (for example /data/users.json) and accounts survive
+# a redeploy. Unset, it keeps the original behaviour of writing alongside the script, which is
+# what you want when running locally.
+USERS_FILE = os.environ.get("USERS_FILE_PATH") or os.path.join(
+    os.path.dirname(os.path.abspath(__file__)), "users.json"
+)
 
 
 class UserStore:
@@ -1549,9 +1586,20 @@ TRADEABLE_TYPES = set(RESOURCES) | set(PRODUCTS) | {"金币"}
 
 
 def sanitize_trade_items(items):
-    clean = []
+    """Barter exploit guard: keeps only known tradeable goods with positive integer quantities,
+    and merges repeated entries for the same good into a single total.
+
+    The merge is what closes the hole. accept_trade checks affordability one entry at a time
+    against the whole balance, then applies every entry, so an order listing the same good twice
+    passed both checks and was charged twice. A captain holding 5 bolts of hemp could send
+    [hemp x5, hemp x5], end on minus 5 hemp, and hand the other captain 10 out of nothing. The
+    same trick on gold pushed a balance below zero, which is the number bankruptcy is judged on.
+    Merging first makes each entry the true total for its good, which is exactly what the
+    affordability check already assumes.
+    """
+    totals = {}
     if not isinstance(items, list):
-        return clean
+        return []
     for it in items:
         if not isinstance(it, dict):
             continue
@@ -1564,8 +1612,8 @@ def sanitize_trade_items(items):
             and not isinstance(q, bool)
             and q > 0
         ):
-            clean.append({"type": t, "quantity": q})
-    return clean
+            totals[t] = totals.get(t, 0) + q
+    return [{"type": t, "quantity": q} for t, q in totals.items()]
 
 
 class GameSession:
@@ -1957,6 +2005,13 @@ SESSION_TOKENS = {}
 
 
 def issue_token(username):
+    # One live token per account, because that is already the rule everywhere else: login
+    # refuses an account that is online elsewhere, so a second valid token for the same player
+    # could only ever be a leftover. Retiring the previous one on each login keeps the two rules
+    # in agreement, makes logging out genuinely final, and stops this dict from growing by one
+    # dead entry per login for as long as the process runs.
+    for stale in [t for t, owner in SESSION_TOKENS.items() if owner == username]:
+        SESSION_TOKENS.pop(stale, None)
     token = secrets.token_hex(16)
     SESSION_TOKENS[token] = username
     return token
@@ -2745,12 +2800,19 @@ async def process_request(connection, request):
     )
 
 
+# The port comes from the environment when one is provided. Hosting platforms hand the process
+# a port to listen on rather than letting it choose, and Railway in particular sets PORT and
+# routes to it, so a hardcoded 8080 would simply never receive traffic there. Locally, with
+# nothing set, it stays on 8080 exactly as before.
+PORT = int(os.environ.get("PORT") or 8080)
+
+
 async def main():
     async with websockets.serve(
-        handler, "0.0.0.0", 8080, process_request=process_request
+        handler, "0.0.0.0", PORT, process_request=process_request
     ):
         print(
-            f"✅ Server started: web http://0.0.0.0:8080, WebSocket ws://0.0.0.0:8080"
+            f"✅ Server started: web http://0.0.0.0:{PORT}, WebSocket ws://0.0.0.0:{PORT}"
         )
         await asyncio.Future()
 

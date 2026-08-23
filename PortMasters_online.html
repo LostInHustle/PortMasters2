@@ -2464,6 +2464,42 @@
 
     <script>
       /* ============================================================
+   Browser storage
+   Every preference this page remembers goes through these two helpers, and nothing
+   touches localStorage directly.
+
+   The guard is not decoration. A browser set to block site data does not hand back
+   null, it throws on the property access itself, and the very first thing this script
+   used to do was read the saved language at the top level. One player with cookies
+   blocked therefore got a blank page and no way to find out why. The saved language,
+   the dismissed banner and the onboarding flag are all conveniences: losing them
+   should cost a player their preference, never the game.
+   ============================================================ */
+      function readStored(key) {
+        try {
+          return localStorage.getItem(key);
+        } catch (e) {
+          return null;
+        }
+      }
+
+      function writeStored(key, value) {
+        try {
+          localStorage.setItem(key, value);
+        } catch (e) {
+          /* storage unavailable: the preference just will not survive a reload */
+        }
+      }
+
+      function removeStored(key) {
+        try {
+          localStorage.removeItem(key);
+        } catch (e) {
+          /* nothing to remove if storage is unavailable */
+        }
+      }
+
+      /* ============================================================
    Internationalization (i18n) core
    Architecture convention: the online protocol and server state always identify
    items, ports and similar data using "canonical Chinese keys" (changing these
@@ -2473,7 +2509,7 @@
    is English, and players can switch at any time, with the choice persisted to
    localStorage.
    ============================================================ */
-      let LANG = localStorage.getItem("pm2_lang") || "en";
+      let LANG = readStored("pm2_lang") || "en";
 
       /* Inline bilingual text: tr('Chinese', 'English') */
       const tr = (zh, en) => (LANG === "en" ? en : zh);
@@ -3792,7 +3828,7 @@
 
       function toggleLang() {
         LANG = LANG === "en" ? "zh" : "en";
-        localStorage.setItem("pm2_lang", LANG);
+        writeStored("pm2_lang", LANG);
         applyLanguage();
         renderOnlineUsers();
         renderOpenRooms();
@@ -4021,31 +4057,20 @@
       /* ---------- Resumable session ----------
    The token the server hands out at login lives in localStorage, not sessionStorage, because
    surviving a real page reload is the whole point: refreshing the tab must not cost the player
-   their login or their seat in a running voyage. */
+   their login or their seat in a running voyage. Storage may be unavailable, in which case
+   readStored returns null and silent resume simply never happens, which is the login form. */
       const SESSION_TOKEN_KEY = "pm2_session_token";
 
       function storedSessionToken() {
-        try {
-          return localStorage.getItem(SESSION_TOKEN_KEY);
-        } catch (e) {
-          return null; // private browsing or storage disabled: just show the login form
-        }
+        return readStored(SESSION_TOKEN_KEY);
       }
 
       function storeSessionToken(token) {
-        try {
-          localStorage.setItem(SESSION_TOKEN_KEY, token);
-        } catch (e) {
-          /* storage unavailable: silent resume simply won't work next time */
-        }
+        writeStored(SESSION_TOKEN_KEY, token);
       }
 
       function clearSessionToken() {
-        try {
-          localStorage.removeItem(SESSION_TOKEN_KEY);
-        } catch (e) {
-          /* nothing to clear if storage is unavailable */
-        }
+        removeStored(SESSION_TOKEN_KEY);
       }
 
       /* Shared by the interactive login and the silent resume, so both land in exactly the
@@ -4351,7 +4376,8 @@
         <span class="diff-tagline">${info.tagline()}</span>
       </button>`;
         };
-        showModal(`
+        showModal(
+          `
     <h2>${tr("📨 发出航程邀请", "📨 Send a Voyage Invitation")}</h2>
     <p style="text-align:center;font-size:14px;line-height:1.8">${tr(
       `你正在邀请 <strong>${escapeHtml(to)}</strong> 共启一段航程。请先为本局选择难度，对方需要看到说明并同意后，航程才会开始。`,
@@ -4363,7 +4389,10 @@
       <button class="btn btn-success btn-lg" onclick="confirmSendInvite()">${tr("📨 发送邀请", "📨 Send Invitation")}</button>
       <button class="btn btn-ghost btn-lg" onclick="closeModal()">${tr("取消", "Cancel")}</button>
     </div>
-  `);
+  `,
+          false,
+          "invite-composer",
+        );
       }
 
       function confirmSendInvite() {
@@ -4388,7 +4417,8 @@
       function showInviteModal(from, difficulty) {
         pendingInviteFrom = from;
         const info = difficultyInfo(difficulty);
-        showModal(`
+        showModal(
+          `
     <h2>${tr("📨 航程邀请", "📨 Voyage Invitation")}</h2>
     <p style="text-align:center;font-size:14px;line-height:1.8">
       ${tr(
@@ -4411,7 +4441,10 @@
       <button class="btn btn-success btn-lg" onclick="respondInvite(true)">${tr("✅ 同意并接受", "✅ Agree and Accept")}</button>
       <button class="btn btn-danger btn-lg" onclick="respondInvite(false)">${tr("❌ 婉拒", "❌ Decline")}</button>
     </div>
-  `);
+  `,
+          false,
+          "invite-received",
+        );
       }
 
       function respondInvite(accept) {
@@ -4497,7 +4530,8 @@
         };
         const sizeButton = (n) =>
           `<button type="button" class="diff-option${hostComposerMaxPlayers === n ? " selected" : ""}" style="padding:10px" onclick="setHostComposerMaxPlayers(${n})">${n}</button>`;
-        showModal(`
+        showModal(
+          `
     <h2>${tr("🧑‍🤝‍🧑 招募船队", "🧑‍🤝‍🧑 Host a Voyage")}</h2>
     <p style="text-align:center;font-size:14px;line-height:1.8">${tr(
       "设置房间人数上限与难度。其他在线玩家可随时加入或离开，凑够 2 人后，你可以随时开始航程。",
@@ -4511,7 +4545,10 @@
       <button class="btn btn-gold btn-lg" onclick="confirmHostRoom()">${tr("📨 创建房间", "📨 Create Room")}</button>
       <button class="btn btn-ghost btn-lg" onclick="closeModal()">${tr("取消", "Cancel")}</button>
     </div>
-  `);
+  `,
+          false,
+          "host-composer",
+        );
       }
 
       function confirmHostRoom() {
@@ -5141,7 +5178,7 @@
      rounds: from round 2 onward it no longer shows the home-page-style welcome,
      but instead a "Set Sail - Settlement Review" transition page */
         if (g.currentRound > 1) return roundStartHTML(g);
-        const dismissed = localStorage.getItem("pm2_banner_dismissed") === "1";
+        const dismissed = readStored("pm2_banner_dismissed") === "1";
         return `
     <div class="center-block">
       <div class="hero-title">⚓ PortMasters 2 🚢</div>
@@ -5227,7 +5264,7 @@
       }
 
       function dismissPmBanner() {
-        localStorage.setItem("pm2_banner_dismissed", "1");
+        writeStored("pm2_banner_dismissed", "1");
         renderPhase();
       }
 
@@ -5786,10 +5823,6 @@
         sendAction("fireWorker", { workerType: type, index });
       }
 
-      function estimateTransport(g, totalItems) {
-        return Math.max(5, totalItems * 2 - g.shipLevel * 5);
-      }
-
       function ordersHTML() {
         const g = serverState.yourGame;
         const cards = g.customerCards || [];
@@ -5803,10 +5836,15 @@
             (r) => (g.inventory[r.type] || 0) >= r.required,
           );
           const completed = g.completedOrders.includes(o.id);
-          const est = estimateTransport(g, o.totalItems);
+          /* The server sends the real figure (see order_transport_cost in server.py). This
+     used to be worked out here as max(5, items * 2 - level * 5), which only matches a
+     captain carrying no transport module and no transport boon. */
+          const shipping = o.transportCost ?? 0;
           const isGolden = o.kind === "EmperorMandate";
+          /* The server decides which mandate closes the voyage, since the schedule is its
+     data. See gen_emperor_mandate_order in server.py. */
           const cardClass =
-            `${isGolden ? "golden-order-card" : ""} ${isGolden && g.currentRound >= 8 ? "final-mandate" : ""}`.trim();
+            `${isGolden ? "golden-order-card" : ""} ${isGolden && o.isFinalMandate ? "final-mandate" : ""}`.trim();
           return `
           <div class="card ${cardClass}">
             <div class="card-header">
@@ -5842,8 +5880,8 @@
                 .join("")}
               <div class="card-total"><span>${tr("💰 订单报酬", "💰 Order Reward")}</span><span>${o.reward} 💰</span></div>
               <div class="stat-row" style="margin-top:3px">
-                <span class="tip" data-tip="${tr("运费 = max(5, 件数×2 − 船级×5)，福缘可进一步减免；成品另缴约5%增值税", "Shipping = max(5, items ×2 − ship level ×5); fortunes can reduce it further. Product orders also pay ~5% VAT")}">${tr("📦 预计运费", "📦 Est. shipping")}</span>
-                <span class="muted">≈ ${est} 💰${o.isProductOrder ? tr(" + 增值税", " + VAT") : ""}</span>
+                <span class="tip" data-tip="${tr("交付本单实际扣除的运费，已计入船级、福缘与已装模块的全部减免；成品另缴约5%增值税", "The shipping this delivery actually costs, with your ship level, fortunes and installed modules already counted. Product orders also pay ~5% VAT")}">${tr("📦 运费", "📦 Shipping")}</span>
+                <span class="muted">${shipping} 💰${o.isProductOrder ? tr(" + 增值税", " + VAT") : ""}</span>
               </div>
             </div>
             <div class="card-footer">
@@ -6059,10 +6097,18 @@
         const others = Object.keys(
           (serverState && serverState.otherGames) || {},
         );
-        viewerTarget = target && others.includes(target) ? target : others[0];
-        if (!viewerTarget) return;
+        const next = target && others.includes(target) ? target : others[0];
+        if (!next) return;
+        const switched = _viewerOpen && next !== viewerTarget;
+        viewerTarget = next;
         _viewerOpen = true;
         renderCaptainViewer();
+        /* Reading a different captain starts at the top of their sheet. Live updates to the
+     captain already on screen deliberately leave the scroll alone. */
+        if (switched) {
+          const detail = document.getElementById("sp-detail");
+          if (detail) detail.scrollTop = 0;
+        }
       }
 
       function closeCaptainViewer() {
@@ -6071,6 +6117,14 @@
         document.getElementById("captain-viewer-root").innerHTML = "";
       }
 
+      /* This window is live: every broadcast from any other captain used to rewrite the whole
+   thing, overlay and all. Rebuilding an element that covers the viewport restarts its CSS
+   entrance animation, so watching someone play meant the window faded and slid in again on
+   every single click they made, while the detail pane jumped back to the top and any hover
+   was lost. The frame is now built once, when the window opens, which is where an entrance
+   animation belongs, and each later render only repaints the regions whose markup actually
+   changed, through the same paintHTML guard the panels already use. A broadcast that does
+   not touch the captain being watched now leaves this window completely alone. */
       function renderCaptainViewer() {
         if (!_viewerOpen) return;
         const others = (serverState && serverState.otherGames) || {};
@@ -6101,11 +6155,45 @@
           })
           .join("");
 
-        document.getElementById("captain-viewer-root").innerHTML = `
+        /* The frame: overlay, window, the pulsing LIVE badge and the close button. None of it
+     depends on which captain is being watched, so it is built once per open and then left
+     alone. sp-head-live is display:contents, so the title and the offline chip painted into
+     it stay direct flex children of .spectate-head and the header lays out exactly as
+     before. */
+        const root = document.getElementById("captain-viewer-root");
+        if (!root.querySelector(".spectate-window")) {
+          root.innerHTML = `
     <div class="spectate-overlay" onclick="if(event.target===this)closeCaptainViewer()">
       <div class="spectate-window">
         <div class="spectate-head">
           <span class="sp-live"><span class="sp-live-dot"></span>LIVE</span>
+          <div id="sp-head-live" style="display:contents"></div>
+          <button class="sp-close" onclick="closeCaptainViewer()">×</button>
+        </div>
+        <div class="spectate-body">
+          <div class="sp-names" id="sp-names"></div>
+          <div class="sp-detail" id="sp-detail"></div>
+        </div>
+        <div class="spectate-foot" id="sp-foot"></div>
+      </div>
+    </div>`;
+          /* One delegated handler for the whole name list, bound once with the frame. The old
+       code walked every [data-viewer-name] element in the document after each render, which
+       both did that work on every broadcast and reached outside this window. */
+          document.getElementById("sp-names").onclick = (e) => {
+            const item = e.target.closest("[data-viewer-name]");
+            if (item) openCaptainViewer(item.dataset.viewerName);
+          };
+        }
+
+        root.querySelector(".sp-close").title = tr(
+          "关闭窗口（Esc）",
+          "Close window (Esc)",
+        );
+
+        paintHTML(
+          document.getElementById("sp-head-live"),
+          `
           <div class="sp-title">
             ${tr(`👀 ${name} 的商队`, `👀 ${name}'s Fleet`)}
             <div class="sp-sub">${tr(
@@ -6113,12 +6201,14 @@
               `Round ${og.currentRound} / ${og.maxRounds} · ${phaseName(og.phase)} phase · read only, updates live`,
             )}</div>
           </div>
-          ${targetOnline ? "" : `<span class="chip amber">${tr("对方离线", "Offline")}</span>`}
-          <button class="sp-close" onclick="closeCaptainViewer()" title="${tr("关闭窗口（Esc）", "Close window (Esc)")}">×</button>
-        </div>
-        <div class="spectate-body">
-          <div class="sp-names">${nameListHTML}</div>
-          <div class="sp-detail">
+          ${targetOnline ? "" : `<span class="chip amber">${tr("对方离线", "Offline")}</span>`}`,
+        );
+
+        paintHTML(document.getElementById("sp-names"), nameListHTML);
+
+        paintHTML(
+          document.getElementById("sp-detail"),
+          `
             <div class="sp-hero">
               <div class="sp-tile gold">
                 <div class="k">${tr("现金", "Gold")}</div>
@@ -6172,17 +6262,16 @@
                       .join("")
                   : `<span class="muted">${tr("暂无动态", "Nothing yet")}</span>`
               }
-            </div>
-          </div>
-        </div>
-        <div class="spectate-foot">
-          ${tr("💡 此窗口可随时关闭再打开；等待全员结束本局后即可一同重新起航。", "💡 Open or close this window any time. Once everyone else finishes their game, you can set sail together again.")}
-        </div>
-      </div>
-    </div>`;
-        document.querySelectorAll("[data-viewer-name]").forEach((el) => {
-          el.onclick = () => openCaptainViewer(el.dataset.viewerName);
-        });
+            </div>`,
+        );
+
+        paintHTML(
+          document.getElementById("sp-foot"),
+          tr(
+            "💡 此窗口可随时关闭再打开；等待全员结束本局后即可一同重新起航。",
+            "💡 Open or close this window any time. Once everyone else finishes their game, you can set sail together again.",
+          ),
+        );
       }
 
       function bankruptcyHTML() {
@@ -6949,6 +7038,7 @@
     </div>
   `,
           true,
+          "manual",
         );
       }
 
@@ -6966,7 +7056,7 @@
       /* Backward-compat for old entry points (F1, etc.) */
       /* ---------- Onboarding tour shown the first time a session is entered ---------- */
       function maybeShowOnboarding() {
-        if (localStorage.getItem("pm2_onboarded") === "1") return;
+        if (readStored("pm2_onboarded") === "1") return;
         showModal(
           `
     <h2>${tr("🧭 欢迎登船，船长！", "🧭 Welcome Aboard, Captain!")}</h2>
@@ -7010,27 +7100,60 @@
     </div>
   `,
           true,
+          "onboarding",
         );
       }
 
       function finishOnboarding(openManual) {
-        localStorage.setItem("pm2_onboarded", "1");
+        writeStored("pm2_onboarded", "1");
         closeModal();
         if (openManual) showManual("start");
       }
 
-      /* ---------- Generic dialogs ---------- */
-      function showModal(html, wide) {
-        document.getElementById("modal-root").innerHTML = `
+      /* ---------- Generic dialogs ----------
+   Some dialogs redraw themselves while they are open: both composers redraw on every
+   difficulty and room size click, and the manual redraws when the language changes. Each of
+   those went through showModal again, and the old version rebuilt the overlay from scratch
+   every time. The overlay covers the whole viewport and carries a fade in, and the box
+   itself carries a slide up, so a rebuild replayed both: choosing a difficulty made the
+   entire screen fade out and back in, which is what players were seeing.
+
+   The overlay and the box are now built once, when a dialog actually opens, and every later
+   call only repaints the body through paintHTML, which leaves the DOM alone when the markup
+   has not changed. The entrance animation therefore plays on opening, which is what it is
+   for, and never again while the dialog is being used.
+
+   dialogId names which dialog is on screen. Repainting the same dialog keeps the reading
+   position, since a difficulty click should not yank a summary someone is halfway through
+   back to the top; swapping in a different dialog scrolls to the top the way a fresh open
+   would. */
+      let _openDialogId = null;
+
+      function showModal(html, wide, dialogId) {
+        const root = document.getElementById("modal-root");
+        let body = document.getElementById("modal-body");
+        const fresh = !body;
+        if (fresh) {
+          root.innerHTML = `
     <div class="modal-overlay" onclick="if(event.target===this)closeModal()">
-      <div class="modal ${wide ? "modal-wide" : ""}">
+      <div class="modal">
         <button class="modal-x" onclick="closeModal()" title="${tr("关闭（Esc）", "Close (Esc)")}">×</button>
-        ${html}
+        <div id="modal-body"></div>
       </div>
     </div>`;
+          body = document.getElementById("modal-body");
+        }
+        const box = root.querySelector(".modal");
+        box.classList.toggle("modal-wide", !!wide);
+        box.querySelector(".modal-x").title = tr("关闭（Esc）", "Close (Esc)");
+        paintHTML(body, html);
+        /* A freshly built box is already at the top, so only a swap needs handling. */
+        if (!fresh && dialogId !== _openDialogId) box.scrollTop = 0;
+        _openDialogId = dialogId;
       }
 
       function closeModal() {
+        _openDialogId = null;
         document.getElementById("modal-root").innerHTML = "";
       }
 
