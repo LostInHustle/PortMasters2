@@ -2464,6 +2464,42 @@
 
     <script>
       /* ============================================================
+   Browser storage
+   Every preference this page remembers goes through these two helpers, and nothing
+   touches localStorage directly.
+
+   The guard is not decoration. A browser set to block site data does not hand back
+   null, it throws on the property access itself, and the very first thing this script
+   used to do was read the saved language at the top level. One player with cookies
+   blocked therefore got a blank page and no way to find out why. The saved language,
+   the dismissed banner and the onboarding flag are all conveniences: losing them
+   should cost a player their preference, never the game.
+   ============================================================ */
+      function readStored(key) {
+        try {
+          return localStorage.getItem(key);
+        } catch (e) {
+          return null;
+        }
+      }
+
+      function writeStored(key, value) {
+        try {
+          localStorage.setItem(key, value);
+        } catch (e) {
+          /* storage unavailable: the preference just will not survive a reload */
+        }
+      }
+
+      function removeStored(key) {
+        try {
+          localStorage.removeItem(key);
+        } catch (e) {
+          /* nothing to remove if storage is unavailable */
+        }
+      }
+
+      /* ============================================================
    Internationalization (i18n) core
    Architecture convention: the online protocol and server state always identify
    items, ports and similar data using "canonical Chinese keys" (changing these
@@ -2473,7 +2509,7 @@
    is English, and players can switch at any time, with the choice persisted to
    localStorage.
    ============================================================ */
-      let LANG = localStorage.getItem("pm2_lang") || "en";
+      let LANG = readStored("pm2_lang") || "en";
 
       /* Inline bilingual text: tr('Chinese', 'English') */
       const tr = (zh, en) => (LANG === "en" ? en : zh);
@@ -3792,7 +3828,7 @@
 
       function toggleLang() {
         LANG = LANG === "en" ? "zh" : "en";
-        localStorage.setItem("pm2_lang", LANG);
+        writeStored("pm2_lang", LANG);
         applyLanguage();
         renderOnlineUsers();
         renderOpenRooms();
@@ -4021,31 +4057,20 @@
       /* ---------- Resumable session ----------
    The token the server hands out at login lives in localStorage, not sessionStorage, because
    surviving a real page reload is the whole point: refreshing the tab must not cost the player
-   their login or their seat in a running voyage. */
+   their login or their seat in a running voyage. Storage may be unavailable, in which case
+   readStored returns null and silent resume simply never happens, which is the login form. */
       const SESSION_TOKEN_KEY = "pm2_session_token";
 
       function storedSessionToken() {
-        try {
-          return localStorage.getItem(SESSION_TOKEN_KEY);
-        } catch (e) {
-          return null; // private browsing or storage disabled: just show the login form
-        }
+        return readStored(SESSION_TOKEN_KEY);
       }
 
       function storeSessionToken(token) {
-        try {
-          localStorage.setItem(SESSION_TOKEN_KEY, token);
-        } catch (e) {
-          /* storage unavailable: silent resume simply won't work next time */
-        }
+        writeStored(SESSION_TOKEN_KEY, token);
       }
 
       function clearSessionToken() {
-        try {
-          localStorage.removeItem(SESSION_TOKEN_KEY);
-        } catch (e) {
-          /* nothing to clear if storage is unavailable */
-        }
+        removeStored(SESSION_TOKEN_KEY);
       }
 
       /* Shared by the interactive login and the silent resume, so both land in exactly the
@@ -5153,7 +5178,7 @@
      rounds: from round 2 onward it no longer shows the home-page-style welcome,
      but instead a "Set Sail - Settlement Review" transition page */
         if (g.currentRound > 1) return roundStartHTML(g);
-        const dismissed = localStorage.getItem("pm2_banner_dismissed") === "1";
+        const dismissed = readStored("pm2_banner_dismissed") === "1";
         return `
     <div class="center-block">
       <div class="hero-title">⚓ PortMasters 2 🚢</div>
@@ -5239,7 +5264,7 @@
       }
 
       function dismissPmBanner() {
-        localStorage.setItem("pm2_banner_dismissed", "1");
+        writeStored("pm2_banner_dismissed", "1");
         renderPhase();
       }
 
@@ -7030,7 +7055,7 @@
       /* Backward-compat for old entry points (F1, etc.) */
       /* ---------- Onboarding tour shown the first time a session is entered ---------- */
       function maybeShowOnboarding() {
-        if (localStorage.getItem("pm2_onboarded") === "1") return;
+        if (readStored("pm2_onboarded") === "1") return;
         showModal(
           `
     <h2>${tr("🧭 欢迎登船，船长！", "🧭 Welcome Aboard, Captain!")}</h2>
@@ -7079,7 +7104,7 @@
       }
 
       function finishOnboarding(openManual) {
-        localStorage.setItem("pm2_onboarded", "1");
+        writeStored("pm2_onboarded", "1");
         closeModal();
         if (openManual) showManual("start");
       }

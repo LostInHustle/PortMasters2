@@ -43,7 +43,6 @@ PRODUCTS = PRODUCTS_TIER0 + PRODUCTS_TIER1 + PRODUCTS_TIER2
 PORTS_TIER0 = ["泉州港", "广州港", "宁波港", "扬州港", "杭州港"]
 PORTS_TIER1 = ["福州港", "高丽港"]
 PORTS_TIER2 = ["三佛齐港", "大食港"]
-PORTS = PORTS_TIER0 + PORTS_TIER1 + PORTS_TIER2
 
 # -------------------- Difficulty --------------------
 # A difficulty is the whole per-session pacing profile, and this table is its single source
@@ -613,8 +612,6 @@ MODULES_TIER2 = [
         "desc": "「蕃香脂」与「珠链」每件运费降低3金币。",
     },
 ]
-
-MODULES = MODULES_TIER0 + MODULES_TIER1 + MODULES_TIER2
 
 
 def boon_pool(round_no, tier_unlock):
@@ -1549,9 +1546,20 @@ TRADEABLE_TYPES = set(RESOURCES) | set(PRODUCTS) | {"金币"}
 
 
 def sanitize_trade_items(items):
-    clean = []
+    """Barter exploit guard: keeps only known tradeable goods with positive integer quantities,
+    and merges repeated entries for the same good into a single total.
+
+    The merge is what closes the hole. accept_trade checks affordability one entry at a time
+    against the whole balance, then applies every entry, so an order listing the same good twice
+    passed both checks and was charged twice. A captain holding 5 bolts of hemp could send
+    [hemp x5, hemp x5], end on minus 5 hemp, and hand the other captain 10 out of nothing. The
+    same trick on gold pushed a balance below zero, which is the number bankruptcy is judged on.
+    Merging first makes each entry the true total for its good, which is exactly what the
+    affordability check already assumes.
+    """
+    totals = {}
     if not isinstance(items, list):
-        return clean
+        return []
     for it in items:
         if not isinstance(it, dict):
             continue
@@ -1564,8 +1572,8 @@ def sanitize_trade_items(items):
             and not isinstance(q, bool)
             and q > 0
         ):
-            clean.append({"type": t, "quantity": q})
-    return clean
+            totals[t] = totals.get(t, 0) + q
+    return [{"type": t, "quantity": q} for t, q in totals.items()]
 
 
 class GameSession:
@@ -1957,6 +1965,13 @@ SESSION_TOKENS = {}
 
 
 def issue_token(username):
+    # One live token per account, because that is already the rule everywhere else: login
+    # refuses an account that is online elsewhere, so a second valid token for the same player
+    # could only ever be a leftover. Retiring the previous one on each login keeps the two rules
+    # in agreement, makes logging out genuinely final, and stops this dict from growing by one
+    # dead entry per login for as long as the process runs.
+    for stale in [t for t, owner in SESSION_TOKENS.items() if owner == username]:
+        SESSION_TOKENS.pop(stale, None)
     token = secrets.token_hex(16)
     SESSION_TOKENS[token] = username
     return token
