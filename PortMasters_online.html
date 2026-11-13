@@ -1285,6 +1285,27 @@
         color: rgba(224, 242, 254, 0.8);
         font-size: 11.5px;
       }
+      /* The action bar collapses to a slim strip so it stops crowding the stage.
+   The ready chip and the phase action stay visible, so the bar never has to be reopened
+   just to keep playing; the hint and secondary buttons return on expand. */
+      .control-panel.collapsed {
+        padding: 6px 12px;
+        gap: 8px;
+      }
+      .control-panel.collapsed .control-hint,
+      .control-panel.collapsed .control-secondary {
+        display: none;
+      }
+      .control-panel .btn.control-toggle {
+        flex: none;
+        width: 30px;
+        height: 30px;
+        min-height: 30px;
+        padding: 0;
+        border-radius: 50%;
+        font-size: 13px;
+        line-height: 1;
+      }
 
       /* ===== Log ===== */
       .log-panel {
@@ -7941,9 +7962,26 @@
       }
 
       /* ===== Bottom action bar ===== */
+      function controlsCollapsed() {
+        return readStored("pm2_controls_collapsed") === "1";
+      }
+
+      function toggleControlsCollapsed() {
+        writeStored("pm2_controls_collapsed", controlsCollapsed() ? "0" : "1");
+        renderControls();
+        const toggle = document.querySelector(".control-toggle");
+        if (toggle) toggle.focus({ preventScroll: true });
+      }
+
       function renderControls() {
         const g = serverState && serverState.yourGame;
         const c = document.getElementById("control-panel");
+        const collapsed = controlsCollapsed();
+        if (c) c.classList.toggle("collapsed", collapsed);
+        const toggleTitle = collapsed
+          ? tr("展开操作栏", "Expand the action bar")
+          : tr("收起操作栏", "Collapse the action bar");
+        const collapseToggle = `<button class="btn btn-ghost control-toggle" onclick="toggleControlsCollapsed()" aria-expanded="${!collapsed}" aria-controls="control-panel" aria-label="${toggleTitle}" title="${toggleTitle}">${collapsed ? "▴" : "▾"}</button>`;
         if (!g || g.gameOver) {
           const isBankrupt = g && g.bankrupt;
           const anyoneElsePlaying = Object.values(
@@ -7955,9 +7993,10 @@
       <span class="sync-chip">${isBankrupt ? tr("💥 船队破产", "💥 Fleet Bankrupt") : tr("🏁 本局已结束", "🏁 Game Over")}</span>
       ${anyoneElsePlaying ? `<span class="control-hint">${tr("💡 还有同行仍在航行中，可打开观战窗口实时围观", "💡 Others are still sailing. Open the spectator window to watch live")}</span>` : ""}
       <div class="control-spacer"></div>
-      <button class="btn btn-ghost" onclick="showManual()">${tr("📖 手册", "📖 Manual")}</button>
-      ${isBankrupt && anyoneElsePlaying ? `<button class="btn btn-ghost" onclick="openCaptainViewer()">${tr("👀 观战同行", "👀 Spectate")}</button>` : ""}
-      <button class="btn btn-danger" onclick="confirmRestart()">${tr("🔄 重新起航", "🔄 Set Sail Again")}</button>`,
+      <button class="btn btn-ghost control-secondary" onclick="showManual()">${tr("📖 手册", "📖 Manual")}</button>
+      ${isBankrupt && anyoneElsePlaying ? `<button class="btn btn-ghost control-secondary" onclick="openCaptainViewer()">${tr("👀 观战同行", "👀 Spectate")}</button>` : ""}
+      <button class="btn btn-danger" onclick="confirmRestart()">${tr("🔄 重新起航", "🔄 Set Sail Again")}</button>
+      ${collapseToggle}`,
           );
           return;
         }
@@ -8028,13 +8067,14 @@
     <span class="sync-chip" title="${tr("全员确认后才进入下一阶段", "The next phase starts once everyone confirms")}">${tr(`🔄 全员就绪 ${readyCount} / ${totalCount}`, `🔄 Ready ${readyCount} / ${totalCount}`)}</span>
     <span class="control-hint">💡 ${hint}</span>
     <div class="control-spacer"></div>
-    <button class="btn btn-ghost" onclick="showManual()" title="${tr("快捷键 F1", "Shortcut: F1")}">${tr("📖 手册", "📖 Manual")}</button>
+    <button class="btn btn-ghost control-secondary" onclick="showManual()" title="${tr("快捷键 F1", "Shortcut: F1")}">${tr("📖 手册", "📖 Manual")}</button>
     ${
       serverState && serverState.host === currentUser
-        ? `<button class="btn btn-ghost" onclick="confirmRestart()" title="${tr("立即开启全新一局，全员进度重置，难度保持不变", "Start a brand new voyage now, resetting everyone's progress at the same difficulty")}">${tr("🔄 重新起航", "🔄 Set Sail Again")}</button>`
+        ? `<button class="btn btn-ghost control-secondary" onclick="confirmRestart()" title="${tr("立即开启全新一局，全员进度重置，难度保持不变", "Start a brand new voyage now, resetting everyone's progress at the same difficulty")}">${tr("🔄 重新起航", "🔄 Set Sail Again")}</button>`
         : ""
     }
     ${primary}
+    ${collapseToggle}
   `,
         );
       }
