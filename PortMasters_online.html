@@ -3,7 +3,15 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>PortMasters 2 · Maritime Silk Road (Online)</title>
+    <title>PortMasters 2, Maritime Silk Road (Online)</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      rel="stylesheet"
+      media="print"
+      onload="this.media = 'all'"
+      href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500..800&amp;family=Nunito+Sans:wght@400;600;700;800&amp;family=Caveat:wght@500;700&amp;display=swap"
+    />
     <style>
       /* ============================================================
    PortMasters 2 Design System
@@ -2230,6 +2238,1277 @@
           max-height: none;
         }
       }
+
+      /* ============================================================
+         Tidelight visual layer
+         A round is one day at sea, so the sky behind the glass follows the round: first light for
+         Set Sail and Fortune, morning for Procure, noon for Barter, Artisans and Trade, dusk for
+         Upkeep and Shipyard, and night for the login screen and the endings. The lobby has its own
+         harbor morning and the waiting room its own lantern dusk.
+         Every widget wears one identity hue on its heading and a soft wash. Meaning colors (gain,
+         caution, risk, gold) stay reserved for numbers and states.
+         This layer only restyles. It sits after the original rules, reuses their class names and
+         changes no game logic. Both builds carry the same text of this layer.
+         ============================================================ */
+      :root {
+        --ocean-950: #0a3038;
+        --ocean-900: #16323a;
+        --ocean-700: #0b6a70;
+        --ocean-500: #0e8274;
+        --ocean-300: #7fd6cb;
+        --ocean-100: #dff5f1;
+        --teal-500: #0e8274;
+        --teal-300: #7adfd2;
+        --gold-500: #e3b341;
+        --gold-300: #f6dc8c;
+        --ink: #16323a;
+        --ink-soft: #4a646b;
+        --ink-faint: #5d767c;
+        --glass: rgba(255, 255, 255, 0.72);
+        --glass-strong: rgba(255, 255, 255, 0.93);
+        --glass-border: rgba(255, 255, 255, 0.8);
+        --radius-lg: 22px;
+        --radius-md: 16px;
+        --radius-sm: 12px;
+        --shadow-soft: 0 12px 32px -18px rgba(20, 70, 80, 0.45);
+        --shadow-float: 0 18px 44px -18px rgba(20, 70, 80, 0.55);
+        --grad-primary: linear-gradient(180deg, #0e8274, #0b6a70);
+        --grad-success: linear-gradient(180deg, #0f8660, #0b6b4f);
+        --grad-warning: linear-gradient(180deg, #f6c373, #e9a13f);
+        --grad-danger: linear-gradient(180deg, #c8433d, #a52f2f);
+        --grad-gold: linear-gradient(180deg, #f8e19a, #e3b341);
+        --grad-grey: linear-gradient(180deg, #dfe7e8, #c3d0d2);
+        --grad-deep: linear-gradient(120deg, #0a4750, #0b6a70 55%, #0e8274);
+        --tl-serif: "Fraunces", Georgia, "Songti SC", "Noto Serif SC", serif;
+        --tl-body:
+          "Nunito Sans", -apple-system, "Segoe UI", Roboto, "PingFang SC",
+          "Noto Sans SC", "Microsoft YaHei", sans-serif;
+        --tl-hand:
+          "Caveat", "Bradley Hand", "Kaiti SC", "STKaiti", "KaiTi", cursive;
+        --tl-han: "Songti SC", "Noto Serif SC", "SimSun", serif;
+        --grain: rgba(22, 50, 58, 0.026);
+        --gloss: rgba(255, 255, 255, 0.9);
+        --line: rgba(22, 50, 58, 0.14);
+      }
+
+      /* ---- The sky ---- */
+      body {
+        --sky: linear-gradient(165deg, #f4fbfa, #e3f3f2 55%, #d6ebef);
+        --sun: #ffe9a8;
+        --halo: rgba(255, 226, 150, 0.55);
+        --sx: 15%;
+        --sy: 18%;
+        font-family: var(--tl-body);
+        background:
+          radial-gradient(
+            circle at var(--sx) var(--sy),
+            var(--sun) 0 52px,
+            var(--halo) 54px,
+            transparent 320px
+          ),
+          var(--sky);
+        background-attachment: fixed;
+      }
+      body[data-sky="dawn"] {
+        --sky: linear-gradient(
+          175deg,
+          #fde6d6 0%,
+          #fbf0e0 32%,
+          #e6f4f1 72%,
+          #d3ebee
+        );
+        --sun: #ffd9a0;
+        --halo: rgba(255, 196, 140, 0.5);
+        --sx: 10%;
+        --sy: 64%;
+      }
+      body[data-sky="harbor"] {
+        --sky: linear-gradient(
+          180deg,
+          #6fcfd8 0%,
+          #b4ebe6 34%,
+          #fdf2cf 60%,
+          #ffdf9c 68%,
+          #ffdf9c 100%
+        );
+        --sun: #fff6d0;
+        --halo: rgba(255, 206, 110, 0.7);
+        --sx: 80%;
+        --sy: 60%;
+      }
+      body[data-sky="noon"] {
+        --sky: linear-gradient(
+          180deg,
+          #174f96 0%,
+          #2a7cc4 40%,
+          #86cfe9 74%,
+          #d6f2f1 100%
+        );
+        --sun: #fffbe0;
+        --halo: rgba(255, 245, 190, 0.75);
+        --sx: 50%;
+        --sy: 0%;
+      }
+      body[data-sky="dusk"] {
+        --sky: linear-gradient(
+          180deg,
+          #261f57 0%,
+          #5c2f78 26%,
+          #b84f7c 50%,
+          #f58a5c 70%,
+          #ffc56e 82%,
+          #ffe1a0 86%,
+          #1f6a72 86.3%,
+          #113c4a 100%
+        );
+        --sun: #fff0c2;
+        --halo: rgba(255, 190, 120, 0.6);
+        --sx: 70%;
+        --sy: 85%;
+      }
+      body[data-sky="night"] {
+        --sky: linear-gradient(170deg, #0b2130, #0e2b3a 55%, #123a46);
+        --sun: #f4f1dc;
+        --halo: rgba(200, 225, 235, 0.2);
+        --sx: 86%;
+        --sy: 13%;
+      }
+      body[data-sky="harbor"]::after {
+        content: "";
+        position: fixed;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        height: 33vh;
+        z-index: -1;
+        pointer-events: none;
+        background:
+          linear-gradient(rgba(255, 255, 255, 0.75), rgba(255, 255, 255, 0)) 0
+            0 / 100% 3px no-repeat,
+          repeating-linear-gradient(
+            177deg,
+            rgba(255, 255, 255, 0.17) 0 2px,
+            transparent 2px 28px
+          ),
+          linear-gradient(180deg, #27a79b, #0f7a7c 55%, #0a5a66);
+      }
+      .bg-orb {
+        display: none;
+      }
+      #login-overlay,
+      #lobby-overlay {
+        background: transparent;
+      }
+
+      /* ---- Type ---- */
+      .brand h1,
+      .login-brand h2,
+      .lobby-box h2,
+      .phase-brief h2,
+      .hero-title,
+      .modal h2,
+      .card-header,
+      .boon-name,
+      .section-box h3,
+      .trade-section h3,
+      .crew-head .who .nm,
+      .spectate-head .sp-title,
+      .sp-tile .v,
+      .stat-money,
+      .stat-score {
+        font-family: var(--tl-serif);
+      }
+      .hero-title,
+      .login-brand h2 {
+        background: linear-gradient(120deg, #0b6a70, #0e8274 45%, #b98a1e);
+        -webkit-background-clip: text;
+        background-clip: text;
+        -webkit-text-fill-color: transparent;
+      }
+      .tip {
+        border-bottom-color: rgba(22, 50, 58, 0.35);
+      }
+
+      /* ---- Glass, grain and gloss ---- */
+      .panel {
+        --hue: 195;
+        background:
+          repeating-linear-gradient(
+            0deg,
+            var(--grain) 0 1px,
+            transparent 1px 4px
+          ),
+          repeating-linear-gradient(
+            90deg,
+            var(--grain) 0 1px,
+            transparent 1px 4px
+          ),
+          linear-gradient(
+            180deg,
+            oklch(0.64 0.12 var(--hue) / 0.15),
+            transparent 96px
+          ),
+          var(--glass);
+        box-shadow:
+          var(--shadow-soft),
+          inset 0 1px 0 var(--gloss),
+          inset 0 0 0 1px oklch(0.7 0.1 var(--hue) / 0.14);
+      }
+      #status-panel {
+        --hue: 111;
+      }
+      #roster-panel {
+        --hue: 175;
+      }
+      #log-panel {
+        --hue: 47;
+      }
+      .phase-panel {
+        --hue: 154;
+        padding: 18px 24px 22px;
+        border-radius: 26px;
+        background:
+          repeating-linear-gradient(
+            0deg,
+            var(--grain) 0 1px,
+            transparent 1px 4px
+          ),
+          repeating-linear-gradient(
+            90deg,
+            var(--grain) 0 1px,
+            transparent 1px 4px
+          ),
+          radial-gradient(
+            circle at 100% 100%,
+            transparent 0 138px,
+            oklch(0.6 0.12 var(--hue) / 0.14) 139px 140.5px,
+            transparent 141px 188px,
+            oklch(0.6 0.12 var(--hue) / 0.1) 189px 190.5px,
+            transparent 191px 248px,
+            oklch(0.6 0.12 var(--hue) / 0.07) 249px 250.5px,
+            transparent 251px
+          ),
+          linear-gradient(
+            180deg,
+            oklch(0.64 0.12 var(--hue) / 0.14),
+            transparent 120px
+          ),
+          var(--glass);
+      }
+      .status-section,
+      .section-box,
+      .online-user-item,
+      .roster-widget,
+      .worker-row {
+        background: var(--glass-strong);
+        border: 1px solid var(--glass-border);
+        box-shadow:
+          inset 0 1px 0 var(--gloss),
+          0 8px 16px -14px rgba(20, 60, 70, 0.6);
+      }
+      .status-section {
+        --hue: 195;
+      }
+      .status-section h3 {
+        color: var(--ocean-700);
+        color: oklch(0.46 0.13 var(--hue));
+        letter-spacing: 0.8px;
+      }
+      .ss-overview {
+        --hue: 111;
+      }
+      .ss-buffs {
+        --hue: 325;
+      }
+      .ss-env {
+        --hue: 200;
+      }
+      .ss-ship {
+        --hue: 215;
+      }
+      .ss-cargo {
+        --hue: 154;
+      }
+      .ss-crew {
+        --hue: 305;
+      }
+      .ss-due {
+        --hue: 45;
+      }
+      .section-box h3 {
+        color: var(--ink);
+      }
+      .stat-money {
+        color: #0c6b4c;
+        font-size: 15px;
+      }
+      .stat-score {
+        color: #6f500a;
+        font-size: 15px;
+      }
+      .stat-value {
+        color: var(--ink);
+      }
+      .roster-widget-head:hover {
+        background: rgba(14, 130, 116, 0.08);
+      }
+
+      /* ---- Captains: a round medal in each captain's own color ---- */
+      .medal,
+      .crew-head .avatar {
+        --hue: 195;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        flex: none;
+        width: 38px;
+        height: 38px;
+        border-radius: 50%;
+        border: 2px solid #fff;
+        font: 700 17px/1 var(--tl-serif);
+        color: oklch(0.3 0.1 var(--hue));
+        background: linear-gradient(
+          140deg,
+          oklch(0.94 0.05 var(--hue)),
+          oklch(0.8 0.11 var(--hue))
+        );
+        box-shadow: 0 4px 10px -5px oklch(0.4 0.1 var(--hue) / 0.8);
+      }
+      .crew-head.partner .avatar {
+        --hue: 175;
+        background: linear-gradient(
+          140deg,
+          oklch(0.94 0.05 var(--hue)),
+          oklch(0.8 0.11 var(--hue))
+        );
+        box-shadow: 0 4px 10px -5px oklch(0.4 0.1 var(--hue) / 0.8);
+      }
+      .medal.sm {
+        width: 30px;
+        height: 30px;
+        font-size: 14px;
+      }
+      .crew-head {
+        border-bottom: 2px dashed var(--line);
+      }
+
+      /* ---- Goods and artisans shown as Chinese characters when the player asks for them ---- */
+      body[data-icons="han"] span.icon,
+      body[data-icons="han"] .han-seal {
+        display: inline-grid;
+        place-items: center;
+        flex: none;
+        width: 22px;
+        height: 22px;
+        border-radius: 7px;
+        background: linear-gradient(180deg, #0e8274, #0b6a70);
+        color: #fff8e8;
+        font: 700 13px/1 var(--tl-han);
+        box-shadow:
+          inset 0 1px rgba(255, 255, 255, 0.25),
+          0 3px 6px -3px rgba(20, 40, 50, 0.6);
+      }
+
+      /* ---- The first mate's note ---- */
+      .mate-note {
+        position: relative;
+        margin: 12px 4px;
+        padding: 11px 14px 9px 16px;
+        text-align: left;
+        background: linear-gradient(175deg, #fffbea, #fff3cf);
+        color: #54420f;
+        font: 500 18px/1.25 var(--tl-hand);
+        border-radius: 3px 14px 12px 14px;
+        transform: rotate(-1deg);
+        box-shadow: 0 8px 16px -10px rgba(60, 50, 10, 0.6);
+      }
+      html[lang="zh-CN"] .mate-note {
+        font-size: 15px;
+        line-height: 1.55;
+      }
+      .mate-note::before {
+        content: "";
+        position: absolute;
+        top: -5px;
+        left: 16px;
+        width: 11px;
+        height: 11px;
+        border-radius: 50%;
+        background: radial-gradient(circle at 35% 35%, #fff3c0, #d59f2a);
+        box-shadow: 0 2px 3px rgba(0, 0, 0, 0.3);
+      }
+      .mate-note small {
+        display: block;
+        margin-top: 3px;
+        font: 800 9.5px/1.4 var(--tl-body);
+        letter-spacing: 1.3px;
+        text-transform: uppercase;
+        color: #6f5a1c;
+      }
+      .pm-banner,
+      .pm-note {
+        background: linear-gradient(175deg, #fffbea, #fff3cf);
+        border: 1px solid rgba(213, 159, 42, 0.4);
+        color: #54420f;
+      }
+
+      /* ---- Buttons you can feel ---- */
+      .btn {
+        --btn-lip: #084b50;
+        border-radius: 14px;
+        font-weight: 800;
+        box-shadow:
+          0 3px 0 var(--btn-lip),
+          0 12px 18px -12px var(--btn-shadow),
+          inset 0 1px rgba(255, 255, 255, 0.35);
+      }
+      .btn:hover:not(:disabled) {
+        transform: translateY(-1.5px);
+        filter: none;
+        box-shadow:
+          0 4.5px 0 var(--btn-lip),
+          0 14px 20px -12px var(--btn-shadow),
+          inset 0 1px rgba(255, 255, 255, 0.35);
+      }
+      .btn:active:not(:disabled) {
+        transform: translateY(2px);
+        filter: none;
+        box-shadow: 0 1px 0 var(--btn-lip);
+      }
+      .btn:focus-visible {
+        outline: 3px solid rgba(14, 130, 116, 0.45);
+        outline-offset: 2px;
+      }
+      .btn:disabled {
+        box-shadow: none;
+        transform: none;
+        opacity: 1;
+        color: #4a646b;
+      }
+      .btn-success {
+        --btn-lip: #07503b;
+      }
+      .btn-warning {
+        --btn-lip: #b97a22;
+        color: #3b2405;
+      }
+      .btn-danger {
+        --btn-lip: #7d2222;
+      }
+      .btn-gold {
+        --btn-lip: #b3841a;
+        color: #3b2a05;
+      }
+      .btn-grey {
+        --btn-lip: #9fb0b3;
+      }
+      .btn-ghost {
+        --btn-lip: rgba(22, 50, 58, 0.16);
+        background: var(--glass-strong);
+        border: 0;
+        color: var(--ink);
+        box-shadow:
+          0 3px 0 var(--btn-lip),
+          inset 0 0 0 1px var(--line);
+      }
+      .header .btn-ghost,
+      .control-panel .btn-ghost {
+        --btn-lip: rgba(4, 40, 46, 0.55);
+        box-shadow: 0 3px 0 var(--btn-lip);
+      }
+      .btn-lg {
+        border-radius: 16px;
+      }
+      .btn-xl {
+        border-radius: 18px;
+      }
+
+      /* ---- Chips ---- */
+      .chip {
+        background: rgba(22, 50, 58, 0.07);
+        border-color: transparent;
+        color: var(--ink);
+        font-weight: 800;
+      }
+      .chip.amber {
+        background: rgba(227, 179, 65, 0.24);
+        border-color: transparent;
+        color: #6f500a;
+      }
+      .chip.green {
+        background: rgba(15, 134, 96, 0.14);
+        border-color: transparent;
+        color: #0c6b4c;
+      }
+
+      /* ---- The day's arc: eight stops that rise to noon and set at the Shipyard ---- */
+      .stepper {
+        position: relative;
+        overflow: visible;
+        min-height: 98px;
+        margin: 0 0 14px;
+      }
+      .stepper::before {
+        content: "";
+        position: absolute;
+        left: 6.25%;
+        right: 6.25%;
+        top: 22px;
+        height: 68px;
+        border: 1.5px dashed var(--ink-faint);
+        border-radius: 50%;
+        clip-path: inset(0 0 50% 0);
+        opacity: 0.6;
+        pointer-events: none;
+      }
+      .step::before {
+        display: none;
+      }
+      .step:nth-child(1),
+      .step:nth-child(8) {
+        padding-top: 34px;
+      }
+      .step:nth-child(2),
+      .step:nth-child(7) {
+        padding-top: 10px;
+      }
+      .step:nth-child(3),
+      .step:nth-child(6) {
+        padding-top: 3px;
+      }
+      .step .bubble {
+        width: 36px;
+        height: 36px;
+        font-size: 16px;
+        background: var(--glass-strong);
+        border: 2px solid rgba(22, 50, 58, 0.2);
+        box-shadow: none;
+      }
+      .step.done .bubble {
+        background: var(--ocean-500);
+        border-color: var(--ocean-500);
+        color: #fff;
+      }
+      .step.current .bubble {
+        width: 44px;
+        height: 44px;
+        margin: -4px 0;
+        font-size: 20px;
+        border: 0;
+        color: #3b2a05;
+        background: radial-gradient(
+          circle at 35% 30%,
+          #fff6cf,
+          #f3c64f 62%,
+          #d59f2a
+        );
+        box-shadow:
+          0 0 0 6px rgba(243, 198, 79, 0.28),
+          0 0 26px 4px rgba(243, 198, 79, 0.55);
+        animation: none;
+      }
+      .step .lbl {
+        color: var(--ink-faint);
+      }
+      .step.done .lbl {
+        color: var(--ink);
+      }
+      .step.current .lbl {
+        color: #6f500a;
+        font-weight: 800;
+      }
+
+      /* ---- Stage furniture ---- */
+      .phase-brief {
+        background: none;
+        border: 0;
+        padding: 0;
+        margin: 0 0 16px;
+        align-items: center;
+      }
+      .phase-brief .pb-icon {
+        display: grid;
+        place-items: center;
+        width: 48px;
+        height: 48px;
+        border-radius: 16px;
+        font-size: 25px;
+        filter: none;
+        transform: rotate(-6deg);
+        background: linear-gradient(
+          135deg,
+          oklch(0.93 0.06 var(--hue)),
+          oklch(0.82 0.11 var(--hue))
+        );
+        box-shadow:
+          inset 0 0 0 1.5px rgba(255, 255, 255, 0.6),
+          0 6px 12px -6px oklch(0.4 0.12 var(--hue) / 0.8);
+      }
+      .phase-brief h2 {
+        font-size: 26px;
+        line-height: 1.2;
+        color: var(--ink);
+      }
+      .phase-brief p {
+        font-size: 13px;
+        max-width: 640px;
+      }
+      .card-grid {
+        grid-template-columns: repeat(auto-fill, minmax(min(100%, 240px), 1fr));
+        gap: 16px;
+      }
+      .card,
+      .boon-card {
+        background:
+          repeating-linear-gradient(
+            0deg,
+            var(--grain) 0 1px,
+            transparent 1px 3px
+          ),
+          var(--glass-strong);
+        border: 1px solid var(--glass-border);
+        border-radius: 18px;
+        box-shadow:
+          var(--shadow-soft),
+          inset 0 1px 0 var(--gloss);
+      }
+      .card-header {
+        background: none;
+        border-bottom: 0;
+        padding: 13px 16px 2px;
+        font-size: 17px;
+        font-weight: 700;
+        color: var(--ink);
+      }
+      .card-body {
+        padding: 8px 16px 12px;
+      }
+      .card-total {
+        border-top: 2px dashed var(--line);
+        color: var(--ink);
+      }
+      .card-footer {
+        border-top: 0;
+        padding: 4px 16px 16px;
+      }
+      .card-tag {
+        background: rgba(22, 50, 58, 0.07);
+        color: var(--ink-soft);
+        font-family: var(--tl-body);
+      }
+      .card-tag.product {
+        background: rgba(227, 179, 65, 0.24);
+        color: #6f500a;
+      }
+      .price-discounted {
+        color: #0c6b4c;
+      }
+      .environment-banner {
+        --hue: 200;
+        background: var(--glass-strong);
+        border: 1px solid var(--glass-border);
+        box-shadow:
+          inset 0 1px 0 var(--gloss),
+          inset 0 0 0 1px oklch(0.7 0.1 var(--hue) / 0.2);
+      }
+      .environment-banner .env-title {
+        color: oklch(0.46 0.13 var(--hue));
+      }
+      .environment-banner .env-icon,
+      .pm-banner .pm-icon {
+        transform: rotate(-6deg);
+      }
+      .whisper-panel {
+        --hue: 295;
+        background: var(--glass-strong);
+        border: 1px solid var(--glass-border);
+        box-shadow:
+          inset 0 1px 0 var(--gloss),
+          inset 0 0 0 1px oklch(0.7 0.1 var(--hue) / 0.25),
+          0 8px 16px -14px rgba(20, 60, 70, 0.6);
+      }
+      .whisper-panel summary {
+        color: oklch(0.46 0.13 var(--hue));
+      }
+      .whisper-panel summary:hover {
+        background: oklch(0.7 0.1 var(--hue) / 0.1);
+      }
+      .whisper-panel summary::after {
+        color: oklch(0.46 0.13 var(--hue));
+      }
+      .whisper-clue {
+        border-color: oklch(0.7 0.1 var(--hue) / 0.3);
+      }
+      .trade-section {
+        --hue: 40;
+        background: var(--glass-strong);
+        border: 1px solid var(--glass-border);
+        box-shadow:
+          inset 0 1px 0 var(--gloss),
+          inset 0 0 0 1px oklch(0.7 0.1 var(--hue) / 0.25);
+      }
+      .trade-section h3 {
+        color: oklch(0.46 0.13 var(--hue));
+        font-size: 16px;
+      }
+      .trade-order {
+        border: 1.5px solid var(--line);
+        border-radius: 14px;
+      }
+      .trade-create select,
+      .trade-create input,
+      .login-box input,
+      #chat-input {
+        border: 1.5px solid var(--line);
+      }
+      .trade-create select:focus,
+      .trade-create input:focus {
+        outline: 2px solid rgba(14, 130, 116, 0.4);
+      }
+      .login-box input:focus,
+      #chat-input:focus {
+        border-color: var(--ocean-500);
+        box-shadow: 0 0 0 4px rgba(14, 130, 116, 0.16);
+      }
+      .separator {
+        background: none;
+        height: 0;
+        border-top: 2px dashed var(--line);
+      }
+      .boon-card:hover {
+        border-color: rgba(227, 179, 65, 0.9);
+        box-shadow:
+          var(--shadow-float),
+          0 0 0 2px #e3b341,
+          0 0 30px -4px rgba(227, 179, 65, 0.7);
+      }
+      .boon-icon {
+        filter: none;
+      }
+
+      /* ---- Header band, control bar, log ---- */
+      .header {
+        border-radius: 999px;
+        padding: 9px 12px 9px 18px;
+        box-shadow: var(--shadow-float);
+      }
+      .brand .logo {
+        font-size: 24px;
+        filter: none;
+      }
+      .brand h1 {
+        font-size: 20px;
+      }
+      .brand .subtitle {
+        display: none;
+      }
+      .control-panel {
+        border-radius: 18px;
+        padding: 10px 14px;
+        box-shadow:
+          var(--shadow-float),
+          0 0 0 1px rgba(227, 179, 65, 0.6),
+          0 0 22px -6px rgba(227, 179, 65, 0.6);
+      }
+      .log-panel .log-title {
+        color: var(--ocean-700);
+        color: oklch(0.46 0.13 var(--hue));
+        background: rgba(255, 255, 255, 0.9);
+      }
+
+      /* ---- Arrival: login, lobby and waiting room ---- */
+      .login-box,
+      .lobby-box,
+      .modal,
+      .spectate-window,
+      #chat-window {
+        background:
+          repeating-linear-gradient(
+            0deg,
+            var(--grain) 0 1px,
+            transparent 1px 4px
+          ),
+          var(--glass-strong);
+        border: 1px solid var(--glass-border);
+        box-shadow:
+          0 30px 70px -30px rgba(10, 40, 50, 0.7),
+          inset 0 1px 0 var(--gloss);
+      }
+      .login-box {
+        max-width: 430px;
+      }
+      .login-brand .logo {
+        display: inline-grid;
+        place-items: center;
+        width: 64px;
+        height: 64px;
+        border-radius: 22px;
+        font-size: 32px;
+        filter: none;
+        transform: rotate(-6deg);
+        background: linear-gradient(135deg, #f8e19a, #e3b341);
+        box-shadow:
+          inset 0 0 0 2px rgba(255, 255, 255, 0.55),
+          0 10px 20px -10px rgba(179, 132, 26, 0.9);
+      }
+      .login-brand h2 {
+        font-size: 34px;
+        margin-top: 12px;
+      }
+      .login-box input {
+        border-radius: 14px;
+      }
+      .lobby-box {
+        max-width: 1080px;
+        padding: 26px 28px;
+      }
+      .lobby-box h2 {
+        font-size: 28px;
+      }
+      #room-browse-view {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) 340px;
+        gap: 6px 24px;
+        align-items: start;
+      }
+      #room-browse-view > * {
+        grid-column: 1;
+      }
+      #room-browse-view > #lb-online-title {
+        grid-column: 2;
+        grid-row: 1;
+        margin: 4px 0 !important;
+        align-self: center;
+      }
+      #room-browse-view > #online-users-list {
+        grid-column: 2;
+        grid-row: 2;
+      }
+      #room-browse-view > .mate-note {
+        grid-column: 2;
+        grid-row: 3;
+      }
+      #room-browse-view > .lb-rooms-head {
+        grid-row: 1;
+        margin: 0 !important;
+      }
+      #room-browse-view > #open-rooms-list {
+        grid-row: 2 / span 2;
+      }
+      #lb-online-title,
+      #lb-rooms-title,
+      #room-waiting-view > h3 {
+        font-family: var(--tl-body);
+        font-size: 13px !important;
+        font-weight: 800;
+        letter-spacing: 1.2px;
+        text-transform: uppercase;
+      }
+      #lb-online-title {
+        color: oklch(0.46 0.13 318) !important;
+      }
+      #lb-rooms-title {
+        color: oklch(0.46 0.13 185) !important;
+      }
+      .online-user-item {
+        border-radius: 16px;
+        padding: 11px 14px;
+      }
+      .online-user-item .u-name {
+        color: var(--ink);
+      }
+      .diff-option.selected {
+        border-color: var(--ocean-500);
+        box-shadow: 0 0 0 3px rgba(14, 130, 116, 0.2);
+      }
+      .diff-summary {
+        background: rgba(14, 130, 116, 0.08);
+        color: var(--ink);
+      }
+      .mtab.active {
+        box-shadow: 0 3px 0 #084b50;
+      }
+      .manual-body th {
+        background: rgba(14, 130, 116, 0.1);
+      }
+      .kbd {
+        background: #16323a;
+      }
+
+      /* ---- The deck: rail, stage with its control bar, console ---- */
+      #app {
+        max-width: 1780px;
+        padding: 16px;
+        gap: 14px 16px;
+        grid-template-columns: clamp(250px, 19vw, 290px) minmax(0, 1fr) clamp(
+            280px,
+            22vw,
+            325px
+          );
+        grid-template-rows: auto minmax(0, 1fr) 150px auto;
+        grid-template-areas:
+          "header header header"
+          "me main partner"
+          "me main log"
+          "me actions log";
+      }
+      .log-panel {
+        height: auto;
+        min-height: 0;
+        padding: 10px 16px;
+      }
+      @media (min-width: 1280px) and (min-height: 700px) {
+        #app {
+          height: 100vh;
+          height: 100dvh;
+        }
+        .side-panel,
+        .phase-panel {
+          max-height: none;
+          min-height: 0;
+        }
+      }
+      @media (max-width: 1279px) {
+        #app {
+          grid-template-columns: 260px minmax(0, 1fr);
+          grid-template-rows: auto auto auto auto auto;
+          grid-template-areas:
+            "header header"
+            "me main"
+            "me actions"
+            "partner partner"
+            "log log";
+        }
+        .log-panel {
+          height: 150px;
+        }
+        .phase-panel {
+          max-height: none;
+        }
+      }
+      @media (max-width: 1024px) {
+        #app {
+          padding: 12px;
+          grid-template-columns: minmax(0, 1fr);
+          grid-template-areas:
+            "header"
+            "main"
+            "actions"
+            "me"
+            "partner"
+            "log";
+        }
+        .control-panel {
+          position: sticky;
+          bottom: 10px;
+          z-index: 40;
+        }
+      }
+      @media (max-width: 760px) {
+        #room-browse-view {
+          grid-template-columns: minmax(0, 1fr);
+        }
+        #room-browse-view > * {
+          grid-column: 1 !important;
+          grid-row: auto !important;
+        }
+        .stepper {
+          overflow-x: auto;
+          min-height: 0;
+        }
+        .stepper::before {
+          display: none;
+        }
+        .step:nth-child(n) {
+          padding-top: 4px;
+        }
+        .phase-panel {
+          padding: 14px;
+        }
+        .phase-brief h2 {
+          font-size: 21px;
+        }
+        .header {
+          border-radius: 22px;
+        }
+      }
+      /* ---- Refinements found while testing on real screens ---- */
+      .header {
+        border-radius: 26px;
+      }
+      #toast-stack {
+        top: 84px;
+      }
+      .card-grid {
+        grid-template-columns: repeat(auto-fill, minmax(min(100%, 215px), 1fr));
+      }
+      .card-grid:has(.boon-card) {
+        grid-template-columns: repeat(auto-fit, minmax(min(100%, 165px), 1fr));
+      }
+      .boon-card .btn {
+        width: 100%;
+        padding-left: 8px;
+        padding-right: 8px;
+      }
+      .roster-widget-head {
+        flex-wrap: wrap;
+        row-gap: 4px;
+      }
+      .roster-widget-head .nm {
+        flex: 1 1 40%;
+        font-weight: 800;
+        color: var(--ink);
+      }
+      .roster-toggle {
+        order: 4;
+      }
+      .roster-widget-stats {
+        order: 5;
+        flex: 1 0 100%;
+        margin-left: 0;
+        padding-left: 48px;
+        justify-content: flex-start;
+      }
+      .control-panel {
+        flex-wrap: nowrap;
+      }
+      .control-spacer {
+        display: none;
+      }
+      .control-hint {
+        flex: 1;
+        min-width: 0;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+      .control-panel .btn,
+      .sync-chip {
+        flex: none;
+        white-space: nowrap;
+      }
+      .log-panel .log-title {
+        top: -10px;
+        margin: 0 -6px 6px;
+        padding: 5px 6px;
+        border-radius: 8px;
+        background: rgba(248, 251, 249, 0.96);
+      }
+      @media (max-width: 1024px) {
+        .control-panel {
+          flex-wrap: wrap;
+        }
+        .control-hint {
+          white-space: normal;
+          flex-basis: 200px;
+        }
+      }
+      /* ---- Login and register: a short, wide card. The harbor greeting sits on the left, the form
+         on the right, and the language switch tucks into the corner. Narrow screens stack. ---- */
+      .login-box {
+        position: relative;
+        max-width: 860px;
+        padding: 34px 36px 26px;
+        display: grid;
+        grid-template-columns: minmax(0, 0.92fr) minmax(0, 1.08fr);
+        gap: 6px 40px;
+        align-items: center;
+        text-align: left;
+      }
+      .login-box > .login-brand {
+        grid-column: 1;
+        grid-row: 1;
+        text-align: center;
+      }
+      .login-box > .mate-note {
+        grid-column: 1;
+        grid-row: 2;
+        margin: 6px 4px 4px;
+      }
+      .login-box > form,
+      .login-box > #login-form,
+      .login-box > #register-form {
+        grid-column: 2;
+        grid-row: 1 / span 2;
+      }
+      .login-box > .pm-note {
+        grid-column: 1 / -1;
+        grid-row: 3;
+        margin-top: 14px;
+      }
+      .login-box > .btn-ghost {
+        position: absolute;
+        top: 14px;
+        right: 14px;
+        width: auto !important;
+        margin: 0 !important;
+        padding: 7px 12px;
+        font-size: 12px;
+        border-radius: 12px;
+      }
+      .login-brand .tagline {
+        margin-bottom: 4px;
+      }
+      .login-box input {
+        margin: 0 0 12px;
+      }
+      .btn-pair {
+        display: grid;
+        grid-template-columns: auto minmax(0, 1fr);
+        gap: 10px;
+        margin-top: 4px;
+      }
+      .login-box .btn-pair .btn {
+        width: auto;
+        margin: 0;
+        padding-left: 16px;
+        padding-right: 16px;
+        white-space: nowrap;
+      }
+      @media (max-width: 820px) {
+        .login-box {
+          max-width: 440px;
+          grid-template-columns: minmax(0, 1fr);
+          gap: 4px;
+          padding: 44px 24px 22px;
+        }
+        .login-box > * {
+          grid-column: 1 !important;
+          grid-row: auto !important;
+        }
+        .login-brand .logo {
+          width: 52px;
+          height: 52px;
+          font-size: 26px;
+        }
+        .login-brand h2 {
+          font-size: 28px;
+        }
+      }
+      /* Landscape phones: the header shrinks to one slim row and the control bar becomes a thumb
+         column beside the stage, so the cards keep most of the short screen. */
+      @media (max-height: 520px) and (orientation: landscape) and (max-width: 1024px) {
+        #app {
+          padding: 8px;
+          gap: 8px;
+          grid-template-columns: minmax(0, 1fr) 190px;
+          grid-template-areas:
+            "header header"
+            "main actions"
+            "me me"
+            "partner partner"
+            "log log";
+        }
+        .header {
+          padding: 5px 8px;
+          border-radius: 16px;
+          flex-wrap: nowrap;
+          overflow-x: auto;
+        }
+        .brand h1,
+        .header-actions .me-chip {
+          display: none;
+        }
+        .header-actions {
+          flex-wrap: nowrap;
+        }
+        .header .btn {
+          padding: 6px 10px;
+          font-size: 12px;
+          white-space: nowrap;
+        }
+        .control-panel {
+          position: sticky;
+          top: 8px;
+          bottom: auto;
+          align-self: start;
+          flex-direction: column;
+          align-items: stretch;
+          text-align: center;
+        }
+        .control-hint {
+          flex: none;
+        }
+        .phase-panel {
+          padding: 10px 12px;
+        }
+        .stepper {
+          min-height: 0;
+          margin-bottom: 8px;
+        }
+        .stepper::before {
+          display: none;
+        }
+        .step:nth-child(n) {
+          padding-top: 2px;
+          min-width: 0;
+        }
+        .step .bubble {
+          width: 26px;
+          height: 26px;
+          font-size: 12px;
+        }
+        .step.current .bubble {
+          width: 32px;
+          height: 32px;
+          margin: -3px 0;
+          font-size: 15px;
+        }
+        .step .lbl {
+          display: none;
+        }
+        .step.current .lbl {
+          display: block;
+          font-size: 10px;
+          margin-top: 3px;
+        }
+        .phase-brief {
+          margin-bottom: 8px;
+        }
+        .phase-brief h2 {
+          font-size: 18px;
+        }
+        .phase-brief .pb-icon {
+          width: 36px;
+          height: 36px;
+          font-size: 19px;
+        }
+        .phase-brief p {
+          display: none;
+        }
+        .login-box {
+          padding: 16px 24px 12px;
+          gap: 2px 28px;
+        }
+        .login-brand .logo {
+          width: 44px;
+          height: 44px;
+          font-size: 22px;
+          border-radius: 15px;
+        }
+        .login-brand h2 {
+          font-size: 26px;
+          margin-top: 6px;
+        }
+        .login-box > .pm-note {
+          margin-top: 8px;
+          padding: 7px 11px;
+          font-size: 11px;
+        }
+        .login-box > form,
+        .login-box > #login-form,
+        .login-box > #register-form {
+          padding-top: 30px;
+        }
+      }
+      @media (prefers-reduced-motion: reduce) {
+        .btn,
+        .btn:hover:not(:disabled),
+        .btn:active:not(:disabled) {
+          transform: none;
+          transition: none;
+        }
+      }
     </style>
   </head>
   <body>
@@ -2245,7 +3524,7 @@
           <div>
             <h1>PortMasters<span class="gen-badge">2</span></h1>
             <div class="subtitle" id="hdr-subtitle">
-              Maritime Silk Road · Online Trading Strategy
+              Maritime Silk Road, Online Trading Strategy
             </div>
           </div>
         </div>
@@ -2253,6 +3532,13 @@
           <span class="me-chip" id="current-user"></span>
           <button class="btn btn-ghost" id="btn-lang" onclick="toggleLang()">
             🌐 中文
+          </button>
+          <button
+            class="btn btn-ghost"
+            id="btn-icons"
+            onclick="toggleIconMode()"
+          >
+            🀄 Character Icons
           </button>
           <button class="btn btn-ghost" id="btn-manual" onclick="showManual()">
             📖 Manual
@@ -2287,9 +3573,10 @@
           <div class="logo">⚓</div>
           <h2>PortMasters 2</h2>
           <div class="tagline" id="lg-tagline">
-            Maritime Silk Road · Online Trading Strategy
+            Maritime Silk Road, Online Trading Strategy
           </div>
         </div>
+        <div class="mate-note" id="lg-mate"></div>
         <div id="login-form">
           <input
             type="text"
@@ -2303,20 +3590,22 @@
             placeholder="Password"
             autocomplete="current-password"
           />
-          <button
-            class="btn btn-success btn-lg"
-            id="btn-login"
-            onclick="login()"
-          >
-            ⛵ Log In &amp; Set Sail
-          </button>
-          <button
-            class="btn btn-lg"
-            id="btn-show-register"
-            onclick="showRegister()"
-          >
-            📝 Create Account
-          </button>
+          <div class="btn-pair">
+            <button
+              class="btn btn-ghost btn-lg"
+              id="btn-show-register"
+              onclick="showRegister()"
+            >
+              📝 Create Account
+            </button>
+            <button
+              class="btn btn-success btn-lg"
+              id="btn-login"
+              onclick="login()"
+            >
+              ⛵ Log In &amp; Set Sail
+            </button>
+          </div>
         </div>
         <div id="register-form" style="display: none">
           <input
@@ -2334,16 +3623,22 @@
             id="reg-password2"
             placeholder="Confirm password"
           />
-          <button
-            class="btn btn-success btn-lg"
-            id="btn-register"
-            onclick="register()"
-          >
-            ✅ Register
-          </button>
-          <button class="btn btn-lg" id="btn-show-login" onclick="showLogin()">
-            ← Back to Login
-          </button>
+          <div class="btn-pair">
+            <button
+              class="btn btn-ghost btn-lg"
+              id="btn-show-login"
+              onclick="showLogin()"
+            >
+              ← Back to Login
+            </button>
+            <button
+              class="btn btn-success btn-lg"
+              id="btn-register"
+              onclick="register()"
+            >
+              ✅ Register
+            </button>
+          </div>
         </div>
         <button
           class="btn btn-ghost"
@@ -2379,6 +3674,13 @@
           </button>
           <button
             class="btn btn-ghost"
+            id="btn-icons-lobby"
+            onclick="toggleIconMode()"
+          >
+            🀄 Character Icons
+          </button>
+          <button
+            class="btn btn-ghost"
             id="btn-logout-lobby"
             onclick="logout()"
           >
@@ -2395,6 +3697,7 @@
           </h3>
           <div id="online-users-list"></div>
           <div
+            class="lb-rooms-head"
             style="
               display: flex;
               align-items: center;
@@ -2419,6 +3722,7 @@
             </button>
           </div>
           <div id="open-rooms-list"></div>
+          <div class="mate-note" id="lb-mate"></div>
         </div>
         <div id="room-waiting-view" style="display: none"></div>
         <div class="pm-banner" style="margin-top: 18px">
@@ -2675,7 +3979,7 @@
         ratingTiers(difficulty)
           .filter((t) => t.min > 0)
           .map((t) => `${t.min} ${tr(t.short.zh, t.short.en)}`)
-          .join(" · ");
+          .join(tr(" · ", ", "));
 
       /* PortMasters 1 link, varies by language */
       const PM1_URLS = {
@@ -2753,7 +4057,7 @@
       /* Translate a single canonical name (item/port/module/etc.) */
       const tn = (name) => (LANG === "en" ? EN_NAMES[name] || name : name);
 
-      const ICONS = {
+      const ICON_EMOJI = {
         麻布: "🧶",
         丝绸: "👘",
         茶叶: "🍵",
@@ -2771,6 +4075,31 @@
         珠链: "📿",
         金币: "💰",
       };
+      /* Players can show goods, artisans and captain avatars as emojis (the default) or as
+   Chinese characters. This is a presentation preference only, stored beside the language. */
+      const ICON_HAN = {
+        麻布: "麻",
+        丝绸: "丝",
+        茶叶: "茶",
+        瓷土: "瓷",
+        铜矿: "铜",
+        香料: "香",
+        珍珠: "珠",
+        麻衣: "衣",
+        布衣: "布",
+        绫罗绸缎: "绫",
+        香囊: "囊",
+        紫铜镜: "镜",
+        青瓷器: "器",
+        蕃香脂: "脂",
+        珠链: "链",
+        金币: "金",
+      };
+      let ICON_MODE = readStored("pm2_icon_mode") === "han" ? "han" : "emoji";
+      const ICONS = new Proxy(ICON_EMOJI, {
+        get: (target, key) =>
+          ICON_MODE === "han" && ICON_HAN[key] ? ICON_HAN[key] : target[key],
+      });
       const COLORS = {
         麻布: "#8B7355",
         丝绸: "#DC143C",
@@ -2832,19 +4161,19 @@
         },
         麻衣: {
           zh: "成品 · 基准产值 15。由织女 / 大师制作（麻布×2）",
-          en: "Product · base value 15. Made by Weavers / Masters (Hemp Cloth ×2)",
+          en: "Product, base value 15. Made by Weavers / Masters (Hemp Cloth ×2)",
         },
         布衣: {
           zh: "成品 · 基准产值 35。由织女 / 大师制作（麻布×2 + 丝绸×1）",
-          en: "Product · base value 35. Made by Weavers / Masters (Hemp Cloth ×2 + Silk ×1)",
+          en: "Product, base value 35. Made by Weavers / Masters (Hemp Cloth ×2 + Silk ×1)",
         },
         绫罗绸缎: {
           zh: "高级成品 · 基准产值 60。仅纺织大师可制作（丝绸×3）",
-          en: "Premium product · base value 60. Master Weavers only (Silk ×3)",
+          en: "Premium product, base value 60. Master Weavers only (Silk ×3)",
         },
         香囊: {
           zh: "顶级成品 · 基准产值 80。仅香囊师可制作（丝绸×1 + 茶叶×2）",
-          en: "Top tier product · base value 80. Sachet Makers only (Silk ×1 + Tea ×2)",
+          en: "Top tier product, base value 80. Sachet Makers only (Silk ×1 + Tea ×2)",
         },
         瓷土: {
           zh: "基础原料。可由陶匠制成青瓷器（×3）",
@@ -2864,19 +4193,19 @@
         },
         紫铜镜: {
           zh: "成品 · 基准产值 45。由铜匠制作（铜矿×3）",
-          en: "Product · base value 45. Made by Coppersmiths (Copper Ore ×3)",
+          en: "Product, base value 45. Made by Coppersmiths (Copper Ore ×3)",
         },
         青瓷器: {
           zh: "成品 · 基准产值 65。由陶匠制作（瓷土×3）",
-          en: "Product · base value 65. Made by Potters (Porcelain Clay ×3)",
+          en: "Product, base value 65. Made by Potters (Porcelain Clay ×3)",
         },
         蕃香脂: {
           zh: "顶级成品 · 基准产值 85。仅香料师可制作（香料×2 + 丝绸×1）",
-          en: "Top tier product · base value 85. Perfumers only (Spices ×2 + Silk ×1)",
+          en: "Top tier product, base value 85. Perfumers only (Spices ×2 + Silk ×1)",
         },
         珠链: {
           zh: "顶级成品 · 基准产值 105。仅珠宝匠可制作（珍珠×2 + 丝绸×1）",
-          en: "Top tier product · base value 105. Jewelers only (Pearls ×2 + Silk ×1)",
+          en: "Top tier product, base value 105. Jewelers only (Pearls ×2 + Silk ×1)",
         },
       };
       const itemTip = (r) => pf(ITEM_TIPS[r]) || "";
@@ -3298,6 +4627,23 @@
       /* Mirrors server.py effective_wage(). Only the per-artisan figures in the hire and roster
    tables are derived here; the round total comes straight from the server (see pendingWages)
    so the preview and the actual charge cannot drift apart. */
+      const WORKER_HAN = {
+        weaver: "织",
+        master: "纺",
+        sachet_maker: "囊",
+        coppersmith: "铜",
+        potter: "陶",
+        perfumer: "香",
+        jeweler: "宝",
+      };
+      WORKER_TYPES.forEach((wt) => {
+        const emoji = wt.icon;
+        Object.defineProperty(wt, "icon", {
+          get: () =>
+            ICON_MODE === "han" ? WORKER_HAN[wt.key] || emoji : emoji,
+        });
+      });
+
       function workerWageRate(key, g) {
         let wage = WAGES[key];
         const hasWorkshop = (g.equippedModules || []).some(
@@ -3707,7 +5053,7 @@
         document.documentElement.lang = LANG === "en" ? "en" : "zh-CN";
         document.title = tr(
           "PortMasters 2 · 海上丝绸之路（联机版）",
-          "PortMasters 2 · Maritime Silk Road (Online)",
+          "PortMasters 2, Maritime Silk Road (Online)",
         );
         const set = (id, html, title) => {
           const el = document.getElementById(id);
@@ -3721,19 +5067,18 @@
         };
         const langLabel = LANG === "en" ? "🌐 中文" : "🌐 English";
         const langTitle =
-          LANG === "en"
-            ? "切换为中文界面 / Switch to Chinese"
-            : "Switch to English / 切换为英文界面";
+          LANG === "en" ? "Switch to Chinese" : "切换为英文界面";
 
         /* Header */
         set(
           "hdr-subtitle",
           tr(
             "海上丝绸之路 · 联机贸易战略：采购 · 互市 · 生产 · 远航",
-            "Maritime Silk Road · Online Trading: Procure · Barter · Produce · Voyage",
+            "Maritime Silk Road, Online Trading: Procure, Barter, Produce, Voyage",
           ),
         );
         set("btn-lang", langLabel, langTitle);
+        set("btn-icons", iconToggleLabel(), iconToggleTitle());
         set(
           "btn-manual",
           tr("📖 手册", "📖 Manual"),
@@ -3742,7 +5087,7 @@
         set(
           "btn-chat",
           tr("💬 聊天", "💬 Chat"),
-          tr("与同行船队聊天", "Chat with your fellow captains"),
+          tr("与其他船长聊天", "Chat with your fellow captains"),
         );
         set(
           "btn-logout",
@@ -3756,7 +5101,7 @@
           "lg-tagline",
           tr(
             "海上丝绸之路 · 联机贸易战略",
-            "Maritime Silk Road · Online Trading Strategy",
+            "Maritime Silk Road, Online Trading Strategy",
           ),
         );
         setPh("login-username", tr("用户名", "Username"));
@@ -3776,6 +5121,15 @@
         set("btn-show-login", tr("← 返回登录", "← Back to Login"));
         set("btn-lang-login", langLabel, langTitle);
         set(
+          "lg-mate",
+          mateNoteInner(
+            tr(
+              "船长，船就泊在老地方，灯已点亮，潮水只等你一声令下。",
+              "Your ship is moored where you left her, Captain. The lanterns are lit and the tide turns at your word.",
+            ),
+          ),
+        );
+        set(
           "lg-note",
           tr(
             `💡 <strong>本作为 PortMasters 2</strong>，引入了税务、工资、双人同步互市等更复杂的机制，<strong>上手门槛较高</strong>。如果是初次接触本系列，建议先体验上一代 <a href="${pm1Url()}" target="_blank" rel="noopener">${pm1Label()}</a> 熟悉基础玩法。`,
@@ -3793,6 +5147,7 @@
           ),
         );
         set("btn-lang-lobby", langLabel, langTitle);
+        set("btn-icons-lobby", iconToggleLabel(), iconToggleTitle());
         set(
           "btn-logout-lobby",
           tr("🚪 退出", "🚪 Log Out"),
@@ -3826,9 +5181,8 @@
         set("chat-send-btn", tr("发送", "Send"));
       }
 
-      function toggleLang() {
-        LANG = LANG === "en" ? "zh" : "en";
-        writeStored("pm2_lang", LANG);
+      /* Language and icon style both change what every panel prints, so both redraw everything. */
+      function redrawEverything() {
         applyLanguage();
         renderOnlineUsers();
         renderOpenRooms();
@@ -3837,6 +5191,195 @@
         if (serverState) renderAll(true);
         if (_viewerOpen) renderCaptainViewer();
         if (document.getElementById("manual-body")) showManual(activeManualTab);
+      }
+
+      function toggleLang() {
+        LANG = LANG === "en" ? "zh" : "en";
+        writeStored("pm2_lang", LANG);
+        redrawEverything();
+      }
+
+      /* ---------- Icon style: emojis (default) or Chinese characters ---------- */
+      function iconToggleLabel() {
+        return ICON_MODE === "han"
+          ? tr("😀 表情图标", "😀 Emoji Icons")
+          : tr("🀄 汉字图标", "🀄 Character Icons");
+      }
+      function iconToggleTitle() {
+        return ICON_MODE === "han"
+          ? tr(
+              "将货物、工匠与船长头像切换为表情图标",
+              "Show goods, artisans and captain avatars as emojis",
+            )
+          : tr(
+              "将货物、工匠与船长头像切换为汉字图标",
+              "Show goods, artisans and captain avatars as Chinese characters",
+            );
+      }
+      function applyIconMode() {
+        document.body.dataset.icons = ICON_MODE;
+      }
+      function toggleIconMode() {
+        ICON_MODE = ICON_MODE === "han" ? "emoji" : "han";
+        writeStored("pm2_icon_mode", ICON_MODE);
+        applyIconMode();
+        redrawEverything();
+      }
+
+      /* Every captain gets a medal in a color of their own, picked from their name so it is the
+   same on every screen. In character mode the medal carries a seafaring character. */
+      const CAPTAIN_HUES = [30, 60, 130, 195, 230, 265, 300, 340];
+      const CAPTAIN_HAN = [
+        "帆",
+        "舟",
+        "航",
+        "潮",
+        "浪",
+        "港",
+        "锚",
+        "舵",
+        "鲸",
+        "鹏",
+        "龙",
+        "鹤",
+      ];
+      function nameHash(name) {
+        let h = 0;
+        for (const ch of String(name || ""))
+          h = (h * 31 + ch.codePointAt(0)) >>> 0;
+        return h;
+      }
+      function captainHue(name) {
+        return CAPTAIN_HUES[nameHash(name) % CAPTAIN_HUES.length];
+      }
+      function captainGlyph(name) {
+        return ICON_MODE === "han"
+          ? CAPTAIN_HAN[nameHash(name) % CAPTAIN_HAN.length]
+          : "🧑‍✈️";
+      }
+      function fleetGlyph() {
+        return ICON_MODE === "han" ? "队" : "🧑‍✈️";
+      }
+      function medalHTML(name, cls = "") {
+        return `<span class="medal ${cls}" style="--hue:${captainHue(name)}">${captainGlyph(name)}</span>`;
+      }
+
+      /* ---------- The first mate: short notes that speak to the captain ---------- */
+      function mateNoteInner(text) {
+        return `${text}<small>${tr("你的大副", "your first mate")}</small>`;
+      }
+      function mateNoteHTML(text) {
+        return `<div class="mate-note">${mateNoteInner(text)}</div>`;
+      }
+      function mateNoteStatusHTML(g) {
+        if ([0, 5, "endgame", "bankruptcy"].includes(g.phase) || g.gameOver)
+          return "";
+        const due = pendingWages(g) + pendingMaintenance(g);
+        if (due <= 0) return "";
+        if (g.money < due)
+          return mateNoteHTML(
+            tr(
+              `船长，本回合结算要付 ${due} 金币，我们还差 ${due - g.money} 金币，得尽快回笼资金。`,
+              `We owe ${due} gold at Upkeep this round, Captain, and we are ${due - g.money} gold short. We need to raise cash.`,
+            ),
+          );
+        const times = Math.floor(g.money / due);
+        return mateNoteHTML(
+          times >= 2
+            ? tr(
+                `船长，本回合结算要付 ${due} 金币，存款绰绰有余。`,
+                `We owe ${due} gold at Upkeep this round, Captain. Your gold covers it ${times} times over.`,
+              )
+            : tr(
+                `船长，本回合结算要付 ${due} 金币，存款刚好够付，花钱要留神。`,
+                `We owe ${due} gold at Upkeep this round, Captain. Your gold just covers it, so spend with care.`,
+              ),
+        );
+      }
+      function renderLobbyMate() {
+        const el = document.getElementById("lb-mate");
+        if (!el) return;
+        const n = openRooms.length;
+        const text =
+          n === 0
+            ? tr(
+                "船长，港里暂时没有招募中的航程。不妨自己招募船队，他们总会来的。",
+                "No open voyages in port right now, Captain. Host a voyage of your own. They always come.",
+              )
+            : tr(
+                `船长，港里有 ${n} 支船队正在招募。若都不合意，就自己招募船队。`,
+                n === 1
+                  ? "One voyage is recruiting in port, Captain. If it does not suit you, host a voyage of your own."
+                  : `${n} voyages are recruiting in port, Captain. If none suits you, host a voyage of your own.`,
+              );
+        el.innerHTML = mateNoteInner(text);
+      }
+      function roomMateNoteHTML(isHost, canStart) {
+        const aboard = pendingRoom.players.length;
+        const open = pendingRoom.maxPlayers - aboard;
+        let text;
+        if (!isHost)
+          text = tr(
+            "船长，等房主开始航程，我们就出航。",
+            "We sail as soon as the host starts the voyage, Captain.",
+          );
+        else if (!canStart)
+          text = tr(
+            "船长，至少需要 2 名玩家才能开始航程，我们再等等。",
+            "The voyage needs at least 2 players, Captain. Let us wait a little longer.",
+          );
+        else if (open <= 0)
+          text = tr(
+            "船长，全员到齐，可以开始航程了。",
+            "Every seat is taken, Captain. We are ready to start the voyage.",
+          );
+        else
+          text = tr(
+            `船长，已有 ${aboard} 名玩家登船，还空着 ${open} 个位置。可以再等等，也可以现在就开始航程，由你定夺。`,
+            `${aboard} players are aboard and ${open === 1 ? "1 seat is" : `${open} seats are`} still open, Captain. We can wait, or start the voyage now. Your call.`,
+          );
+        return mateNoteHTML(text);
+      }
+
+      /* ---------- The sky follows the round ---------- */
+      const PHASE_SKY = {
+        0: "dawn",
+        5: "dawn",
+        1: "morning",
+        trade: "noon",
+        worker_mgmt: "noon",
+        2: "noon",
+        3: "dusk",
+        4: "dusk",
+        endgame: "night",
+        bankruptcy: "night",
+      };
+      const PHASE_HUE = {
+        0: 68,
+        5: 325,
+        1: 154,
+        trade: 40,
+        worker_mgmt: 305,
+        2: 282,
+        3: 261,
+        4: 90,
+        endgame: 132,
+        bankruptcy: 325,
+      };
+      function updateSky() {
+        let sky = "night";
+        if (currentUser) {
+          const g = serverState && serverState.yourGame;
+          if (g) {
+            const key = g.bankrupt ? "bankruptcy" : g.phase;
+            sky = PHASE_SKY[key] || "morning";
+            const panel = document.getElementById("phase-panel");
+            if (panel) panel.style.setProperty("--hue", PHASE_HUE[key] ?? 154);
+          } else {
+            sky = pendingRoom ? "dusk" : "harbor";
+          }
+        }
+        document.body.dataset.sky = sky;
       }
 
       /* ============================================================
@@ -4080,6 +5623,7 @@
         document.getElementById("login-overlay").style.display = "none";
         document.getElementById("lobby-overlay").style.display = "flex";
         applyLanguage(); // the lobby welcome message includes the username, so it needs refilling
+        updateSky();
         setupWebSocketHandlers();
         ws.send(JSON.stringify({ action: "get_online_users" }));
       }
@@ -4336,7 +5880,7 @@
             }
             return `
       <div class="online-user-item">
-        <span class="u-name"><span class="dot on"></span>${escapeHtml(user)}</span>
+        <span class="u-name">${medalHTML(user, "sm")}${escapeHtml(user)}<span class="dot on"></span></span>
         ${buttonHtml}
       </div>
     `;
@@ -4386,8 +5930,8 @@
     <div class="diff-options">${Object.keys(DIFFICULTY_INFO).map(optionCard).join("")}</div>
     <div class="diff-summary">${difficultyInfo(composerDifficulty).summary()}</div>
     <div style="text-align:center;margin-top:16px;display:flex;gap:10px;justify-content:center">
-      <button class="btn btn-success btn-lg" onclick="confirmSendInvite()">${tr("📨 发送邀请", "📨 Send Invitation")}</button>
       <button class="btn btn-ghost btn-lg" onclick="closeModal()">${tr("取消", "Cancel")}</button>
+      <button class="btn btn-success btn-lg" onclick="confirmSendInvite()">${tr("📨 发送邀请", "📨 Send Invitation")}</button>
     </div>
   `,
           false,
@@ -4438,8 +5982,8 @@
       "Accept to enter a shared session where you both stay on the same round and the same phase, barter freely, and can check each other's fleet at any time. If you would prefer a different difficulty, decline for now and either of you can send a fresh invitation set to the level you both want.",
     )}</p>
     <div style="text-align:center;margin-top:14px;display:flex;gap:10px;justify-content:center">
-      <button class="btn btn-success btn-lg" onclick="respondInvite(true)">${tr("✅ 同意并接受", "✅ Agree and Accept")}</button>
       <button class="btn btn-danger btn-lg" onclick="respondInvite(false)">${tr("❌ 婉拒", "❌ Decline")}</button>
+      <button class="btn btn-success btn-lg" onclick="respondInvite(true)">${tr("✅ 同意并接受", "✅ Agree and Accept")}</button>
     </div>
   `,
           false,
@@ -4466,6 +6010,7 @@
       function renderOpenRooms() {
         const list = document.getElementById("open-rooms-list");
         if (!list) return;
+        renderLobbyMate();
         if (openRooms.length === 0) {
           list.innerHTML = `<p style="color:#94a3b8;text-align:center;padding:24px;font-size:13px">${tr(
             "🌊 暂无招募中的航程。点击上方按钮，招募一支属于你的船队。",
@@ -4478,7 +6023,7 @@
             (r) => `
     <div class="online-user-item">
       <span class="u-name">
-        <span class="dot on"></span>${escapeHtml(r.host)}
+        ${medalHTML(r.host, "sm")}${escapeHtml(r.host)}
         <span class="diff-badge diff-${r.difficulty}" style="font-size:11px;padding:2px 10px">${difficultyInfo(r.difficulty).badge()}</span>
         <span class="muted" style="font-size:12px">${r.count} / ${r.maxPlayers}</span>
       </span>
@@ -4542,8 +6087,8 @@
     <p style="text-align:center;font-size:13px;margin:14px 0 0">${tr("房间人数上限", "Max room size")}</p>
     <div class="diff-options" style="max-width:280px;margin:8px auto 0">${[2, 3, 4, 5].map(sizeButton).join("")}</div>
     <div style="text-align:center;margin-top:16px;display:flex;gap:10px;justify-content:center">
-      <button class="btn btn-gold btn-lg" onclick="confirmHostRoom()">${tr("📨 创建房间", "📨 Create Room")}</button>
       <button class="btn btn-ghost btn-lg" onclick="closeModal()">${tr("取消", "Cancel")}</button>
+      <button class="btn btn-gold btn-lg" onclick="confirmHostRoom()">${tr("📨 创建房间", "📨 Create Room")}</button>
     </div>
   `,
           false,
@@ -4579,6 +6124,7 @@
         const browse = document.getElementById("room-browse-view");
         const waiting = document.getElementById("room-waiting-view");
         if (!browse || !waiting) return;
+        updateSky();
         if (!pendingRoom) {
           browse.style.display = "";
           waiting.style.display = "none";
@@ -4592,7 +6138,7 @@
           .map(
             (p) => `
     <div class="online-user-item">
-      <span class="u-name"><span class="dot ${p.online ? "on" : "off"}"></span>${escapeHtml(p.name)}${p.isHost ? " 👑" : ""}</span>
+      <span class="u-name">${medalHTML(p.name, "sm")}${escapeHtml(p.name)}${p.isHost ? " 👑" : ""}<span class="dot ${p.online ? "on" : "off"}"></span></span>
     </div>
   `,
           )
@@ -4601,12 +6147,13 @@
     <h3 style="color:var(--ocean-900);margin:12px 0;font-size:15px">${tr("🧑‍🤝‍🧑 等待出航", "🧑‍🤝‍🧑 Waiting to Sail")}</h3>
     <p style="font-size:13px;color:var(--ink-soft);text-align:center;margin:0 0 10px">${tr(
       `难度 ${difficultyInfo(pendingRoom.difficulty).badge()} · 人数 ${pendingRoom.players.length} / ${pendingRoom.maxPlayers}`,
-      `Difficulty ${difficultyInfo(pendingRoom.difficulty).badge()} · ${pendingRoom.players.length} / ${pendingRoom.maxPlayers} players`,
+      `Difficulty ${difficultyInfo(pendingRoom.difficulty).badge()}, ${pendingRoom.players.length} / ${pendingRoom.maxPlayers} players`,
     )}</p>
     ${rows}
+    ${roomMateNoteHTML(isHost, canStart)}
     <div style="text-align:center;margin-top:16px;display:flex;gap:10px;justify-content:center">
-      ${isHost ? `<button class="btn btn-success btn-lg" ${canStart ? "" : "disabled"} onclick="startRoom()" title="${canStart ? "" : tr("至少需要 2 名玩家", "Needs at least 2 players")}">${tr("🚀 开始航程", "🚀 Start Voyage")}</button>` : ""}
       <button class="btn btn-ghost btn-lg" onclick="leaveRoom()">${tr("离开房间", "Leave Room")}</button>
+      ${isHost ? `<button class="btn btn-success btn-lg" ${canStart ? "" : "disabled"} onclick="startRoom()" title="${canStart ? "" : tr("至少需要 2 名玩家", "Needs at least 2 players")}">${tr("🚀 开始航程", "🚀 Start Voyage")}</button>` : ""}
     </div>
   `;
       }
@@ -4630,7 +6177,7 @@
         input.placeholder = enabled
           ? tr("输入消息...", "Type a message...")
           : tr(
-              "其他玩家均离线，无法发送",
+              "其他船长都已离线，无法发送",
               "Everyone else is offline, cannot send",
             );
       }
@@ -4856,7 +6403,7 @@
       <div class="inv-item">
         <span class="icon">${wt.icon}</span>
         <span class="name tip" data-tip="${pf(wt.tip)}">${pf(wt.name)}</span>
-        <span class="muted" style="margin-right:6px">${detail.join(" · ")}</span>
+        <span class="muted" style="margin-right:6px">${detail.join(tr(" · ", ", "))}</span>
         <span class="count">×${list.length}</span>
       </div>`;
         }).filter(Boolean);
@@ -4871,33 +6418,33 @@
    (buffChipsHTML/invListHTML/workerTeamHTML/modulesHTML) instead. */
       function crewSectionsHTML(g) {
         return [
-          `<div class="status-section">
+          `<div class="status-section ss-overview">
       <h3>${tr("📊 航海概况", "📊 Voyage Overview")}</h3>
       <div class="stat-row"><span class="tip" data-tip="${tr(`全程共${g.maxRounds}个航程（回合），结束后按声望评级`, `${g.maxRounds} voyages (rounds) in total; final rating is based on renown`)}">${tr("🌊 航程进度", "🌊 Voyage")}</span><span class="stat-value">${tr(`第 ${g.currentRound} / ${g.maxRounds} 程`, `Round ${g.currentRound} / ${g.maxRounds}`)}</span></div>
       <div class="stat-row"><span class="tip" data-tip="${tr("当前现金存款。工资、维护费、税款都从这里扣除，归零即破产", "Cash on hand. Wages, upkeep and taxes are paid from here, and hitting zero means bankruptcy")}">${tr("💰 现金存款", "💰 Gold")}</span><span class="stat-money">${g.money} ${tr("金币", "gold")}</span></div>
       <div class="stat-row"><span class="tip" data-tip="${tr("声望（信誉值）= 每笔完成订单的净利润累计。决定最终评级，越高越好", "Renown = cumulative net profit of completed orders. Determines your final rating")}">${tr("🏆 声望（信誉）", "🏆 Renown")}</span><span class="stat-score">${g.score}</span></div>
       <div class="stat-row"><span class="tip" data-tip="${tr("当前所处阶段，全员始终同步", "Current phase. Everyone always stays in sync")}">${tr("🧭 当前阶段", "🧭 Phase")}</span><span class="stat-value">${phaseName(g.phase)}</span></div>
     </div>`,
-          `<div class="status-section">
+          `<div class="status-section ss-buffs">
       <h3>${tr("🪄 本回合增益", "🪄 Round Buffs")}</h3>
       ${buffChipsHTML(g)}
     </div>`,
-          `<div class="status-section">
+          `<div class="status-section ss-env">
       <h3>${tr("🌦️ 全球环境", "🌦️ Global Environment")}</h3>
       <div style="font-size:12px;color:var(--ink-soft);line-height:1.55">${g.monsoon_state && (g.monsoon_state.icon || "🌦️")} <strong>${escapeHtml(monsoonName(g.monsoon_state || {}))}</strong><br>${escapeHtml(monsoonDesc(g.monsoon_state || {}))}</div>
     </div>`,
-          `<div class="status-section">
+          `<div class="status-section ss-ship">
       <h3>${tr("🚢 旗舰状态", "🚢 Flagship")}</h3>
-      <div class="stat-row"><span class="tip" data-tip="${tr("每升1级，每单运费永久减5金币，并解锁1个模块槽位", "Each level permanently cuts shipping by 5 gold per order and unlocks 1 module slot")}">${tr("商船等级", "Ship level")}</span><span class="stat-value">Lv.${g.shipLevel}</span></div>
-      <div class="stat-row"><span class="tip" data-tip="${tr("运费 = max(5, 货物件数×2 − 船级×5 − 福缘减免)", "Shipping = max(5, items ×2 − level ×5 − fortune discounts)")}">${tr("运费减免", "Shipping discount")}</span><span class="stat-value">−${g.shipLevel * 5} ${tr("金币/单", "gold/order")}</span></div>
+      <div class="stat-row"><span class="tip" data-tip="${tr("每升1级，每单运费永久减5金币，并解锁1个模块槽位", "Each level permanently cuts shipping by 5 gold per order and unlocks 1 module slot")}">${tr("商船等级", "Ship level")}</span><span class="stat-value">${tr(`${g.shipLevel} 级`, `Lv.${g.shipLevel}`)}</span></div>
+      <div class="stat-row"><span class="tip" data-tip="${tr("运费 = 货物件数×2 − 船级×5 − 福缘减免，最低 5 金币", "Shipping = max(5, items ×2 − level ×5 − fortune discounts)")}">${tr("运费减免", "Shipping discount")}</span><span class="stat-value">−${g.shipLevel * 5} ${tr("金币/单", "gold/order")}</span></div>
       <div class="stat-row"><span>${tr("模块槽位", "Module slots")}</span><span class="stat-value">${(g.equippedModules || []).length} / ${g.shipLevel}</span></div>
       <div style="margin-top:4px">${modulesHTML(g)}</div>
     </div>`,
-          `<div class="status-section">
+          `<div class="status-section ss-cargo">
       <h3>${tr("📦 船舱货物", "📦 Cargo Hold")}</h3>
       ${invListHTML(g)}
     </div>`,
-          `<div class="status-section">
+          `<div class="status-section ss-crew">
       <h3>${tr("👥 工匠团队", "👥 Artisan Team")}</h3>
       ${workerTeamHTML(g)}
     </div>`,
@@ -4912,13 +6459,14 @@
 
         let html = `
     <div class="crew-head">
-      <div class="avatar">🧑‍✈️</div>
+      <div class="avatar" style="--hue:${captainHue(currentUser)}">${captainGlyph(currentUser)}</div>
       <div class="who">
         <div class="nm">${escapeHtml(currentUser || tr("我", "Me"))}</div>
-        <div class="role">${tr("我的商队", "My fleet")} · ${g.slot ? tr("玩家", "Player ") + g.slot : ""}</div>
+        <div class="role">${tr("我的商队", "My fleet")}${tr(" · ", ", ")}${g.slot ? tr("玩家", "Player ") + g.slot : ""}</div>
       </div>
       <span class="dot on" title="${tr("在线", "Online")}"></span>
     </div>
+    ${mateNoteStatusHTML(g)}
     ${crewSectionsHTML(g)}
   `;
 
@@ -4928,7 +6476,7 @@
           const pendTotal = pendWages + pendMaint;
           const safe = g.money >= pendTotal;
           html += `
-    <div class="status-section" style="border-color:${safe ? "rgba(14,165,233,.14)" : "rgba(225,29,72,.5)"}">
+    <div class="status-section ss-due" style="border-color:${safe ? "rgba(14,165,233,.14)" : "rgba(225,29,72,.5)"}">
       <h3>${tr("⚠️ 本回合应付款项", "⚠️ Due This Round")}</h3>
       <div class="stat-row"><span class="tip" data-tip="${tr("每回合结算阶段必须支付的固定运营成本，付不起即破产", "Fixed operating cost paid every Upkeep phase. Fail to pay and you go bankrupt")}">${tr("🔧 维护费", "🔧 Upkeep")}</span><span class="stat-value">${pendMaint} ${tr("金币", "gold")}</span></div>
       <div class="stat-row"><span class="tip" data-tip="${tr("结算阶段自动支付的全部工匠工资，付不起即破产", "All artisan wages, paid automatically at Upkeep. Fail to pay and you go bankrupt")}">${tr("👥 工资合计", "👥 Total wages")}</span><span class="stat-value">${pendWages} ${tr("金币", "gold")}</span></div>
@@ -4970,6 +6518,7 @@
     <div class="roster-widget">
       <div class="roster-widget-head" data-roster-view="${escapeHtml(p.name)}" title="${tr("查看完整信息", "View full info")}">
         <span class="dot ${p.online ? "on" : "off"}" title="${p.online ? tr("在线", "Online") : tr("离线", "Offline")}"></span>
+        ${medalHTML(p.name, "sm")}
         <span class="nm">${escapeHtml(p.name)}${p.isHost ? " 👑" : ""}</span>
         <span class="roster-widget-stats">
           <span class="stat-money">💰 ${og.money}</span>
@@ -4993,7 +6542,7 @@
             p,
             `
       <div class="crew-head partner">
-        <div class="avatar">🧑‍✈️</div>
+        <div class="avatar">${fleetGlyph()}</div>
         <div class="who"><div class="nm">${tr("等待同行...", "Waiting for others...")}</div><div class="role">${tr("同行船队", "Fellow Captains")}</div></div>
         <span class="dot off"></span>
       </div>
@@ -5010,7 +6559,7 @@
           p,
           `
     <div class="crew-head partner">
-      <div class="avatar">🧑‍✈️</div>
+      <div class="avatar">${fleetGlyph()}</div>
       <div class="who"><div class="nm">${tr("同行船队", "Fellow Captains")}</div><div class="role">${tr(`共 ${others.length} 位船长`, `${others.length} other captain(s)`)}</div></div>
     </div>
     ${others.map(rosterWidgetHTML).join("")}
@@ -5053,7 +6602,7 @@
    plain-language summary both captains saw when they agreed to the voyage. */
       function difficultyChipHTML(g) {
         const info = difficultyInfo(g && g.difficulty);
-        return `<span class="chip tip diff-${info.key}" data-tip="${escapeHtml(info.summary())}">${tr("难度", "Difficulty")}：${info.badge()}</span>`;
+        return `<span class="chip tip diff-${info.key}" data-tip="${escapeHtml(info.summary())}">${tr("难度：", "Difficulty: ")}${info.badge()}</span>`;
       }
 
       function phaseBriefHTML(key, extraChips = "") {
@@ -5068,7 +6617,7 @@
       <div class="pb-text">
         <h2>${tr(
           `${pf(meta.name)}阶段 · 第 ${serverState.yourGame.currentRound} 程`,
-          `${pf(meta.name)} Phase · Round ${serverState.yourGame.currentRound}`,
+          `${pf(meta.name)} Phase, Round ${serverState.yourGame.currentRound}`,
         )}</h2>
         <p>${pf(meta.brief)}</p>
       </div>
@@ -5103,6 +6652,7 @@
         const p = document.getElementById("phase-panel");
         const g = serverState.yourGame;
         if (!g) return;
+        updateSky();
         /* Defensive: a bankrupt player always stays on the bankruptcy page, even if the server sends a different phase value */
         const phase = g.bankrupt ? "bankruptcy" : g.phase;
         let inner = "";
@@ -5168,7 +6718,7 @@
         return `
     <button class="btn ${ready ? "btn-grey" : "btn-success"} btn-xl" ${ready ? "disabled" : ""}
       onclick="sendAction('startBoon')" title="${tr("全员都点击后进入福缘抽取", "The fortune draw begins once everyone confirms")}">
-      ${ready ? tr("⌛ 已确认，等待其他人", "⌛ Confirmed: waiting for others") : tr("🚢 扬帆起航", "🚢 Set Sail")}<span class="btn-sub">${tr("全员确认后抽取本程福缘", "Everyone confirms to draw this round's fortunes")}</span>
+      ${ready ? tr("⌛ 已确认，等待其他船长", "⌛ Confirmed, waiting for others") : tr("🚢 扬帆起航", "🚢 Set Sail")}<span class="btn-sub">${tr("全员确认后抽取本程福缘", "Everyone confirms to draw this round's fortunes")}</span>
     </button>`;
       }
 
@@ -5184,7 +6734,7 @@
       <div class="hero-title">⚓ PortMasters 2 🚢</div>
       <div class="subtitle-text">${tr(
         "海上丝绸之路 · 扬帆远航 · 与其他船长竞航，成为海上霸主！",
-        "The Maritime Silk Road · Set your course · Race your fellow captains to rule the seas!",
+        "The Maritime Silk Road, Set your course, Race your fellow captains to rule the seas!",
       )}</div>
       ${environmentBannerHTML(g)}
       ${
@@ -5235,10 +6785,10 @@
       ${charterBannerHTML(g.charterEvent)}
       ${environmentBannerHTML(g)}
       <div style="font-size:54px">🌅</div>
-      <div class="hero-title">${tr(`第 ${g.currentRound} 程 · 整装启航`, `Round ${g.currentRound} · Ready to Sail`)}</div>
+      <div class="hero-title">${tr(`第 ${g.currentRound} 程 · 整装启航`, `Round ${g.currentRound}, Ready to Sail`)}</div>
       <div class="subtitle-text">${tr(
         `航程进度 ${g.currentRound} / ${g.maxRounds} · 全员确认后抽取本程福缘`,
-        `Voyage ${g.currentRound} of ${g.maxRounds} · confirm with everyone else to draw this round's fortunes`,
+        `Voyage ${g.currentRound} of ${g.maxRounds}, confirm with everyone else to draw this round's fortunes`,
       )}</div>
       ${
         s
@@ -5252,7 +6802,7 @@
           <span><strong>${tr("程末净利", "Net result")}</strong></span>
           <span class="${net >= 0 ? "profit-positive" : "profit-negative"}">${net >= 0 ? "+" : ""}${net} ${gold}</span>
         </div>
-        <div class="stat-row" style="font-size:13px"><span><strong>${tr("当前现金 · 声望", "Gold · Renown")}</strong></span><strong>${s.money} ${gold} · ${s.score}</strong></div>
+        <div class="stat-row" style="font-size:13px"><span><strong>${tr("当前现金 · 声望", "Gold, Renown")}</strong></span><strong>${s.money} ${gold}${tr(" · ", ", ")}${s.score}</strong></div>
       </div>`
           : ""
       }
@@ -5323,7 +6873,7 @@
           );
         if ((g.equippedModules || []).some((m) => m.id === "smugglers_hold"))
           discountChips.push(
-            `<span class="chip green">${tr("🏴‍☠️ 走私货舱：采购实付约85折", "🏴‍☠️ Smuggler's Hold: ~15% off purchases")}</span>`,
+            `<span class="chip green">${tr("🏴‍☠️ 走私暗舱：采购成本实付85折", "🏴‍☠️ Smuggler's Hold: ~15% off purchases")}</span>`,
           );
 
         return `
@@ -5401,7 +6951,7 @@
         <div class="section-hint">
           ${tr(
             `花费 <strong>${g.intelCost} 金币</strong>向牙行打探<strong>贸易阶段（未来订单）</strong>的货物需求，每条密语都会在贸易阶段兑现为一张对应货品与港口的订单，提前备货即可稳赚。`,
-            `Pay the brokers <strong>${g.intelCost} gold</strong> for intel on <strong>upcoming Trade-phase demand</strong>. Every whisper becomes a real order for that exact item and port, so stock up early for a guaranteed sale.`,
+            `Pay the brokers <strong>${g.intelCost} gold</strong> for intel on <strong>upcoming Trade phase demand</strong>. Every whisper becomes a real order for that exact item and port, so stock up early for a guaranteed sale.`,
           )}
           ${
             hasNetwork
@@ -5434,7 +6984,7 @@
         <div style="margin:10px 0">
           <button class="btn btn-gold" ${canBuy ? "" : "disabled"} onclick="sendAction('purchaseIntel')"
             title="${remaining > 0 ? (canBuy ? tr(`花费${g.intelCost}金币购买密语`, `Buy a whisper for ${g.intelCost} gold`) : tr("现金不足", "Not enough gold")) : tr("本回合密语已打探完毕", "No whispers left this round")}">
-            ${tr("🔮 购买密语", "🔮 Buy Whisper")} (${g.intelCost}💰)${remaining > 0 ? tr(` · 剩余 ${remaining} 条`, ` · ${remaining} left`) : tr(" · 已无更多", " · sold out")}
+            ${tr("🔮 购买密语", "🔮 Buy Whisper")} (${g.intelCost}💰)${remaining > 0 ? tr(` · 剩余 ${remaining} 条`, `, ${remaining} left`) : tr(" · 已无更多", ", sold out")}
           </button>
         </div>
         ${
@@ -5536,14 +7086,14 @@
     ${phaseBriefHTML("trade", readyChips)}
 
     <div class="trade-section">
-      <h3>${tr("📥 来自其他船队的订单", "📥 Offers from the Room")}</h3>
+      <h3>${tr("📥 收到的交易", "📥 Offers Received")}</h3>
       <div class="section-hint">${tr(
         "接受即按订单内容即时互换；若任意一方资源不足，交易不会成立。不想要可直接拒绝。",
         "Accepting swaps the goods instantly; the trade won't go through if either side lacks the resources. Decline anything you don't want.",
       )}</div>
       ${
         receivedOrders.length === 0
-          ? `<p class="muted">${tr("暂无来自其他船队的订单", "No offers from the room yet")}</p>`
+          ? `<p class="muted">${tr("暂无来自其他船长的订单", "No offers from other captains yet")}</p>`
           : receivedOrders
               .map((o) => {
                 const sellerName = escapeHtml(
@@ -5556,8 +7106,8 @@
           <div>${tr(`📤 ${sellerName} 给出：`, `📤 ${sellerName} gives: `)}<strong>${o.sell.map((i) => `${ICONS[i.type] || ""}${tn(i.type)} ×${i.quantity}`).join(sep)}</strong></div>
           <div>${tr("📥 希望换取你的：", "📥 In exchange for your: ")}<strong>${o.buy.map((i) => `${ICONS[i.type] || ""}${tn(i.type)} ×${i.quantity}`).join(sep)}</strong></div>
           <div class="actions">
-            <button class="btn btn-success" onclick="sendAction('acceptTrade', {orderId:'${o.id}'})" title="${tr("接受后立即完成互换", "Accept to swap immediately")}">${tr("✅ 接受成交", "✅ Accept")}</button>
             <button class="btn btn-danger" onclick="sendAction('rejectTrade', {orderId:'${o.id}'})">${tr("❌ 拒绝", "❌ Decline")}</button>
+            <button class="btn btn-success" onclick="sendAction('acceptTrade', {orderId:'${o.id}'})" title="${tr("接受后立即完成互换", "Accept to swap immediately")}">${tr("✅ 接受成交", "✅ Accept")}</button>
           </div>
         </div>
       `;
@@ -5567,9 +7117,9 @@
     </div>
 
     <div class="trade-section">
-      <h3>${tr("📤 向船队发布交易订单", "📤 Post an Offer to the Room")}</h3>
+      <h3>${tr("📤 向其他船长发布交易订单", "📤 Post an Offer")}</h3>
       <div class="section-hint">${tr(
-        "下拉框中实时显示你的持有量，方便核对。公开订单房间内任意其他玩家均可接受或拒绝，定向订单只有指定的那位船长看得到；本阶段结束前未成交的订单自动作废。",
+        "下拉框中实时显示你的持有量，方便核对。公开订单任意其他船长都可接受或拒绝，定向订单只有指定的那位船长看得到；本阶段结束前未成交的订单自动作废。",
         "The dropdowns show your current stock. An open offer can be taken by any other captain, while a directed one is visible only to the captain you address it to; unaccepted offers expire when this phase ends.",
       )}</div>
       <div class="trade-create">
@@ -5578,7 +7128,7 @@
           <input type="number" id="sell-qty" min="1" value="1" style="width:64px" title="${tr("给出数量", "Quantity offered")}"> ${tr("个", "pcs")}
         </div>
         <div>${tr("换 取：", "For their: ")}
-          <select id="buy-type" title="${tr("选择希望获得的物资或金币", "Choose what you want in return")}">${optionsHTML}</select>
+          <select id="buy-type" title="${tr("选择希望从其他船长处获得的物资或金币", "Choose what you want in return")}">${optionsHTML}</select>
           <input type="number" id="buy-qty" min="1" value="1" style="width:64px" title="${tr("索取数量", "Quantity requested")}"> ${tr("个", "pcs")}
         </div>
         <div>${tr("发 给：", "Offer to: ")}
@@ -5596,7 +7146,7 @@
           : myOrders
               .map(
                 (o) => `
-        <div style="font-size:12.5px; margin:5px 0">${tr("📤 出", "📤 Give")} ${o.sell.map((i) => `${tn(i.type)}×${i.quantity}`).join(sep)} ⇄ ${tr("换", "for")} ${o.buy.map((i) => `${tn(i.type)}×${i.quantity}`).join(sep)} <span class="muted">${o.targetSlot === null || o.targetSlot === undefined ? tr("（等待其他人接受或拒绝）", "(awaiting a response)") : tr(`（只发给 ${nameOfSlot(o.targetSlot)}，等待回应）`, `(only to ${nameOfSlot(o.targetSlot)}, awaiting a response)`)}</span></div>
+        <div style="font-size:12.5px; margin:5px 0">${tr("📤 出", "📤 Give")} ${o.sell.map((i) => `${tn(i.type)}×${i.quantity}`).join(sep)} ⇄ ${tr("换", "for")} ${o.buy.map((i) => `${tn(i.type)}×${i.quantity}`).join(sep)} <span class="muted">${o.targetSlot === null || o.targetSlot === undefined ? tr("（等待其他船长接受或拒绝）", "(awaiting a response)") : tr(`（只发给 ${nameOfSlot(o.targetSlot)}，等待回应）`, `(only to ${nameOfSlot(o.targetSlot)}, awaiting a response)`)}</span></div>
       `,
               )
               .join("")
@@ -5608,7 +7158,7 @@
         ${myReady ? "disabled" : ""}
         onclick="sendAction('setTradeReady')"
         title="${tr("全员都点击后进入工匠管理。点击前请确认交易已谈妥", "Artisan management begins once everyone is ready. Settle your trades first")}">
-        ${myReady ? tr("⏳ 已准备，等待其他人就绪", "⏳ Ready: waiting for others") : tr("✅ 互市完毕，准备就绪", "✅ Done Bartering · Ready")}
+        ${myReady ? tr("⏳ 已准备，等待其他船长就绪", "⏳ Ready: waiting for others") : tr("✅ 互市完毕，准备就绪", "✅ Done Bartering, Ready")}
         <span class="btn-sub">${myReady ? "" : tr("全员就绪后进入工匠管理", "Advances once everyone is ready")}</span>
       </button>
     </div>
@@ -5735,7 +7285,7 @@
               <td style="padding:6px 4px;font-weight:700">${wt.icon} ${pf(wt.name)}</td>
               <td>${costOf(wt.key)} 💰${hireDiscount ? ` <s class="muted">${undiscountedWageRate(wt.key, g)}</s>` : ""}</td>
               <td>${wt.can.map((t) => `${ICONS[t]}${tn(t)}`).join(tr("、", ", "))}</td>
-              <td style="text-align:right"><button class="btn btn-success" style="padding:6px 14px;font-size:12px" onclick="sendAction('hireWorker', {workerType: '${wt.key}'})" title="${pf(wt.tip)}">${tr("＋ 雇佣", "＋ Hire")}</button></td>
+              <td style="text-align:right"><button class="btn btn-success" style="padding:6px 14px;font-size:12px" onclick="sendAction('hireWorker', {workerType: '${wt.key}'})" title="${pf(wt.tip)}">${tr("＋ 雇佣", "+ Hire")}</button></td>
             </tr>
           `,
             )
@@ -5776,7 +7326,7 @@
         .map(
           (w, i) => `
         <div class="worker-row">
-          <span class="w-state">${name} ${i + 1} ·
+          <span class="w-state">${name} ${i + 1}${tr(" ·", ",")}
             ${
               w.task
                 ? `<span class="busy">${tr(`⚙️ 制作 ${w.task} 中`, `⚙️ crafting ${tn(w.task)}`)}</span>${w.isSkilled ? skilledTag : ""}`
@@ -5935,7 +7485,7 @@
         <h3>${tr("🛡️ 海盗反制：雇佣护航", "🛡️ Pirate Counterplay: Hire Escort")}</h3>
         <div class="section-hint">
           ${tr(
-            `本程海盗袭扰概率为 <strong>${riskPct}%</strong>（含天象与可疑牙行的影响），若触发将损失当前金币的 <strong>${lossPct}%</strong>（按现有现金约为 ${projectedLoss} 金币）。护航费用按当前财富计算，本次为 <strong>${escortCost}</strong> 金币，可完全免疫本次结算的海盗 RNG。`,
+            `本程海盗袭扰概率为 <strong>${riskPct}%</strong>（含天象与可疑牙行的影响），若触发将损失当前金币的 <strong>${lossPct}%</strong>（按现有现金约为 ${projectedLoss} 金币）。护航费用按当前财富计算，本次为 <strong>${escortCost}</strong> 金币，可完全免疫本次结算的海盗随机事件。`,
             `This voyage's pirate raid chance is <strong>${riskPct}%</strong> (weather plus any shady brokers); if it lands you lose <strong>${lossPct}%</strong> of your gold (about ${projectedLoss} gold at your current balance). The escort fee scales with your wealth, <strong>${escortCost}</strong> gold right now, and fully neutralizes pirate RNG for this upkeep.`,
           )}
         </div>
@@ -5968,8 +7518,8 @@
     <div class="center-block">
       <div class="section-box">
         <h3>${tr("🚢 旗舰档案", "🚢 Flagship Profile")}</h3>
-        <div class="stat-row" style="font-size:13px"><span>${tr("当前等级", "Current level")}</span><strong>Lv.${g.shipLevel} / 3</strong></div>
-        <div class="stat-row" style="font-size:13px"><span class="tip" data-tip="${tr("每单运费 = max(5, 件数×2 − 此减免)", "Shipping per order = max(5, items ×2 − this discount)")}">${tr("运费永久减免", "Permanent shipping discount")}</span><strong>−${g.shipLevel * 5} ${tr("金币/单", "gold/order")}</strong></div>
+        <div class="stat-row" style="font-size:13px"><span>${tr("当前等级", "Current level")}</span><strong>${tr(`${g.shipLevel} 级`, `Lv.${g.shipLevel}`)} / 3</strong></div>
+        <div class="stat-row" style="font-size:13px"><span class="tip" data-tip="${tr("每单运费 = 件数×2 − 此减免，最低 5 金币", "Shipping per order = max(5, items ×2 − this discount)")}">${tr("运费永久减免", "Permanent shipping discount")}</span><strong>−${g.shipLevel * 5} ${tr("金币/单", "gold/order")}</strong></div>
         <div class="stat-row" style="font-size:13px"><span>${tr("模块槽位", "Module slots")}</span><strong>${slots} / ${g.shipLevel}</strong></div>
         <div style="margin-top:6px">${modulesHTML(g)}</div>
       </div>
@@ -5980,9 +7530,9 @@
             ? `
           <button class="btn btn-lg" onclick="sendAction('upgradeShip')" ${g.money < upgCost ? "disabled" : ""}
             title="${tr("升级后每单运费永久再减5金币，并增加1个模块槽位", "Each upgrade permanently cuts shipping by another 5 gold and adds a module slot")}">
-            ${tr(`⚓ 升级商船至 Lv.${g.shipLevel + 1}（${upgCost}💰）`, `⚓ Upgrade Ship to Lv.${g.shipLevel + 1} (${upgCost}💰)`)}<span class="btn-sub">${tr("运费/单再 −5 金币 · +1 模块槽", "Shipping −5 gold/order · +1 module slot")}</span>
+            ${tr(`⚓ 升级商船至 ${g.shipLevel + 1} 级（${upgCost}💰）`, `⚓ Upgrade Ship to Lv.${g.shipLevel + 1} (${upgCost}💰)`)}<span class="btn-sub">${tr("运费/单再 −5 金币 · +1 模块槽", "Shipping −5 gold/order, +1 module slot")}</span>
           </button>`
-            : `<span class="chip green">${tr("⚓ 旗舰已满级 Lv.3", "⚓ Flagship at max level (Lv.3)")}</span>`
+            : `<span class="chip green">${tr("⚓ 旗舰已满级（3 级）", "⚓ Flagship at max level (Lv.3)")}</span>`
         }
         ${
           !g.draftOpen
@@ -6001,7 +7551,7 @@
                       "View this round's fixed 3 module options and install one",
                     )
                 : tr(
-                    "商船升至 Lv.1 后解锁模块槽位，方可选择船舶模块",
+                    "商船升至 1 级后解锁模块槽位，方可选择船舶模块",
                     "Upgrade your ship to Lv.1 to unlock module slots before choosing",
                   )
             }">
@@ -6066,12 +7616,12 @@
       <div class="section-hint">${tr("本回合的模块选项是固定的，关闭后再次打开仍是同一批。", "This round's options are fixed; closing and reopening shows the same batch.")} ${slotsFull ? tr("槽位已满，选择新模块后需指定要替换的现有模块。", "All slots are full, so pick a new module then choose which installed one to replace.") : tr("选择一个模块安装到空置槽位。", "Pick one module to install in an empty slot.")}</div>
       ${grid}
       <div style="text-align:center;margin-top:10px;display:flex;gap:10px;justify-content:center;flex-wrap:wrap">
+        <button class="btn btn-ghost" onclick="sendAction('cancelModuleDraft')">${tr("❌ 关闭", "❌ Close")}</button>
         <button class="btn ${g.draftRerolled ? "btn-grey" : "btn-gold"}" ${g.draftRerolled ? "disabled" : ""}
           onclick="sendAction('rerollModuleDraft')"
           title="${g.draftRerolled ? tr("本回合的「换一批」已用过", "Reroll already used this round") : tr("每回合一次：重新抽取一批可选模块", "Once per round: draw a fresh batch of module options")}">
           ${g.draftRerolled ? tr("🔀 本回合已换过一批", "🔀 Batch already changed") : tr("🔀 换一批", "🔀 Change Batch")}
         </button>
-        <button class="btn btn-ghost" onclick="sendAction('cancelModuleDraft')">${tr("❌ 关闭", "❌ Close")}</button>
       </div>
     </div>
   `;
@@ -6166,7 +7716,7 @@
     <div class="spectate-overlay" onclick="if(event.target===this)closeCaptainViewer()">
       <div class="spectate-window">
         <div class="spectate-head">
-          <span class="sp-live"><span class="sp-live-dot"></span>LIVE</span>
+          <span class="sp-live"><span class="sp-live-dot"></span>${tr("实时", "LIVE")}</span>
           <div id="sp-head-live" style="display:contents"></div>
           <button class="sp-close" onclick="closeCaptainViewer()">×</button>
         </div>
@@ -6198,7 +7748,7 @@
             ${tr(`👀 ${name} 的商队`, `👀 ${name}'s Fleet`)}
             <div class="sp-sub">${tr(
               `第 ${og.currentRound} / ${og.maxRounds} 程 · ${phaseName(og.phase)}阶段 · 只读视角，随其操作实时更新`,
-              `Round ${og.currentRound} / ${og.maxRounds} · ${phaseName(og.phase)} phase · read only, updates live`,
+              `Round ${og.currentRound} / ${og.maxRounds}, ${phaseName(og.phase)} phase, read only, updates live`,
             )}</div>
           </div>
           ${targetOnline ? "" : `<span class="chip amber">${tr("对方离线", "Offline")}</span>`}`,
@@ -6220,7 +7770,7 @@
               </div>
               <div class="sp-tile">
                 <div class="k">${tr("商船", "Flagship")}</div>
-                <div class="v">🚢 Lv.${og.shipLevel}<span style="font-size:12px;font-weight:700;color:var(--ink-faint)"> ${(og.equippedModules || []).length}/${og.shipLevel}</span></div>
+                <div class="v">🚢 ${tr(`${og.shipLevel} 级`, `Lv.${og.shipLevel}`)}<span style="font-size:12px;font-weight:700;color:var(--ink-faint)"> ${(og.equippedModules || []).length}/${og.shipLevel}</span></div>
               </div>
             </div>
             <div class="sp-voyage">
@@ -6251,7 +7801,7 @@
             </div>
 
             <div class="sp-pane">
-              <h4>${tr("📜 近期动态 · 最新在前", "📜 Recent Activity · Newest first")}</h4>
+              <h4>${tr("📜 近期动态 · 最新在前", "📜 Recent Activity, Newest first")}</h4>
               ${
                 recentLogs.length
                   ? recentLogs
@@ -6296,8 +7846,8 @@
         "Your game is over. Once everyone else finishes their voyage, you can all set sail again.",
       )}</p>
       <div style="display:flex;justify-content:center;gap:10px;flex-wrap:wrap">
-        <button class="btn btn-lg" onclick="confirmRestart()" title="${tr("需等待其他玩家也结束本局，全员进度将一同重置", "Requires every other player to finish too; all voyages reset together")}">${tr("🔄 重新起航", "🔄 Set Sail Again")}</button>
         ${stillPlaying.length ? `<button class="btn btn-lg btn-ghost" onclick="openCaptainViewer()" title="${tr("在独立窗口中实时观看同行的航程", "Watch a fellow captain's voyage live in its own window")}">${tr("👀 打开观战窗口", "👀 Open Spectator Window")}</button>` : ""}
+        <button class="btn btn-lg" onclick="confirmRestart()" title="${tr("需等待其他船长也结束本局，所有人的进度将一同重置", "Requires every other captain to finish too; everyone resets together")}">${tr("🔄 重新起航", "🔄 Set Sail Again")}</button>
       </div>
     </div>
   `;
@@ -6318,7 +7868,7 @@
         <div class="section-hint" style="margin-top:8px">${tr("评级门槛：", "Rating thresholds: ")}${ratingThresholdHint(g.difficulty)}</div>
       </div>
       ${g.score < firstTierMin ? pm1HintHTML(tr("首航成绩不理想很正常！", "A rough first voyage is completely normal!")) : ""}
-      <button class="btn btn-xl" onclick="confirmRestart()" title="${tr("需等待其他玩家也结束本局，全员进度将一同重置", "Requires every other player to finish too; all voyages reset together")}">${tr("🔄 再启新航程", "🔄 Begin a New Voyage")}</button>
+      <button class="btn btn-xl" onclick="confirmRestart()" title="${tr("需等待其他船长也结束本局，所有人的进度将一同重置", "Requires every other captain to finish too; everyone resets together")}">${tr("🔄 再启新航程", "🔄 Begin a New Voyage")}</button>
     </div>
   `;
       }
@@ -6401,9 +7951,9 @@
       <span class="sync-chip">${isBankrupt ? tr("💥 船队破产", "💥 Fleet Bankrupt") : tr("🏁 本局已结束", "🏁 Game Over")}</span>
       ${anyoneElsePlaying ? `<span class="control-hint">${tr("💡 还有同行仍在航行中，可打开观战窗口实时围观", "💡 Others are still sailing. Open the spectator window to watch live")}</span>` : ""}
       <div class="control-spacer"></div>
+      <button class="btn btn-ghost" onclick="showManual()">${tr("📖 手册", "📖 Manual")}</button>
       ${isBankrupt && anyoneElsePlaying ? `<button class="btn btn-ghost" onclick="openCaptainViewer()">${tr("👀 观战同行", "👀 Spectate")}</button>` : ""}
-      <button class="btn btn-danger" onclick="confirmRestart()">${tr("🔄 重新起航", "🔄 Set Sail Again")}</button>
-      <button class="btn btn-ghost" onclick="showManual()">${tr("📖 手册", "📖 Manual")}</button>`,
+      <button class="btn btn-danger" onclick="confirmRestart()">${tr("🔄 重新起航", "🔄 Set Sail Again")}</button>`,
           );
           return;
         }
@@ -6415,15 +7965,15 @@
         let hint = "";
         if (phase === 0) {
           primary = serverState.youReady
-            ? `<button class="btn btn-grey btn-lg" disabled>${tr("⌛ 已确认，等待其他人", "⌛ Confirmed: waiting for others")}</button>`
+            ? `<button class="btn btn-grey btn-lg" disabled>${tr("⌛ 已确认，等待其他船长", "⌛ Confirmed, waiting for others")}</button>`
             : `<button class="btn btn-success btn-lg" onclick="sendAction('startBoon')">${tr("🧭 扬帆起航，抽取福缘", "🧭 Set Sail & Draw Fortunes")}</button>`;
           hint = serverState.youReady
             ? tr(
-                "等待其他人确认后进入福缘抽取",
-                "Waiting for everyone else to confirm",
+                "等待其他船长确认后进入福缘抽取",
+                "Waiting for the others to confirm",
               )
             : tr(
-                "全员都确认后进入福缘抽取",
+                "所有船长都确认后进入福缘抽取",
                 "Fortune draw begins once everyone confirms",
               );
         } else if (phase === 5) {
@@ -6457,8 +8007,8 @@
         } else if (phase === 3) {
           primary = `<button class="btn btn-warning btn-lg" onclick="sendAction('doMaintenance')">${tr("💸 支付维护费", "💸 Pay Upkeep")}</button>`;
           hint = tr(
-            "支付后等待其他人完成结算",
-            "After paying, wait for everyone else to settle",
+            "支付后等待其他船长完成结算",
+            "After paying, wait for the others to settle",
           );
         } else if (phase === 4) {
           primary = `<button class="btn btn-success btn-lg" onclick="sendAction('ready_for_next_phase')">${tr("⏭️ 结束航程", "⏭️ End Voyage")}</button>`;
@@ -6471,11 +8021,11 @@
         paintHTML(
           c,
           `
-    <span class="sync-chip" title="${tr("全员确认后才会进入下一阶段", "The next phase starts once everyone confirms")}">${tr(`🔄 全员就绪 ${readyCount} / ${totalCount}`, `🔄 Ready ${readyCount} / ${totalCount}`)}</span>
+    <span class="sync-chip" title="${tr("全员确认后才进入下一阶段", "The next phase starts once everyone confirms")}">${tr(`🔄 全员就绪 ${readyCount} / ${totalCount}`, `🔄 Ready ${readyCount} / ${totalCount}`)}</span>
     <span class="control-hint">💡 ${hint}</span>
     <div class="control-spacer"></div>
-    ${primary}
     <button class="btn btn-ghost" onclick="showManual()" title="${tr("快捷键 F1", "Shortcut: F1")}">${tr("📖 手册", "📖 Manual")}</button>
+    ${primary}
   `,
         );
       }
@@ -6487,7 +8037,7 @@
         const l = document.getElementById("log-panel");
         const painted = paintHTML(
           l,
-          `<div class="log-title">${tr("📜 航海日志 · 最近操作记录", "📜 Captain's Log · Recent Actions")}</div>` +
+          `<div class="log-title">${tr("📜 航海日志 · 最近操作记录", "📜 Captain's Log, Recent Actions")}</div>` +
             (logs.length
               ? logs
                   .map(
@@ -6589,7 +8139,7 @@
     <h4>💸 四大支出，务必牢记</h4>
     <table>
       <tr><th>项目</th><th>计算方式</th><th>何时支付</th></tr>
-      <tr><td>📦 运费</td><td>max(5, 件数×2 − 船级×5 − 福缘减免)</td><td>每次交付订单时</td></tr>
+      <tr><td>📦 运费</td><td>件数×2 − 船级×5 − 福缘减免，最低 5 金币</td><td>每次交付订单时</td></tr>
       <tr><td>🧾 增值税</td><td>(售价 − 材料均价成本 − 人工) × 5%</td><td>交付<strong>成品</strong>订单时自动扣除</td></tr>
       <tr><td>📜 所得税</td><td>回合净利润 × 10%（免税令时 5%）</td><td>每回合结束自动扣除</td></tr>
       <tr><td>🔧 维护费</td><td>固定 15 金币/回合</td><td>结算阶段手动支付，<strong>付不起即破产</strong></td></tr>
@@ -6597,7 +8147,7 @@
     <h4>💰 收入来源</h4>
     <ul>
       <li><strong>原料订单</strong>：报酬 = 需求量×5 + 10~25 浮动，门槛低利润薄。</li>
-      <li><strong>成品订单</strong>：按成品市价结算（麻衣 30-42 / 布衣 50-65 / 绫罗绸缎 70-90 / 香囊 95-120），扣增值税后仍是主要利润来源。</li>
+      <li><strong>成品订单</strong>：按成品市价结算（麻衣 30~42 / 布衣 50~65 / 绫罗绸缎 70~90 / 香囊 95~120），扣增值税后仍是主要利润来源。</li>
       <li><strong>互市</strong>：和伙伴谈个好价钱，互补短板。</li>
     </ul>
     <h4>📈 采购小窍门</h4>
@@ -6614,10 +8164,10 @@
     <h4>🧵 生产配方与产值</h4>
     <table>
       <tr><th>成品</th><th>所需材料</th><th>基准产值</th><th>市价区间</th></tr>
-      <tr><td>👔 麻衣</td><td>麻布×2</td><td>15</td><td>30 - 42</td></tr>
-      <tr><td>👕 布衣</td><td>麻布×2 + 丝绸×1</td><td>35</td><td>50 - 65</td></tr>
-      <tr><td>👗 绫罗绸缎</td><td>丝绸×3</td><td>60</td><td>70 - 90</td></tr>
-      <tr><td>🌸 香囊</td><td>丝绸×1 + 茶叶×2</td><td>80</td><td>95 - 120</td></tr>
+      <tr><td>👔 麻衣</td><td>麻布×2</td><td>15</td><td>30~42</td></tr>
+      <tr><td>👕 布衣</td><td>麻布×2 + 丝绸×1</td><td>35</td><td>50~65</td></tr>
+      <tr><td>👗 绫罗绸缎</td><td>丝绸×3</td><td>60</td><td>70~90</td></tr>
+      <tr><td>🌸 香囊</td><td>丝绸×1 + 茶叶×2</td><td>80</td><td>95~120</td></tr>
     </table>
     <h4>⚙️ 生产规则</h4>
     <ul>
@@ -6673,7 +8223,7 @@
       <span>下面这份分批解锁清单以<strong>高难模式</strong>（第 6、10 程）为例。<strong>标准模式</strong>解锁的内容相同，只是更早到来（第 4、8 程）；<strong>轻松模式</strong>则全程停留在基础内容，这些扩展不会出现。</span>
     </div>
     <h4>🗺️ 丝路特许：分批解锁（高难模式）</h4>
-    <p>第 1-5 程的玩法与最初版本完全一致，包含 3 种原料、4 种成品、3 类工匠、5 座港口。从<strong>第 6 程</strong>起，「市舶新政」颁布；从<strong>第 10 程</strong>起，「万国通商」开启。两批新内容会分别加入原料、成品、港口、工匠、福缘、战船改装与季风的可选池，航路越往后，棋盘也就越宽。随着新内容解锁，采购阶段与贸易阶段可挑选的卡牌也会相应增多：基础为 5 张，第 6 程起增至 8 张，第 10 程起增至 11 张，让新货物有充足的出现机会。</p>
+    <p>第 1~5 程的玩法与最初版本完全一致，包含 3 种原料、4 种成品、3 类工匠、5 座港口。从<strong>第 6 程</strong>起，「市舶新政」颁布；从<strong>第 10 程</strong>起，「万国通商」开启。两批新内容会分别加入原料、成品、港口、工匠、福缘、战船改装与季风的可选池，航路越往后，棋盘也就越宽。随着新内容解锁，采购阶段与贸易阶段可挑选的卡牌也会相应增多：基础为 5 张，第 6 程起增至 8 张，第 10 程起增至 11 张，让新货物有充足的出现机会。</p>
     <table>
       <tr><th>批次</th><th>解锁时机</th><th>新增内容概览</th></tr>
       <tr><td>🗺️ 市舶新政</td><td>第 6 程起</td><td>瓷土、铜矿、紫铜镜、青瓷器；福州港、高丽港；铜匠、陶匠；3 福缘 + 3 战船改装 + 2 季风</td></tr>
@@ -6683,19 +8233,19 @@
     <h4>📦 新增原料</h4>
     <table>
       <tr><th>原料</th><th>解锁批次</th><th>特产港</th><th>参考单价</th></tr>
-      <tr><td>🧱 瓷土</td><td>市舶新政</td><td>泉州港、福州港</td><td>8 - 12</td></tr>
-      <tr><td>⛏️ 铜矿</td><td>市舶新政</td><td>广州港、高丽港</td><td>10 - 15</td></tr>
-      <tr><td>🌶️ 香料</td><td>万国通商</td><td>三佛齐港、大食港</td><td>14 - 20</td></tr>
-      <tr><td>🦪 珍珠</td><td>万国通商</td><td>广州港、三佛齐港</td><td>16 - 24</td></tr>
+      <tr><td>🧱 瓷土</td><td>市舶新政</td><td>泉州港、福州港</td><td>8~12</td></tr>
+      <tr><td>⛏️ 铜矿</td><td>市舶新政</td><td>广州港、高丽港</td><td>10~15</td></tr>
+      <tr><td>🌶️ 香料</td><td>万国通商</td><td>三佛齐港、大食港</td><td>14~20</td></tr>
+      <tr><td>🦪 珍珠</td><td>万国通商</td><td>广州港、三佛齐港</td><td>16~24</td></tr>
     </table>
 
     <h4>🏺 新增成品</h4>
     <table>
       <tr><th>成品</th><th>解锁批次</th><th>所需材料</th><th>基准产值</th><th>市价区间</th><th>制作工匠</th></tr>
-      <tr><td>🪞 紫铜镜</td><td>市舶新政</td><td>铜矿×3</td><td>45</td><td>55 - 72</td><td>铜匠</td></tr>
-      <tr><td>🏺 青瓷器</td><td>市舶新政</td><td>瓷土×3</td><td>65</td><td>78 - 100</td><td>陶匠</td></tr>
-      <tr><td>🧴 蕃香脂</td><td>万国通商</td><td>香料×2 + 丝绸×1</td><td>85</td><td>100 - 130</td><td>香料师</td></tr>
-      <tr><td>📿 珠链</td><td>万国通商</td><td>珍珠×2 + 丝绸×1</td><td>105</td><td>125 - 160</td><td>珠宝匠</td></tr>
+      <tr><td>🪞 紫铜镜</td><td>市舶新政</td><td>铜矿×3</td><td>45</td><td>55~72</td><td>铜匠</td></tr>
+      <tr><td>🏺 青瓷器</td><td>市舶新政</td><td>瓷土×3</td><td>65</td><td>78~100</td><td>陶匠</td></tr>
+      <tr><td>🧴 蕃香脂</td><td>万国通商</td><td>香料×2 + 丝绸×1</td><td>85</td><td>100~130</td><td>香料师</td></tr>
+      <tr><td>📿 珠链</td><td>万国通商</td><td>珍珠×2 + 丝绸×1</td><td>105</td><td>125~160</td><td>珠宝匠</td></tr>
     </table>
 
     <h4>👷 新增工匠</h4>
@@ -6717,7 +8267,7 @@
     </table>
 
     <h4>🌬️ 新增季风（贸易风）</h4>
-    <p>除原有的「春潮顺流」「盛夏季风」「秋汛乱流」「冬海封锁」外，新增 4 种季风状态。第 3 程起，每个"季节"（每 2 回合一变）将从<strong>当时已解锁的季风池中随机抽取</strong>，不再是固定的四季循环。不过第 1-2 程仍固定为「春潮顺流」，与最初版本完全一致。</p>
+    <p>除原有的「春潮顺流」「盛夏季风」「秋汛乱流」「冬海封锁」外，新增 4 种季风状态。第 3 程起，每个"季节"（每 2 回合一变）将从<strong>当时已解锁的季风池中随机抽取</strong>，不再是固定的四季循环。不过第 1~2 程仍固定为「春潮顺流」，与最初版本完全一致。</p>
     <table>
       <tr><th>季风</th><th>解锁批次</th><th>效果概要</th></tr>
       <tr><td>🌫️ 闽江窑烟</td><td>市舶新政</td><td>福州港、泉州港订单报酬提高；瓷土采购价降低；海盗风险中等</td></tr>
@@ -6746,13 +8296,13 @@
     <h4>🚢 商船升级（船坞阶段）</h4>
     <table>
       <tr><th>升级</th><th>费用</th><th>累计效果</th></tr>
-      <tr><td>Lv.0 → Lv.1</td><td>15 金币</td><td>每单运费 −5 · 1 个模块槽</td></tr>
-      <tr><td>Lv.1 → Lv.2</td><td>25 金币</td><td>每单运费 −10 · 2 个模块槽</td></tr>
-      <tr><td>Lv.2 → Lv.3</td><td>40 金币</td><td>每单运费 −15 · 3 个模块槽</td></tr>
+      <tr><td>0 级 → 1 级</td><td>15 金币</td><td>每单运费 −5 · 1 个模块槽</td></tr>
+      <tr><td>1 级 → 2 级</td><td>25 金币</td><td>每单运费 −10 · 2 个模块槽</td></tr>
+      <tr><td>2 级 → 3 级</td><td>40 金币</td><td>每单运费 −15 · 3 个模块槽</td></tr>
     </table>
     <ul>
       <li>运费下限为 5 金币（部分福缘/模块可降至 0）。</li>
-      <li>升级是<strong>永久投资</strong>：交付订单越频繁，回本越快。一般建议第 2~4 程内升至 Lv.1~2。</li>
+      <li>升级是<strong>永久投资</strong>：交付订单越频繁，回本越快。一般建议第 2~4 程内升至 1~2 级。</li>
       <li>临近尾声的最后一两程再升级往往回不了本，把现金留给进货更划算。</li>
       <li>升级解锁槽位后，可在船坞「选择船舶模块」。每回合的 3 个候选<strong>固定不变</strong>，关闭再打开仍是同一批；每回合可用一次<strong>「换一批」</strong>重新抽取。</li>
     </ul>
@@ -6782,15 +8332,15 @@
       const manualContentEn = () => ({
         start: `
     <h4>🎯 Objective</h4>
-    <p>You and your partner each run a maritime trading fleet. Over the voyage (<strong>8 rounds on Easy, 12 on Standard, 16 on Hard</strong>), build <strong>renown</strong> through the buy-low → produce → sell-high loop. Renown is the net profit of every delivered order; your final rating depends on it. You start with 100 gold and a small stock of materials.</p>
+    <p>You and your partner each run a maritime trading fleet. Over the voyage (<strong>8 rounds on Easy, 12 on Standard, 16 on Hard</strong>), build <strong>renown</strong> through the buy low → produce → sell high loop. Renown is the net profit of every delivered order; your final rating depends on it. You start with 100 gold and a small stock of materials.</p>
     <p class="muted">Every session has Easy, Standard and Hard difficulties forming a ladder, and the default is Easy. The level is settled at invite time: the inviting captain picks it and the other confirms it in a short window. Easy mode keeps to the founding set of goods and is the gentler place to start; see the "Difficulty &amp; Expansion" section for exactly what changes between them.</p>
     <h4>🧭 Your First Voyage (recommended route)</h4>
     <ol>
       <li><strong>Fortune</strong>: in round 1, Emergency Loan (+40 gold) or Merchant's Charm (15% off purchases) eases the early cash crunch.</li>
-      <li><strong>Procure</strong>: buy cheap Hemp Cloth and Silk, since they're your crafting inputs. Leave cash for wages and the 15-gold upkeep.</li>
+      <li><strong>Procure</strong>: buy cheap Hemp Cloth and Silk, since they're your crafting inputs. Leave cash for wages and the 15 gold upkeep.</li>
       <li><strong>Barter</strong>: trade surpluses with your partner early, for example spare Tea for their Silk.</li>
       <li><strong>Artisans</strong>: hire 1 Weaver (8 gold/round) for Hemp Garb or Cloth Tunics; keep the payroll small.</li>
-      <li><strong>Trade</strong>: deliver orders marked ✅ in-stock whose reward beats the shipping cost.</li>
+      <li><strong>Trade</strong>: deliver orders marked ✅ in stock whose reward beats the shipping cost.</li>
       <li><strong>Upkeep / Shipyard</strong>: pay upkeep; only upgrade the ship once cash is comfortable.</li>
     </ol>
     <h4>⚖️ Core Principles</h4>
@@ -6815,24 +8365,24 @@
       <tr><td>🤝 Barter</td><td>Trade goods and gold freely with your partner</td><td>Both click "Ready"</td></tr>
       <tr><td>👥 Artisans</td><td>Hire/dismiss artisans, assign production (consumes materials immediately)</td><td>Both click "Done Managing"</td></tr>
       <tr><td>📦 Trade</td><td>Deliver up to 5 port orders from stock for rewards</td><td>Both click "Done Trading"</td></tr>
-      <tr><td>🔧 Upkeep</td><td>Production arrives, wages auto-paid, then pay upkeep manually</td><td>Both pay upkeep</td></tr>
+      <tr><td>🔧 Upkeep</td><td>Production arrives, wages paid automatically, then pay upkeep manually</td><td>Both pay upkeep</td></tr>
       <tr><td>🚢 Shipyard</td><td>Optional: upgrade your ship; then end the voyage</td><td>Both click "End Voyage"</td></tr>
     </table>
-    <p>The "🔄 Ready n/total" chip in the bottom bar shows sync progress; once you confirm, a waiting hint appears until everyone else does too. Bankrupt players count as auto-ready and never block the rest of the room.</p>
+    <p>The "🔄 Ready n/total" chip in the bottom bar shows sync progress; once you confirm, a waiting hint appears until everyone else does too. Bankrupt players count as ready automatically and never block the rest of the room.</p>
   `,
         economy: `
     <h4>💸 The Four Expenses to Watch</h4>
     <table>
       <tr><th>Item</th><th>How it's computed</th><th>When it's paid</th></tr>
       <tr><td>📦 Shipping</td><td>max(5, items ×2 − ship level ×5 − fortune discounts)</td><td>On every order delivery</td></tr>
-      <tr><td>🧾 VAT</td><td>(sale price − avg. material cost − labor) × 5%</td><td>Auto-deducted on <strong>product</strong> orders</td></tr>
-      <tr><td>📜 Income tax</td><td>Round net profit × 10% (5% with Tax Exemption)</td><td>Auto-deducted at round end</td></tr>
+      <tr><td>🧾 VAT</td><td>(sale price − avg. material cost − labor) × 5%</td><td>Deducted automatically on <strong>product</strong> orders</td></tr>
+      <tr><td>📜 Income tax</td><td>Round net profit × 10% (5% with Tax Exemption)</td><td>Deducted automatically at round end</td></tr>
       <tr><td>🔧 Upkeep</td><td>Flat 15 gold/round</td><td>Paid manually at Upkeep; <strong>failing means bankruptcy</strong></td></tr>
     </table>
     <h4>💰 Income Sources</h4>
     <ul>
-      <li><strong>Material orders</strong>: reward = demand ×5 + 10-25 variance; low effort, thin margins.</li>
-      <li><strong>Product orders</strong>: settled at market price (Hemp Garb 30-42 / Cloth Tunic 50-65 / Fine Brocade 70-90 / Sachet 95-120), and remain your main profit source even after VAT.</li>
+      <li><strong>Material orders</strong>: reward = demand ×5 + 10 to 25 variance; low effort, thin margins.</li>
+      <li><strong>Product orders</strong>: settled at market price (Hemp Garb 30 to 42 / Cloth Tunic 50 to 65 / Fine Brocade 70 to 90 / Sachet 95 to 120), and remain your main profit source even after VAT.</li>
       <li><strong>Barter</strong>: strike good deals with your partner to cover each other's gaps.</li>
     </ul>
     <h4>📈 Buying Tip</h4>
@@ -6849,30 +8399,30 @@
     <h4>🧵 Recipes & Values</h4>
     <table>
       <tr><th>Product</th><th>Materials</th><th>Base value</th><th>Market range</th></tr>
-      <tr><td>👔 Hemp Garb</td><td>Hemp Cloth ×2</td><td>15</td><td>30 - 42</td></tr>
-      <tr><td>👕 Cloth Tunic</td><td>Hemp Cloth ×2 + Silk ×1</td><td>35</td><td>50 - 65</td></tr>
-      <tr><td>👗 Fine Brocade</td><td>Silk ×3</td><td>60</td><td>70 - 90</td></tr>
-      <tr><td>🌸 Scented Sachet</td><td>Silk ×1 + Tea ×2</td><td>80</td><td>95 - 120</td></tr>
+      <tr><td>👔 Hemp Garb</td><td>Hemp Cloth ×2</td><td>15</td><td>30 to 42</td></tr>
+      <tr><td>👕 Cloth Tunic</td><td>Hemp Cloth ×2 + Silk ×1</td><td>35</td><td>50 to 65</td></tr>
+      <tr><td>👗 Fine Brocade</td><td>Silk ×3</td><td>60</td><td>70 to 90</td></tr>
+      <tr><td>🌸 Scented Sachet</td><td>Silk ×1 + Tea ×2</td><td>80</td><td>95 to 120</td></tr>
     </table>
     <h4>⚙️ Production Rules</h4>
     <ul>
       <li>Assigning a task <strong>consumes materials immediately</strong>; the product arrives at <strong>Upkeep</strong> and can be sold from the next round.</li>
-      <li>Each artisan takes one task per round; regular artisans make 1 item, <strong>skilled ⭐</strong> ones (auto-promoted after 2 lifetime items) make 2.</li>
-      <li>Wages are auto-paid at Upkeep, so <strong>running out of cash means bankruptcy</strong>; do the math before expanding.</li>
+      <li>Each artisan takes one task per round; regular artisans make 1 item, <strong>skilled ⭐</strong> ones (promoted automatically after 2 lifetime items) make 2.</li>
+      <li>Wages are paid automatically at Upkeep, so <strong>running out of cash means bankruptcy</strong>; do the math before expanding.</li>
       <li>Dismissing an idle artisan costs one wage as severance; busy artisans can't be dismissed.</li>
     </ul>
   `,
         trade: `
-    <h4>🤝 The Barter Phase (this game's co-op heart)</h4>
+    <h4>🤝 The Barter Phase (this game's cooperative heart)</h4>
     <ul>
       <li>Post an offer: "I give A×n for B×m", where A and B can be any material, product, or gold.</li>
       <li>Your partner can <strong>accept</strong> (instant swap) or <strong>decline</strong> (offer voided). Trades fail safely if either side lacks the resources.</li>
       <li>Once both captains click "✅ Ready", the artisan phase begins; unaccepted offers expire.</li>
-      <li>The right-hand panel shows your partner's gold, renown, stock, artisans and buffs in real time, so <strong>see what they need before naming your price</strong>.</li>
+      <li>The right panel shows your partner's gold, renown, stock, artisans and buffs in real time, so <strong>see what they need before naming your price</strong>.</li>
     </ul>
     <h4>🌐 Online Mechanics</h4>
     <ul>
-      <li><strong>Invitations &amp; difficulty</strong>: invite any online player from the lobby; one invite per minute, 60-second expiry. When you send the invite you first choose the session difficulty (Easy, Standard or Hard, Easy by default), and the other captain reads a short explanation and agrees to it before you both start at the same level.</li>
+      <li><strong>Invitations &amp; difficulty</strong>: invite any online player from the lobby; one invite per minute, 60 second expiry. When you send the invite you first choose the session difficulty (Easy, Standard or Hard, Easy by default), and the other captain reads a short explanation and agrees to it before you both start at the same level.</li>
       <li><strong>Sync</strong>: both captains are always on the same round and phase; every phase needs both to confirm.</li>
       <li><strong>Reconnection</strong>: sessions live on the server, so log back in to resume. The session is recycled only when both players are offline.</li>
       <li><strong>Chat</strong>: hit 💬 in the header to talk (disabled while your partner is offline).</li>
@@ -6891,24 +8441,24 @@
       <tr><td>📜 Tax Exemption</td><td>Income tax drops to 5%</td><td>Expecting big profits this round</td></tr>
       <tr><td>🧶 Hemp Monopoly</td><td>Hemp Cloth −2 gold per unit</td><td>Running a garb/tunic production line</td></tr>
       <tr><td>🎓 Apprentice Legacy</td><td>Hiring wages halved</td><td>Expanding the team this round</td></tr>
-      <tr><td>🔮 Farsight<br><span class="muted">New Maritime Edict · Round 6+</span></td><td>Gain 1 free Broker's Whisper clue this round</td><td>Want to lock in a Trade-phase order early</td></tr>
-      <tr><td>🏮 Porcelain & Bronze Consortium<br><span class="muted">New Maritime Edict · Round 6+</span></td><td>Celadon Porcelain and Bronze Mirror orders pay +15% this round</td><td>Stockpiled Celadon Porcelain/Bronze Mirror ready to deliver</td></tr>
-      <tr><td>🧾 Frontier Tariff Relief<br><span class="muted">New Maritime Edict · Round 6+</span></td><td>VAT on finished goods deliveries is halved this round</td><td>Planning to deliver lots of products this round</td></tr>
-      <tr><td>💎 Treasures from Afar<br><span class="muted">Ten Thousand Kingdoms Trade · Round 10+</span></td><td>Foreign Perfume Oil and Pearl Necklace orders pay +15% this round</td><td>Stockpiled Foreign Perfume Oil/Pearl Necklace ready to deliver</td></tr>
-      <tr><td>🛡️ Deep Sea Escort Pact<br><span class="muted">Ten Thousand Kingdoms Trade · Round 10+</span></td><td>Escort hiring costs half price and pirate risk is halved this round</td><td>When the trade wind's pirate risk is high</td></tr>
-      <tr><td>🛍️ Merchants Converge<br><span class="muted">Ten Thousand Kingdoms Trade · Round 10+</span></td><td>1 extra order appears in the Trade phase this round</td><td>Want more delivery opportunities</td></tr>
+      <tr><td>🔮 Farsight<br><span class="muted">New Maritime Edict, Round 6+</span></td><td>Gain 1 free Broker's Whisper clue this round</td><td>Want to lock in a Trade phase order early</td></tr>
+      <tr><td>🏮 Porcelain & Bronze Consortium<br><span class="muted">New Maritime Edict, Round 6+</span></td><td>Celadon Porcelain and Bronze Mirror orders pay +15% this round</td><td>Stockpiled Celadon Porcelain/Bronze Mirror ready to deliver</td></tr>
+      <tr><td>🧾 Frontier Tariff Relief<br><span class="muted">New Maritime Edict, Round 6+</span></td><td>VAT on finished goods deliveries is halved this round</td><td>Planning to deliver lots of products this round</td></tr>
+      <tr><td>💎 Treasures from Afar<br><span class="muted">Ten Thousand Kingdoms Trade, Round 10+</span></td><td>Foreign Perfume Oil and Pearl Necklace orders pay +15% this round</td><td>Stockpiled Foreign Perfume Oil/Pearl Necklace ready to deliver</td></tr>
+      <tr><td>🛡️ Deep Sea Escort Pact<br><span class="muted">Ten Thousand Kingdoms Trade, Round 10+</span></td><td>Escort hiring costs half price and pirate risk is halved this round</td><td>When the trade wind's pirate risk is high</td></tr>
+      <tr><td>🛍️ Merchants Converge<br><span class="muted">Ten Thousand Kingdoms Trade, Round 10+</span></td><td>1 extra order appears in the Trade phase this round</td><td>Want more delivery opportunities</td></tr>
     </table>
   `,
         expansion: `
     <h4>⚖️ Difficulty Modes</h4>
-    <p>Every session is played at one of three difficulties that form a ladder, and it always starts on <strong>Easy</strong> by default. <strong>Easy mode</strong> is the shorter 8 round voyage and keeps the whole game on the founding set of goods, with only the three raw materials Hemp Cloth, Silk and Tea, the four starter products, the first three artisan guilds, and the fortunes, ship modules, ports and trade winds tied to them. The board never grows crowded, so you have plenty of room to learn the rhythm of each round at your own pace. <strong>Standard mode</strong> is the 12 round middle rung: it also opens the full trade, with the Silk Road Charter unlocking at Rounds 4 and 8, but with no corrupt brokers. <strong>Hard mode</strong> is the longer 16 round voyage that opens the full maritime trade with the charter unlocking at Rounds 6 and 10 and the corrupt-broker hazard switched on, so there is a great deal more to manage and the competition for cargo space and coin grows much fiercer. The phased unlocks below happen on Standard and Hard but never on Easy. Raids bite harder as you climb the ladder too: a successful raid takes a share of your current gold (a larger share later in the voyage and on higher difficulties) and the escort fee scales with your wealth as well; and on Hard a Broker's Whisper can come from a corrupt broker who tips off pirates and raises that voyage's raid chance, turning the escort call at Upkeep into a genuine trade-off.</p>
+    <p>Every session is played at one of three difficulties that form a ladder, and it always starts on <strong>Easy</strong> by default. <strong>Easy mode</strong> is the shorter 8 round voyage and keeps the whole game on the founding set of goods, with only the three raw materials Hemp Cloth, Silk and Tea, the four starter products, the first three artisan guilds, and the fortunes, ship modules, ports and trade winds tied to them. The board never grows crowded, so you have plenty of room to learn the rhythm of each round at your own pace. <strong>Standard mode</strong> is the 12 round middle rung: it also opens the full trade, with the Silk Road Charter unlocking at Rounds 4 and 8, but with no corrupt brokers. <strong>Hard mode</strong> is the longer 16 round voyage that opens the full maritime trade with the charter unlocking at Rounds 6 and 10 and the corrupt broker hazard switched on, so there is a great deal more to manage and the competition for cargo space and coin grows much fiercer. The phased unlocks below happen on Standard and Hard but never on Easy. Raids bite harder as you climb the ladder too: a successful raid takes a share of your current gold (a larger share later in the voyage and on higher difficulties) and the escort fee scales with your wealth as well; and on Hard a Broker's Whisper can come from a corrupt broker who tips off pirates and raises that voyage's raid chance, turning the escort call at Upkeep into a genuine tradeoff.</p>
     <p>The difficulty is settled before a voyage begins. The inviting captain chooses the level for the session, and the other captain sees a short explanation of what it changes in the confirmation window and agrees to it, so both captains always run the same voyage at the same difficulty.</p>
     <div class="pm-banner" style="margin:8px 0 4px">
       <span class="pm-icon">⚖️</span>
       <span>The phased unlock tables below use <strong>Hard mode</strong> (Rounds 6 and 10) as the example. <strong>Standard mode</strong> unlocks the same content earlier (Rounds 4 and 8); <strong>Easy mode</strong> stays on the founding set named above for the entire game and these expansions never arrive.</span>
     </div>
     <h4>🗺️ Silk Road Charter: Phased Unlocks (Hard mode)</h4>
-    <p>Rounds 1-5 play exactly like the original release, with 3 raw materials, 4 products, 3 artisan types and 5 ports. From <strong>Round 6</strong>, the "New Maritime Edict" takes effect; from <strong>Round 10</strong>, "Ten Thousand Kingdoms Trade" opens. Each wave adds new resources, products, ports, artisans, fortunes, ship modules and trade winds to the pools you draw from, so the later the voyage, the wider the board. As the waves arrive, the hands you pick from in the buying and trade phases grow too, going from 5 cards to 8 once the first wave opens at Round 6 and to 11 once the second opens at Round 10, so the new goods always have room to appear.</p>
+    <p>Rounds 1 to 5 play exactly like the original release, with 3 raw materials, 4 products, 3 artisan types and 5 ports. From <strong>Round 6</strong>, the "New Maritime Edict" takes effect; from <strong>Round 10</strong>, "Ten Thousand Kingdoms Trade" opens. Each wave adds new resources, products, ports, artisans, fortunes, ship modules and trade winds to the pools you draw from, so the later the voyage, the wider the board. As the waves arrive, the hands you pick from in the buying and trade phases grow too, going from 5 cards to 8 once the first wave opens at Round 6 and to 11 once the second opens at Round 10, so the new goods always have room to appear.</p>
     <table>
       <tr><th>Wave</th><th>Unlocks at</th><th>What's added</th></tr>
       <tr><td>🗺️ New Maritime Edict</td><td>Round 6</td><td>Porcelain Clay, Copper Ore, Bronze Mirror, Celadon Porcelain; Fuzhou, Goryeo; Coppersmith, Potter; 3 Fortunes + 3 ship modules + 2 trade winds</td></tr>
@@ -6918,19 +8468,19 @@
     <h4>📦 New Resources</h4>
     <table>
       <tr><th>Resource</th><th>Unlocked by</th><th>Home ports</th><th>Reference price</th></tr>
-      <tr><td>🧱 Porcelain Clay</td><td>New Maritime Edict</td><td>Quanzhou, Fuzhou</td><td>8 - 12</td></tr>
-      <tr><td>⛏️ Copper Ore</td><td>New Maritime Edict</td><td>Guangzhou, Goryeo</td><td>10 - 15</td></tr>
-      <tr><td>🌶️ Spices</td><td>Ten Thousand Kingdoms Trade</td><td>Srivijaya, Dashi</td><td>14 - 20</td></tr>
-      <tr><td>🦪 Pearls</td><td>Ten Thousand Kingdoms Trade</td><td>Guangzhou, Srivijaya</td><td>16 - 24</td></tr>
+      <tr><td>🧱 Porcelain Clay</td><td>New Maritime Edict</td><td>Quanzhou, Fuzhou</td><td>8 to 12</td></tr>
+      <tr><td>⛏️ Copper Ore</td><td>New Maritime Edict</td><td>Guangzhou, Goryeo</td><td>10 to 15</td></tr>
+      <tr><td>🌶️ Spices</td><td>Ten Thousand Kingdoms Trade</td><td>Srivijaya, Dashi</td><td>14 to 20</td></tr>
+      <tr><td>🦪 Pearls</td><td>Ten Thousand Kingdoms Trade</td><td>Guangzhou, Srivijaya</td><td>16 to 24</td></tr>
     </table>
 
     <h4>🏺 New Products</h4>
     <table>
       <tr><th>Product</th><th>Unlocked by</th><th>Materials</th><th>Base value</th><th>Market range</th><th>Crafted by</th></tr>
-      <tr><td>🪞 Bronze Mirror</td><td>New Maritime Edict</td><td>Copper Ore ×3</td><td>45</td><td>55 - 72</td><td>Coppersmith</td></tr>
-      <tr><td>🏺 Celadon Porcelain</td><td>New Maritime Edict</td><td>Porcelain Clay ×3</td><td>65</td><td>78 - 100</td><td>Potter</td></tr>
-      <tr><td>🧴 Foreign Perfume Oil</td><td>Ten Thousand Kingdoms Trade</td><td>Spices ×2 + Silk ×1</td><td>85</td><td>100 - 130</td><td>Perfumer</td></tr>
-      <tr><td>📿 Pearl Necklace</td><td>Ten Thousand Kingdoms Trade</td><td>Pearls ×2 + Silk ×1</td><td>105</td><td>125 - 160</td><td>Jeweler</td></tr>
+      <tr><td>🪞 Bronze Mirror</td><td>New Maritime Edict</td><td>Copper Ore ×3</td><td>45</td><td>55 to 72</td><td>Coppersmith</td></tr>
+      <tr><td>🏺 Celadon Porcelain</td><td>New Maritime Edict</td><td>Porcelain Clay ×3</td><td>65</td><td>78 to 100</td><td>Potter</td></tr>
+      <tr><td>🧴 Foreign Perfume Oil</td><td>Ten Thousand Kingdoms Trade</td><td>Spices ×2 + Silk ×1</td><td>85</td><td>100 to 130</td><td>Perfumer</td></tr>
+      <tr><td>📿 Pearl Necklace</td><td>Ten Thousand Kingdoms Trade</td><td>Pearls ×2 + Silk ×1</td><td>105</td><td>125 to 160</td><td>Jeweler</td></tr>
     </table>
 
     <h4>👷 New Artisans</h4>
@@ -6946,13 +8496,13 @@
     <table>
       <tr><th>Port</th><th>Unlocked by</th><th>Specialty</th></tr>
       <tr><td>Fuzhou</td><td>New Maritime Edict</td><td>A major source of Porcelain Clay and Celadon Porcelain</td></tr>
-      <tr><td>Goryeo</td><td>New Maritime Edict</td><td>A cross-sea trade hub and the chief source of Copper Ore</td></tr>
+      <tr><td>Goryeo</td><td>New Maritime Edict</td><td>A cross sea trade hub and the chief source of Copper Ore</td></tr>
       <tr><td>Srivijaya</td><td>Ten Thousand Kingdoms Trade</td><td>The Southeast Asian crossroads for Spices and Pearls</td></tr>
       <tr><td>Dashi</td><td>Ten Thousand Kingdoms Trade</td><td>A distant western market and a premium buyer of Spice and Pearl goods</td></tr>
     </table>
 
     <h4>🌬️ New Trade Winds</h4>
-    <p>Beyond the original Spring Current, Summer Monsoon, Autumn Gales and Winter Blockade, 4 new trade-wind states join the pool. From Round 3 on, each "season" (every 2 rounds) is <strong>drawn at random from the currently unlocked pool</strong> instead of a fixed 4-season cycle, though Rounds 1-2 are still always Spring Current, exactly as before.</p>
+    <p>Beyond the original Spring Current, Summer Monsoon, Autumn Gales and Winter Blockade, 4 new trade wind states join the pool. From Round 3 on, each "season" (every 2 rounds) is <strong>drawn at random from the currently unlocked pool</strong> instead of a fixed 4 season cycle, though Rounds 1 to 2 are still always Spring Current, exactly as before.</p>
     <table>
       <tr><th>Trade Wind</th><th>Unlocked by</th><th>Effect summary</th></tr>
       <tr><td>🌫️ Min River Kiln Smoke</td><td>New Maritime Edict</td><td>Fuzhou and Quanzhou orders pay more; Porcelain Clay is cheaper; pirate risk is moderate</td></tr>
@@ -6981,13 +8531,13 @@
     <h4>🚢 Ship Upgrades (Shipyard phase)</h4>
     <table>
       <tr><th>Upgrade</th><th>Cost</th><th>Cumulative effect</th></tr>
-      <tr><td>Lv.0 → Lv.1</td><td>15 gold</td><td>Shipping −5/order · 1 module slot</td></tr>
-      <tr><td>Lv.1 → Lv.2</td><td>25 gold</td><td>Shipping −10/order · 2 module slots</td></tr>
-      <tr><td>Lv.2 → Lv.3</td><td>40 gold</td><td>Shipping −15/order · 3 module slots</td></tr>
+      <tr><td>Lv.0 → Lv.1</td><td>15 gold</td><td>Shipping −5/order, 1 module slot</td></tr>
+      <tr><td>Lv.1 → Lv.2</td><td>25 gold</td><td>Shipping −10/order, 2 module slots</td></tr>
+      <tr><td>Lv.2 → Lv.3</td><td>40 gold</td><td>Shipping −15/order, 3 module slots</td></tr>
     </table>
     <ul>
       <li>Shipping never drops below 5 gold (certain fortunes/modules can push it to 0).</li>
-      <li>Upgrades are a <strong>permanent investment</strong>: the more orders you deliver, the faster they pay off. Aim for Lv.1-2 around rounds 2-4.</li>
+      <li>Upgrades are a <strong>permanent investment</strong>: the more orders you deliver, the faster they pay off. Aim for Lv.1 to 2 around rounds 2 to 4.</li>
       <li>Late upgrades in the final round or two rarely pay for themselves, so keep that gold for stock instead.</li>
       <li>Once a slot is unlocked you can "Choose Ship Modules" at the Shipyard. Each round's 3 options are <strong>fixed</strong> (closing and reopening shows the same batch), and you get one <strong>Change Batch</strong> reroll per round.</li>
     </ul>
@@ -7004,7 +8554,7 @@
     </ul>
     <h4>⌨️ Shortcuts</h4>
     <ul>
-      <li><span class="kbd">F1</span> opens this manual · <span class="kbd">Esc</span> closes dialogs / the spectator window / chat</li>
+      <li><span class="kbd">F1</span> opens this manual, <span class="kbd">Esc</span> closes dialogs / the spectator window / chat</li>
     </ul>
     <h4>😣 Finding PortMasters 2 too hard?</h4>
     <p>The simplest fix is to play on <strong>Easy</strong>. Easy mode keeps to the founding set of goods so the market never gets crowded, which lets you settle into the buy, produce and trade rhythm without pressure. It is already the default, so you only need to confirm it when you invite, and the "Difficulty &amp; Expansion" section spells out exactly what differs between the two levels.</p>
@@ -7023,7 +8573,7 @@
         activeManualTab = tab || activeManualTab || "start";
         showModal(
           `
-    <h2>${tr("📖 PortMasters 2 · 航海手册", "📖 PortMasters 2 · Captain's Manual")}</h2>
+    <h2>${tr("📖 PortMasters 2 · 航海手册", "📖 PortMasters 2, Captain's Manual")}</h2>
     <div class="manual-tabs">
       ${manualTabs()
         .map(
@@ -7074,14 +8624,14 @@
         "每回合必须支付<strong>工匠工资</strong>与 <strong>15 金币维护费</strong>，付不起立即破产。左侧面板会实时核算「本回合应付款项」，时刻盯紧它。",
         'Every round you must pay <strong>artisan wages</strong> plus <strong>15 gold upkeep</strong>. Miss it and you go bankrupt instantly. The left panel tallies "Due This Round" live; keep an eye on it.',
       )}</p>
-      <h4>${tr("2️⃣ 与同行同船同行", "2️⃣ You sail in lockstep with your crew")}</h4>
+      <h4>${tr("2️⃣ 与其他船长同船同行", "2️⃣ You sail in lockstep with your fellow captains")}</h4>
       <p>${tr(
         "每个阶段都需<strong>全员确认</strong>才推进（看底部「全员就绪 n/总数」）。右侧面板可随时查看每位同行的存款、声望、货物、工匠与增益；互市阶段可自由交易，💬 聊天随时沟通。",
         "Every phase advances only when <strong>everyone confirms</strong> (see 'Ready n/total' at the bottom). The right panel shows each fellow captain's gold, renown, cargo, artisans and buffs; trade freely during Barter and talk any time via 💬.",
       )}</p>
       <h4>${tr("3️⃣ 生产成品才赚大钱", "3️⃣ Real money is in finished goods")}</h4>
       <p>${tr(
-        "雇工匠把原料加工成成品（香囊市价 95-120！），再交付订单。注意成品要缴约 5% 增值税，回合末还有约 10% 所得税。",
+        "雇工匠把原料加工成成品（香囊市价 95 到 120！），再交付订单。注意成品要缴约 5% 增值税，回合末还有约 10% 所得税。",
         "Hire artisans to turn materials into products (Sachets fetch 95 to 120!) and deliver them on orders. Mind the ~5% VAT on products and ~10% income tax at round end.",
       )}</p>
       <div class="pm-banner">
@@ -7095,8 +8645,8 @@
       </div>
     </div>
     <div style="text-align:center;margin-top:16px;display:flex;gap:10px;justify-content:center;flex-wrap:wrap">
-      <button class="btn btn-success btn-lg" onclick="finishOnboarding(false)">${tr("⚓ 我已了解，开始航行", "⚓ Got it, let's sail")}</button>
       <button class="btn btn-gold btn-lg" onclick="finishOnboarding(true)">${tr("📖 先看完整手册", "📖 Read the full manual first")}</button>
+      <button class="btn btn-success btn-lg" onclick="finishOnboarding(false)">${tr("⚓ 我已了解，开始航行", "⚓ Got it, let's sail")}</button>
     </div>
   `,
           true,
@@ -7264,7 +8814,9 @@
       initTooltips();
 
       /* Startup: fill in all static UI text according to the persisted language preference (default English) */
+      applyIconMode();
       applyLanguage();
+      updateSky();
 
       /* Then, before the player touches anything, try to re-identify with a stored token so a
    page refresh returns them to their room instead of to the login form. */
