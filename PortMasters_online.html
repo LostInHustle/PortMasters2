@@ -1286,8 +1286,7 @@
         font-size: 11.5px;
       }
       /* The action bar collapses to a slim strip so it stops crowding the stage.
-   The ready chip and the phase action stay visible, so the bar never has to be reopened
-   just to keep playing; the hint and secondary buttons return on expand. */
+   The hint and secondary actions hide, and the toggle itself reopens the bar. */
       .control-panel.collapsed {
         padding: 6px 12px;
         gap: 8px;
@@ -7973,6 +7972,9 @@
         if (toggle) toggle.focus({ preventScroll: true });
       }
 
+      /* The bar is a status strip, not a second copy of the stage: the manual lives in
+   the header, the phase action sits on its phase card, and the game over restart sits
+   on the stage. */
       function renderControls() {
         const g = serverState && serverState.yourGame;
         const c = document.getElementById("control-panel");
@@ -7993,9 +7995,6 @@
       <span class="sync-chip">${isBankrupt ? tr("💥 船队破产", "💥 Fleet Bankrupt") : tr("🏁 本局已结束", "🏁 Game Over")}</span>
       ${anyoneElsePlaying ? `<span class="control-hint">${tr("💡 还有同行仍在航行中，可打开观战窗口实时围观", "💡 Others are still sailing. Open the spectator window to watch live")}</span>` : ""}
       <div class="control-spacer"></div>
-      <button class="btn btn-ghost control-secondary" onclick="showManual()">${tr("📖 手册", "📖 Manual")}</button>
-      ${isBankrupt && anyoneElsePlaying ? `<button class="btn btn-ghost control-secondary" onclick="openCaptainViewer()">${tr("👀 观战同行", "👀 Spectate")}</button>` : ""}
-      <button class="btn btn-danger" onclick="confirmRestart()">${tr("🔄 重新起航", "🔄 Set Sail Again")}</button>
       ${collapseToggle}`,
           );
           return;
@@ -8004,12 +8003,8 @@
         const readyCount = serverState.phaseReadyCount || 0;
         const totalCount = serverState.phaseTotalCount || 2;
 
-        let primary = "";
         let hint = "";
         if (phase === 0) {
-          primary = serverState.youReady
-            ? `<button class="btn btn-grey btn-lg" disabled>${tr("⌛ 已确认，等待其他船长", "⌛ Confirmed, waiting for others")}</button>`
-            : `<button class="btn btn-success btn-lg" onclick="sendAction('startBoon')">${tr("🧭 扬帆起航，抽取福缘", "🧭 Set Sail & Draw Fortunes")}</button>`;
           hint = serverState.youReady
             ? tr(
                 "等待其他船长确认后进入福缘抽取",
@@ -8025,7 +8020,6 @@
             "Pick and lock one fortune card above",
           );
         } else if (phase === 1) {
-          primary = `<button class="btn btn-lg" onclick="sendAction('ready_for_next_phase')">${tr("✅ 完成采购", "✅ Done Procuring")}</button>`;
           hint = tr(
             "采购完成后确认，全员就绪即进入互市",
             "Confirm when done buying. Barter starts when everyone is ready",
@@ -8036,25 +8030,21 @@
             "Post or answer offers above, then click Ready when trades are settled",
           );
         } else if (phase === "worker_mgmt") {
-          primary = `<button class="btn btn-lg" onclick="sendAction('ready_for_next_phase')">${tr("✅ 完成工匠管理", "✅ Done Managing")}</button>`;
           hint = tr(
             "雇佣并指派任务后确认",
             "Hire and assign tasks, then confirm",
           );
         } else if (phase === 2) {
-          primary = `<button class="btn btn-lg" onclick="sendAction('ready_for_next_phase')">${tr("✅ 完成交易", "✅ Done Trading")}</button>`;
           hint = tr(
             "交付订单后确认，进入结算",
             "Deliver your orders, then confirm to enter Upkeep",
           );
         } else if (phase === 3) {
-          primary = `<button class="btn btn-warning btn-lg" onclick="sendAction('doMaintenance')">${tr("💸 支付维护费", "💸 Pay Upkeep")}</button>`;
           hint = tr(
             "支付后等待其他船长完成结算",
             "After paying, wait for the others to settle",
           );
         } else if (phase === 4) {
-          primary = `<button class="btn btn-success btn-lg" onclick="sendAction('ready_for_next_phase')">${tr("⏭️ 结束本回合", "⏭️ End Round")}</button>`;
           hint = tr(
             "可先升级商船，再结束本回合",
             "Upgrade your ship first if you like, then end the round",
@@ -8067,13 +8057,11 @@
     <span class="sync-chip" title="${tr("全员确认后才进入下一阶段", "The next phase starts once everyone confirms")}">${tr(`🔄 全员就绪 ${readyCount} / ${totalCount}`, `🔄 Ready ${readyCount} / ${totalCount}`)}</span>
     <span class="control-hint">💡 ${hint}</span>
     <div class="control-spacer"></div>
-    <button class="btn btn-ghost control-secondary" onclick="showManual()" title="${tr("快捷键 F1", "Shortcut: F1")}">${tr("📖 手册", "📖 Manual")}</button>
     ${
       serverState && serverState.host === currentUser
         ? `<button class="btn btn-ghost control-secondary" onclick="confirmRestart()" title="${tr("立即开启全新一局，全员进度重置，难度保持不变", "Start a brand new voyage now, resetting everyone's progress at the same difficulty")}">${tr("🔄 重新起航", "🔄 Set Sail Again")}</button>`
         : ""
     }
-    ${primary}
     ${collapseToggle}
   `,
         );
