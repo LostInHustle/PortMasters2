@@ -6,21 +6,24 @@
 
 ## 📖 1. Overview
 
-Welcome back to the Maritime Silk Road! PortMasters 2 takes the series online. Two to five captains sail one shared voyage, always on the same round and the same phase. You compete for renown, yet you also barter goods, gold and information with each other along the way. Draw a fortune from the Navigator's Compass, buy rumors from the brokers, fit your flagship with modules, and keep enough cash on hand for wages, upkeep and taxes through every voyage (8 rounds on Easy, 12 on Standard, 16 on Hard). The richer reputation wins.
+Welcome back to the Maritime Silk Road! PortMasters 2 takes the series online. Two to five captains sail one shared voyage, always on the same round and the same phase. You compete for renown, yet you also barter goods and gold with each other along the way. Draw a fortune from the Navigator's Compass, buy whispers from the brokers, fit your flagship with modules, and keep enough cash on hand for wages, upkeep and taxes through every round (8 rounds on Easy, 12 on Standard, 16 on Hard). The highest renown wins.
 
 What's new since PortMasters 1:
 
 - 🌐 Online play for two to five captains, with accounts, a lobby, invitations, open rooms, chat and reconnection.
 - 🤝 A barter phase where everyone in the room trades goods and gold freely. An offer can go out openly to the whole room, or be addressed to one captain, in which case only that captain sees it and only that captain can take it.
-- 🧭 Fortunes: each round the Navigator's Compass deals every captain a private hand of 4 random buffs, and you lock in one.
-- 🗣️ The Broker's Whisper: pay for intel, and every clue turns into a guaranteed order later that round.
-- 🔧 Ship modules: draft and install up to 3 of them, from the Smuggler's Hold to the Overdrive Engine.
+- 🧭 Fortunes: each round the Navigator's Compass deals every captain a private hand of 4 random buffs from the unlocked pool, and you lock in one.
+- 🗣️ The Broker's Whisper: pay for intel, and the orders generated later that round are built from the clues you bought, for those exact items at those exact ports.
+- 🔧 Ship modules: draft and install them, from the Smuggler's Hold to the Overdrive Engine, with slots equal to your ship level.
 - 👑 Emperor Mandates: at set milestones of the voyage an imperial commission appears in the Trade phase, a large golden order worth far more than an ordinary one. The last one of the voyage is marked out as the closing commission.
-- 👀 A spectator window, so a bankrupt captain can still watch the other captains finish the voyage. You can also open it on any captain at any time from the roster on the right, which makes it easy to see what a trading partner is short of before you make them an offer.
+- 👀 A spectator window, so a bankrupt captain can still watch the other captains finish the voyage. You can also open it on any captain at any time from the roster on the right, which makes it easy to see what a trading partner is short of before you make them an offer. The host can click their own fleet card on the left to review their own fleet in the same window.
 - 🔔 Notices for everything that happens to your fleet, each one with its own close button, plus a clear all control when several arrive at once.
 - 🌍 The whole interface is available in English (the default) and Simplified Chinese. Switch any time with the 🌐 button.
+- 🎨 A new look called Tidelight. A round is one day at sea, so the sky moves from first light at Set Sail to dusk at the Shipyard, with a night harbor behind the login page, a bright harbor morning in the lobby and lantern dusk in the waiting room. Every panel wears a color of its own, and your first mate leaves short notes about the wages and upkeep due this round and, in the lobby, how many voyages are recruiting.
+- 🀄 Icons are emojis by default. The 🀄 button in the lobby and in the game header switches goods, artisans and captain avatars to Chinese characters, and back again. Each captain also gets a medal in a color of their own.
+- 🤲 In every pair of buttons the way back sits on the left and the action sits on the right, so Cancel and Decline are on the left and Create Room and Accept are on the right.
 - ⚖️ Three difficulty modes that form a ladder. Easy (8 rounds) keeps the voyage on the founding set of goods for a gentler game; Standard (12 rounds) opens the full trade at a brisker pace with no corrupt brokers; Hard (16 rounds) is the full challenge with the corrupt broker hazard on. Whoever sends the invitation or opens the room picks the level, and every session starts on Easy unless it is changed.
-- 🗺️ The Silk Road Charter: the trade network expands in two waves, the "New Maritime Edict" and then "Ten Thousand Kingdoms Trade", adding 4 new resources, 4 new products, 4 new artisan types, 4 new ports (9 total), 6 new Fortunes, 6 new ship modules and 4 new Trade Winds (8 total). The waves arrive on Standard (Rounds 4 and 8) and Hard (Rounds 6 and 10); on Easy the voyage stays on the founding set the whole way through and these waves never arrive.
+- 🗺️ The Silk Road Charter: the trade network expands in two waves, the "New Maritime Edict" and then "Ten Thousand Kingdoms Trade", adding 4 new resources, 4 new products, 4 new artisan types, 4 new ports (9 total), 6 new Fortunes, 6 new ship modules and 4 new monsoons (8 total). The waves arrive on Standard (Rounds 4 and 8) and Hard (Rounds 6 and 10); on Easy the voyage stays on the founding set the whole way through and these waves never arrive.
 
 ---
 
@@ -56,6 +59,16 @@ Both are optional. Leave them unset and everything behaves exactly as it always 
 | :---------------- | :------------------------------------------------------------------------------------------ |
 | `PORT`            | The port to listen on. Defaults to 8080. Hosting platforms assign this, so let them set it. |
 | `USERS_FILE_PATH` | Where accounts are stored. Defaults to a `users.json` sitting next to `server.py`.          |
+
+### 🧪 Running the tests
+
+The rule engine ships with 60 tests covering Fortunes, ship modules, the Broker's Whisper, monsoons, Emperor Mandates, barter and the displayed figures. Run them with:
+
+```bash
+python -m unittest discover -s tests
+```
+
+No extra dependency is needed; the whole suite finishes in well under a second.
 
 ---
 
@@ -93,26 +106,26 @@ Accounts then live on the volume and survive redeploys. Voyages in progress are 
 
 ## 🎮 4. Gameplay Mechanics
 
-A game lasts **8 voyages** (rounds) on Easy, **12** on Standard or **16** on Hard, and each voyage runs through **8 phases**. No phase advances until every captain confirms.
+A game lasts **8 rounds** on Easy, **12** on Standard or **16** on Hard, and every round runs through **8 phases**. No phase advances until every captain confirms.
 
 | Phase           | Description                                                                                                                                                                                                                     |
 | :-------------- | :------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | **⚓ Set Sail** | Confirm the start of the round. From round 2 on, this page also recaps how the previous round went.                                                                                                                             |
-| **🧭 Fortune**  | The compass deals you 4 of the 8 fortunes at random. Every captain gets a different hand. Lock one; it lasts this round only.                                                                                                   |
+| **🧭 Fortune**  | The compass deals you 4 fortunes from the unlocked pool at random. Every captain gets a different hand. Lock one; it lasts this round only.                                                                                     |
 | **🛒 Procure**  | Buy materials and goods from the supply cards (5 on Easy; on Standard and Hard the hand grows to 8 when Tier 1 opens and 11 when Tier 2 opens). The Broker's Whisper panel sits at the top and sells intel about coming demand. |
 | **🤝 Barter**   | Trade with the room. Post an offer like "I give this for that" and it settles the moment someone accepts. Send it to everyone, or address it to one captain so only they can see and take it.                                   |
 | **👥 Artisans** | Hire or dismiss artisans and hand out production tasks. Materials are consumed right away.                                                                                                                                      |
 | **📦 Trade**    | Deliver port orders from your stock. Clues you bought show up here as guaranteed orders marked 🗣️, and on milestone rounds an 👑 Emperor Mandate appears, worth several ordinary orders.                                        |
 | **🔧 Upkeep**   | Production arrives and wages are paid on their own. Then you pay 15 gold of fleet upkeep. If you cannot, your fleet goes bankrupt.                                                                                              |
-| **🚢 Shipyard** | Upgrade the ship if you like (levels 0 to 3), draft modules, then end the voyage.                                                                                                                                               |
+| **🚢 Shipyard** | Upgrade the ship if you like (levels 0 to 3), draft modules, then end the round.                                                                                                                                                |
 
 ### ⚖️ Difficulty Modes
 
 The difficulties form a ladder, and the game always starts on Easy unless someone chooses otherwise.
 
-- **🌱 Easy** is the shorter 8 round voyage and keeps the whole game on the founding set of goods. You trade the three starting raw materials of Hemp Cloth, Silk and Tea, craft the four starter products, and hire from the first three artisan guilds, together with only the fortunes, ship modules, ports and trade winds that belong to them. The board never grows crowded, so there is plenty of room to learn the rhythm of each round.
+- **🌱 Easy** is the shorter 8 round voyage and keeps the whole game on the founding set of goods. You trade the three starting raw materials of Hemp Cloth, Silk and Tea, craft the four starter products, and hire from the first three artisan guilds, together with only the fortunes, ship modules, ports and monsoons that belong to them. The board never grows crowded, so there is plenty of room to learn the rhythm of each round.
 - **⚖️ Standard** is the 12 round middle rung and opens the full trade, but with no corrupt brokers. The Silk Road Charter brings in Tier 1 at Round 4 and Tier 2 at Round 8, so you get every good, port and artisan at a brisker pace than Hard, with pirate raids that bite a little harder than Easy. It suits captains who know the basics and want a real challenge without committing to the long Hard voyage.
-- **🔥 Hard** is the longer 16 round voyage and opens the full trade. It plays exactly like the Silk Road Charter progression described below, bringing in the remaining raw materials, products, foreign ports, specialist artisans and the richer fortunes, modules and trade winds as the rounds go on. The first five rounds stay as relaxed as Easy mode, then there is far more to manage and the competition for cargo space and coin is much fiercer. Pirate raids and escort fees both scale with your wealth, and on the hard route some brokers are corrupt and secretly tip off pirates when you buy a whisper, raising your raid chance and making the escort call at Upkeep a real gamble.
+- **🔥 Hard** is the longer 16 round voyage and opens the full trade. Its rules are harsher than Easy from the first round: pirate raids bite harder, and some brokers are corrupt and secretly tip off pirates when you buy a whisper. The Silk Road Charter then brings in the remaining raw materials, products, foreign ports, specialist artisans and the richer fortunes, modules and monsoons at Rounds 6 and 10. There is far more to manage and the competition for cargo space and coin is much fiercer. Pirate raids and escort fees both scale with your wealth, and the corrupt broker hazard raises your raid chance, making the escort call at Upkeep a real gamble.
 
 The difficulty is settled before a voyage begins. Whoever sends the invitation or opens the room chooses the level, and an invited captain sees a short explanation of what it changes and confirms it before the session starts. Everyone therefore always plays the same voyage at the same difficulty, and a restart keeps that difficulty.
 
@@ -139,6 +152,8 @@ Raw materials:
 - `Copper Ore` ⛏️, hammered into mirrors and fittings _(New Maritime Edict)_.
 - `Spices` 🌶️, the fragrant cargo of the southern seas _(Ten Thousand Kingdoms Trade)_.
 - `Pearls` 🦪, lustrous treasures from southern waters _(Ten Thousand Kingdoms Trade)_.
+
+Unit prices for the three starting materials: Hemp Cloth 2 to 5 gold at Quanzhou or Ningbo and 4 to 7 gold elsewhere, Silk 5 to 9 gold at Hangzhou or Yangzhou and 7 to 11 gold elsewhere, Tea Leaves 9 to 13 gold at Guangzhou or Quanzhou and 11 to 15 gold elsewhere. Monsoons, fortunes and ship modules can move the final price.
 
 Finished goods:
 
@@ -167,10 +182,10 @@ Finished goods:
 
 | Fortune                                                 | Effect                                                                |
 | :------------------------------------------------------ | :-------------------------------------------------------------------- |
-| 🌬️ Silk Road Tailwind                                   | Shipping for silk and finished goods is halved this round             |
+| 🌬️ Silk Road Tailwind                                   | Shipping for silk and silk woven goods is halved this round           |
 | 🌊 Favorable Tides                                      | Base shipping costs 4 gold less                                       |
 | ✨ Merchant's Charm                                     | Everything you buy costs about 15% less                               |
-| 🔨 Artisan's Inspiration                                | Every worker makes one extra item                                     |
+| 🔨 Artisan's Inspiration                                | Every artisan makes one extra item                                    |
 | 💰 Emergency Loan                                       | 40 gold, right now                                                    |
 | 📜 Tax Exemption                                        | Income tax falls to 5%                                                |
 | 🧶 Hemp Monopoly                                        | Hemp Cloth costs 2 gold less per unit                                 |
@@ -184,22 +199,22 @@ Finished goods:
 
 ### 🔧 Ship Modules (draft 3, install 1; slots equal your ship level)
 
-| Module                                                             | Effect                                                                                                    |
-| :----------------------------------------------------------------- | :-------------------------------------------------------------------------------------------------------- |
-| 🏴‍☠️ Smuggler's Hold                                                 | Purchases cost 15% less, but income tax rises 20%                                                         |
-| 🏗️ Bulk Rigging                                                    | Each item ships 1 gold cheaper; ship upgrades cost 15 gold more                                           |
-| 🛠️ Artisan's Workshop                                              | Workers make one extra item; wages rise 20%                                                               |
-| 📒 Hidden Ledger                                                   | Income tax is figured on profit after VAT, but each delivery carries a 15% chance of a 20 gold audit fine |
-| 🐍 Silk Monopoly                                                   | Silk ships for free, and silk product orders pay 20% more                                                 |
-| 🕵️ Broker's Network                                                | Whispers cost just 2 gold and reveal 2 clues at a time                                                    |
-| ♻️ Salvage Crane                                                   | A 30% chance your shipping fee comes back on delivery                                                     |
-| ⚡ Overdrive Engine                                                | Shipping costs 5 gold less; upkeep costs 10 gold more                                                     |
-| 🎫 Trade Bureau Token _(New Maritime Edict)_                       | Orders for new trade route goods (Porcelain Clay, Copper Ore and their products) pay 10% more             |
-| 🔥 Kiln Cellar _(New Maritime Edict)_                              | Porcelain Clay and Copper Ore purchase price −2 gold per unit                                             |
-| 📡 Ocean Going Interpreter _(New Maritime Edict)_                  | Each Broker's Whisper purchase reveals 1 extra clue at no added cost                                      |
-| 🪪 Foreign Quarter Guild Pass _(Ten Thousand Kingdoms Trade)_      | Spices and Pearls purchase price −3 gold per unit                                                         |
-| 🧿 Persian Dome Compass _(Ten Thousand Kingdoms Trade)_            | Pirate risk reduced by 30%                                                                                |
-| ⛵ Fleet of Ten Thousand Treasures _(Ten Thousand Kingdoms Trade)_ | Shipping for Foreign Perfume Oil and Pearl Necklace is 3 gold cheaper per item                            |
+| Module                                                             | Effect                                                                                             |
+| :----------------------------------------------------------------- | :------------------------------------------------------------------------------------------------- |
+| 🏴‍☠️ Smuggler's Hold                                                 | Purchases cost 15% less, but income tax rises 20%                                                  |
+| 🏗️ Bulk Rigging                                                    | Each item ships 1 gold cheaper; ship upgrades cost 15 gold more                                    |
+| 🛠️ Artisan's Workshop                                              | Artisans make one extra item; wages rise 20%                                                       |
+| 📒 Hidden Ledger                                                   | VAT and income tax are both halved, but each delivery carries a 15% chance of a 20 gold audit fine |
+| 🐍 Silk Monopoly                                                   | Silk ships for free, and silk product orders pay 20% more                                          |
+| 🕵️ Broker's Network                                                | Whispers cost just 2 gold and reveal 2 clues at a time                                             |
+| ♻️ Salvage Crane                                                   | A 30% chance your shipping fee comes back on delivery                                              |
+| ⚡ Overdrive Engine                                                | Shipping costs 5 gold less; upkeep costs 10 gold more                                              |
+| 🎫 Trade Bureau Token _(New Maritime Edict)_                       | Orders for new trade route goods (Porcelain Clay, Copper Ore and their products) pay 10% more      |
+| 🔥 Kiln Cellar _(New Maritime Edict)_                              | Porcelain Clay and Copper Ore purchase price 2 gold lower per unit                                 |
+| 📡 Ocean Going Interpreter _(New Maritime Edict)_                  | Each Broker's Whisper purchase reveals 1 extra clue at no added cost                               |
+| 🪪 Foreign Quarter Guild Pass _(Ten Thousand Kingdoms Trade)_      | Spices and Pearls purchase price 3 gold lower per unit                                             |
+| 🧿 Persian Dome Compass _(Ten Thousand Kingdoms Trade)_            | Pirate risk reduced by 30%                                                                         |
+| ⛵ Fleet of Ten Thousand Treasures _(Ten Thousand Kingdoms Trade)_ | Shipping for Foreign Perfume Oil and Pearl Necklace is 3 gold cheaper per item                     |
 
 ### 💰 Taxes & Finance
 
@@ -214,9 +229,9 @@ Finished goods:
 - **Invitations and rooms**: invitations go out one per minute from the lobby and expire after 60 seconds; alternatively you can open a room for two to five captains that others join freely. Either way the difficulty is chosen up front, and an invited captain confirms it in the invitation window before the voyage starts.
 - **Staying in sync**: every captain shares the round and the phase. The "Ready n / N" chip shows how many have confirmed. A bankrupt player counts as ready and never holds the others up.
 - **Barter**: an offer is open to the room by default and anyone but its author can take it. Address it to one captain instead and only that captain sees it, so a deal you have already talked through in chat cannot be sniped by a third party.
-- **Bankruptcy and spectating**: a bankrupt captain stays on the settlement page and can open the live 👀 spectator window to watch any other captain play on. The same window opens on any captain at any time by clicking them in the roster on the right, so you can size up a trading partner before making an offer. It updates live and never interrupts what you were reading.
+- **Bankruptcy and spectating**: a bankrupt captain gets a final summary page with their gold and renown, and can open the live 👀 spectator window to watch any other captain play on. The same window opens on any captain at any time by clicking them in the roster on the right, so you can size up a trading partner before making an offer. The host can also click their own fleet card on the left to see their fleet laid out the same way. It updates live and never interrupts what you were reading.
 - **Reconnection**: sessions live on the server, and a successful login leaves a token in the browser, so refreshing the page or coming back later puts you straight back where you were without retyping a password. A voyage is only recycled once every captain has been offline for a grace period.
-- **Restart**: once every game has ended, any captain can reset the table for a new run.
+- **Restart**: the host can reset the table at any time, replacing the current game with a brand new session for everyone at the same difficulty. Other captains can reset once every other captain's game has ended.
 
 ---
 
@@ -241,7 +256,7 @@ Finished goods:
 ## 💡 6. Strategy Tips
 
 1. Mind your cash before anything else. Wages and upkeep come due every single round, and the "Due This Round" box on the left does the math for you.
-2. Whispers are money in the bank. Every clue becomes a real order for that exact item at that exact port. With the Broker's Network module the intel is almost free.
+2. Whispers are money in the bank. The orders generated later that round are built from the clues you bought, for those exact items at those exact ports. With the Broker's Network module the intel is almost free.
 3. Barter instead of buying. The roster panel shows exactly what each other fleet is missing and what it hoards. A good swap beats the market price.
 4. Finished goods carry the margins. A sachet sells for 95 to 120 gold while flipping raw materials earns pocket change. Just remember the VAT.
 5. Upgrade the ship early. The discount pays for itself over many deliveries, so aim for level 1 or 2 by the middle rounds.
@@ -251,7 +266,7 @@ Finished goods:
 
 ## 🏆 7. Game End & Rankings
 
-After the final voyage (8 rounds on Easy, 12 on Standard, 16 on Hard), each captain receives a final rating based on **renown**, the running total of net profit from delivered orders.
+After the final round (8 rounds on Easy, 12 on Standard, 16 on Hard), each captain receives a final rating based on **renown**, the running total of net profit from delivered orders.
 
 A longer voyage with richer goods earns far more renown, so each difficulty has its own thresholds.
 
@@ -270,7 +285,7 @@ A longer voyage with richer goods earns far more renown, so each difficulty has 
 - **"Port 8080 already in use"**: something else has the port. Stop it, or start the server on another one with `PORT=8090 python server.py`.
 - **"This account is already logged in on another device"**: one connection per account. Close the other tab or device first.
 - **A button does nothing**: nine times out of ten you are waiting for another captain. Check "Ready n / N" at the bottom and give them a nudge over 💬.
-- **A captain dropped**: the session is safe on the server, and they just need to log back in. Chat and trades wait until then.
+- **A captain dropped**: the session is safe on the server, and they just need to log back in. You cannot chat or trade with that captain until they return, but the rest of the room can carry on.
 - **The server restarted**: accounts survive in `users.json`, but running voyages live in memory and are gone. Start a fresh session.
 - **Connection trouble over the internet**: the page and the WebSocket have to share one https origin. A tunnel over the single port (`ngrok http 8080`) does that, and so does a Railway deploy, which gives you one domain serving both.
 - **Accounts vanished after a deploy**: the host wiped the container filesystem. Mount a volume and point `USERS_FILE_PATH` at a file on it, as described in the Railway section above.
@@ -280,8 +295,8 @@ A longer voyage with richer goods earns far more renown, so each difficulty has 
 ## 👤 9. Credits & License
 
 - **Developers**: `Joe Zhou, Aaron Zhu`
-- **Version**: `PortMasters 2 v1.0.0rc1 preview`
-- **Files**: `server.py` holds the whole server, `PortMasters_online.html` holds the whole client, and `railway.json` describes the deploy. That is the entire project.
+- **Version**: `PortMasters 2 v1.0.0rc2 preview`
+- **Files**: `server.py` holds the whole server, `PortMasters_online.html` holds the whole client, `requirements.txt` lists the single dependency, `tests/` holds the rule engine suite, and `railway.json` describes the deploy.
 - **Language Support**: English (default) and Simplified Chinese, switchable inside the game
 - **License**: MIT License. Use it, change it, share it, for personal or commercial projects.
 - New to the series? [PortMasters 1](https://lostinhustle.github.io/PortMasters/PortMasters_Web_Edition/PortMasters_v1.4.0) is a gentler, single player place to start.
