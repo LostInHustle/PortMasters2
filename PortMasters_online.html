@@ -15,7 +15,7 @@
     <style>
       /* ============================================================
    PortMasters 2 Design System
-   Bright and natural, ocean-glass feel, smooth gradients, near-future (~2030) aesthetic
+   Bright and natural, ocean-glass feel, smooth gradients, a near future (~2030) aesthetic
    Layer hierarchy (low to high): background decor < chat window < fullscreen overlay < dialogs < notifications
    ============================================================ */
       :root {
@@ -248,7 +248,7 @@
         font-weight: 600;
       }
 
-      /* ---- Sidebars (both players' fleet status) ---- */
+      /* ---- Sidebars (every captain's fleet status) ---- */
       .side-panel {
         padding: 14px;
         overflow-y: auto;
@@ -467,7 +467,7 @@
 
       /* ---- Tooltips (recognition over recall: bring the explanation to the user) ----
    One shared bubble is appended to <body> and positioned by JS (see initTooltips).
-   The old `.tip::after` pseudo-element was structurally trapped, which is why hints
+   The old `.tip::after` pseudo element was structurally trapped, which is why hints
    were cut off regardless of how the copy was tuned:
      • clipped by every scrolling/clipping ancestor: .side-panel, .phase-panel and
        .card all set `overflow` to something other than visible, and an absolutely
@@ -475,12 +475,12 @@
        gets around this);
      • pinned beneath ancestor stacking contexts (.phase-view animation, .card:hover
        transform), so even when it wasn't clipped it could render behind siblings;
-     • hard-centered (left:50%) with a fixed max-width and no edge detection, so a
+     • centered at a fixed left:50% with a fixed max-width and no edge detection, so a
        hint near any viewport edge overflowed, and a width that fit English text
        spilled over in 中文 (and the reverse), the "works in one language only" symptom.
-   A body-level position:fixed bubble is measured against the viewport instead, so no
+   A bubble at body level with position:fixed is measured against the viewport instead, so no
    ancestor can clip it or trap its stacking, and runtime collision detection
-   (flip above/below plus horizontal clamp) keeps every hint fully on-screen in both
+   (flip above/below plus horizontal clamp) keeps every hint fully on screen in both
    languages. Markup is unchanged: any current or future [data-tip] is covered. */
       .tip {
         cursor: help;
@@ -719,8 +719,8 @@
           inset 0 1px 0 rgba(255, 255, 255, 0.28);
         filter: saturate(1.12);
       }
-      /* The press has to land unmistakably: the confirming toast appears in the far top-right
-   corner, so a subtle scale left clicks feeling unacknowledged. This is a firm push-down with a
+      /* The press has to land unmistakably: the confirming toast appears in the far top right
+   corner, so a subtle scale left clicks feeling unacknowledged. This is a firm push down with a
    darker, inset look, readable wherever the user happens to be looking. */
       .btn:active:not(:disabled) {
         transform: translateY(1px) scale(0.94);
@@ -765,7 +765,7 @@
         color: #334155;
       }
       /* Ghost buttons adapt their color to the surface they sit on:
-   default (light glass panel) -> ocean-colored text + ocean-colored outline;
+   default (light glass panel) -> text and outline in the ocean color;
    dark containers (header / bottom action bar) -> white text + white outline.
    No button variant should assume it will only ever appear on one kind of background. */
       .btn-ghost {
@@ -1010,7 +1010,7 @@
         padding: 10px 6px;
       }
 
-      /* ---- PortMasters 2 / previous-game hint ---- */
+      /* ---- PortMasters 2 / hint about the previous game ---- */
       .pm-banner {
         background: linear-gradient(135deg, #fffbeb, #fef3c7);
         border: 1px solid rgba(245, 158, 11, 0.45);
@@ -1799,7 +1799,7 @@
       }
 
       /* ---- Notifications / toast stack ---- */
-      /* All toasts live in a fixed top-right column so multiple can stack instead of overlapping. */
+      /* All toasts live in a fixed top right column so multiple can stack instead of overlapping. */
       #toast-stack {
         position: fixed;
         top: 20px;
@@ -3809,7 +3809,7 @@
    items, ports and similar data using "canonical Chinese keys" (changing these
    keys would break protocol and save compatibility); language belongs only to the
    presentation layer, since each client translates independently when rendering, so
-   the two players in a session can use different languages. The default language
+   the captains in a session can use different languages. The default language
    is English, and players can switch at any time, with the choice persisted to
    localStorage.
    ============================================================ */
@@ -3832,7 +3832,7 @@
             tr("适合初次掌舵的新船长", "A gentle start for new captains"),
           summary: () =>
             tr(
-              "轻松模式是一段较短的航程，共 8 个回合，让贸易保持简单清晰。你将专注经营麻布、丝绸、茶叶这三种基础原料，制作四种入门成品，并从前三类工匠中招募帮手。与之相关的福缘、战船模块、港口以及海上天象也都限定在这套基础内容之内，因此市场始终不会过度拥挤，你有充足的余裕慢慢熟悉每个回合的节奏，从容地把生意做大。",
+              "轻松模式是一段较短的航程，共 8 个回合，让贸易保持简单清晰。你将专注经营麻布、丝绸、茶叶这三种基础原料，制作四种入门成品，并从前三类工匠中招募帮手。与之相关的福缘、船舶模块、港口以及海上天象也都限定在这套基础内容之内，因此市场始终不会过度拥挤，你有充足的余裕慢慢熟悉每个回合的节奏，从容地把生意做大。",
               "Easy mode is a shorter voyage of 8 rounds that keeps the trade simple and clear to follow. You will focus on the three founding raw materials of hemp cloth, silk and tea, craft the four starter products, and recruit from the first three artisan guilds. The fortunes, ship modules, ports and seasonal weather that belong to them stay within this founding set as well, so the market never grows crowded and you have plenty of room to learn the rhythm of each round and grow your trade at a comfortable pace.",
             ),
         },
@@ -3857,8 +3857,8 @@
             ),
           summary: () =>
             tr(
-              "高难模式是一段更长的航程，共 16 个回合，并开放完整的海上贸易。前五程仍像轻松模式一样从容，随后丝路特许会在第六程引入瓷土与铜矿，并在第十程引入香料与珍珠，连同它们的进阶成品、海外港口、专精工匠，以及更加丰富的福缘、战船模块与海上天象。需要同时打理的事务多得多，对舱位与金币的竞争也会激烈许多，因此它更看重你长远的谋划与权衡。",
-              "Hard mode is a longer voyage of 16 rounds that opens the full maritime trade. The first five rounds stay as relaxed as easy mode, then the Silk Road Charter brings in porcelain clay and copper ore at round six and spices and pearls at round ten, together with their advanced products, the foreign ports, the specialist artisans, and a much richer set of fortunes, ship modules and seasonal weather. There is a great deal more to manage at once and the competition for cargo space and coin grows far fiercer, so it rewards careful long term planning and judgement.",
+              "高难模式是一段更长的航程，共 16 个回合，并开放完整的海上贸易。它的规则从第一程起就比轻松更严苛：海盗更为凶悍，部分牙行还会暗通海盗。丝路特许随后在第六程引入瓷土与铜矿，并在第十程引入香料与珍珠，连同它们的进阶成品、海外港口、专精工匠，以及更加丰富的福缘、船舶模块与海上天象。需要同时打理的事务多得多，对舱位与金币的竞争也会激烈许多，因此它更看重你长远的谋划与权衡。",
+              "Hard mode is a longer voyage of 16 rounds that opens the full maritime trade. Its rules are harsher than Easy from the first round: pirates raid harder, and some brokers tip them off. The Silk Road Charter then brings in porcelain clay and copper ore at round six and spices and pearls at round ten, together with their advanced products, the foreign ports, the specialist artisans, and a much richer set of fortunes, ship modules and seasonal weather. There is a great deal more to manage at once and the competition for cargo space and coin grows far fiercer, so it rewards careful long term planning and judgement.",
             ),
         },
       };
@@ -3866,10 +3866,10 @@
         DIFFICULTY_INFO[key] || DIFFICULTY_INFO.easy;
 
       /* Endgame rating tiers per difficulty. Renown (cumulative net profit of delivered orders)
-   scales with voyage length and goods value, so a 16-round hard voyage earns far more than
-   an 8-round easy one; each difficulty therefore has its own thresholds. Tiers are listed
+   scales with voyage length and goods value, so a hard voyage of 16 rounds earns far more than
+   an easy one of 8 rounds; each difficulty therefore has its own thresholds. Tiers are listed
    low to high, and both the awarded title and the threshold hint are read from this one
-   table, so there is a single source of truth and no parallel if-chain to drift. */
+   table, so there is a single source of truth and no parallel if chain to drift. */
       const RATING_TIERS = {
         easy: [
           {
@@ -4217,8 +4217,8 @@
         silk_wind: {
           name: { zh: "丝路顺风", en: "Silk Road Tailwind" },
           desc: {
-            zh: "本回合丝绸及成品运费减半。",
-            en: "Shipping for silk and finished goods is halved this round.",
+            zh: "本回合丝绸与丝织品运费减半。",
+            en: "Shipping for silk and silk woven goods is halved this round.",
           },
         },
         favorable_tides: {
@@ -4238,8 +4238,8 @@
         artisan_inspiration: {
           name: { zh: "匠人灵感", en: "Artisan's Inspiration" },
           desc: {
-            zh: "本回合所有工人多生产1件。",
-            en: "Every worker produces 1 extra item this round.",
+            zh: "本回合所有工匠多生产1件。",
+            en: "Every artisan produces 1 extra item this round.",
           },
         },
         emergency_loan: {
@@ -4263,8 +4263,8 @@
         master_apprentice: {
           name: { zh: "学徒传承", en: "Apprentice Legacy" },
           desc: {
-            zh: "本回合雇佣工资减半。",
-            en: "Hiring wages halved this round.",
+            zh: "本回合工匠工资减半。",
+            en: "Artisan wages halved this round.",
           },
         },
         farsight: {
@@ -4416,15 +4416,15 @@
         artisans_workshop: {
           name: { zh: "工匠工坊", en: "Artisan's Workshop" },
           desc: {
-            zh: "工人产量+1。工资+20%。",
-            en: "Workers produce +1 item. Wages +20%.",
+            zh: "工匠产量+1。工资+20%。",
+            en: "Artisans produce +1 item. Wages +20%.",
           },
         },
         tax_evasion: {
           name: { zh: "避税账本", en: "Hidden Ledger" },
           desc: {
-            zh: "所得税按增值税后利润计。15%概率在订单完成时罚款20金币(稽查)。",
-            en: "Income tax assessed on profit after VAT. 15% chance of a 20 gold audit fine when an order completes.",
+            zh: "增值税与所得税减半。15%概率在订单完成时罚款20金币（稽查）。",
+            en: "VAT and income tax are both halved. 15% chance of a 20 gold audit fine when an order completes.",
           },
         },
         silk_monopoly: {
@@ -4452,7 +4452,7 @@
           name: { zh: "超载引擎", en: "Overdrive Engine" },
           desc: {
             zh: "运费−5金币。维护费+10金币。",
-            en: "Shipping −5 gold. Maintenance +10 gold.",
+            en: "Shipping −5 gold. Upkeep +10 gold.",
           },
         },
         bureau_token: {
@@ -4505,14 +4505,14 @@
         tier1: {
           name: { zh: "市舶新政", en: "New Maritime Edict" },
           desc: {
-            zh: "福建市舶司新政颁布！瓷土、铜矿、青瓷器、紫铜镜加入行情；福州港、高丽港正式开埠；陶匠与铜匠加入劳务市场；新的福缘与战船改装随之而来。",
+            zh: "福建市舶司新政颁布！瓷土、铜矿、青瓷器、紫铜镜加入行情；福州港、高丽港正式开埠；陶匠与铜匠加入劳务市场；新的福缘与船舶模块随之而来。",
             en: "A new edict from the Fujian Maritime Trade Bureau! Porcelain Clay, Copper Ore, Celadon Porcelain and Bronze Mirror enter the market; Fuzhou and Goryeo ports open; Potters and Coppersmiths join the labor market; new Fortunes and ship modules become available.",
           },
         },
         tier2: {
           name: { zh: "万国通商", en: "Ten Thousand Kingdoms Trade" },
           desc: {
-            zh: "万国通商盛况空前！香料、珍珠、蕃香脂、珠链加入行情；三佛齐港、大食港正式开埠；香料师与珠宝匠加入劳务市场；更多福缘与战船改装随之而来。",
+            zh: "万国通商盛况空前！香料、珍珠、蕃香脂、珠链加入行情；三佛齐港、大食港正式开埠；香料师与珠宝匠加入劳务市场；更多福缘与船舶模块随之而来。",
             en: "Trade opens with ten thousand kingdoms! Spices, Pearls, Foreign Perfume Oil and Pearl Necklaces enter the market; Srivijaya and Dashi ports open; Perfumers and Jewelers join the labor market; more Fortunes and ship modules arrive.",
           },
         },
@@ -4624,7 +4624,7 @@
       const wName = (key) =>
         pf((WORKER_TYPES.find((w) => w.key === key) || {}).name) || key;
 
-      /* Mirrors server.py effective_wage(). Only the per-artisan figures in the hire and roster
+      /* Mirrors server.py effective_wage(). Only the figures for each artisan in the hire and roster
    tables are derived here; the round total comes straight from the server (see pendingWages)
    so the preview and the actual charge cannot drift apart. */
       const WORKER_HAN = {
@@ -4655,7 +4655,7 @@
         return wage;
       }
 
-      /* The same rate before this round's Fortune discount, for the struck-through "was" price. */
+      /* The same rate before this round's Fortune discount, for the "was" price shown with a line through it. */
       function undiscountedWageRate(key, g) {
         const hasWorkshop = (g.equippedModules || []).some(
           (m) => m.id === "artisans_workshop",
@@ -4784,10 +4784,10 @@
       /* ============================================================
    Server text adaptation layer
    The server outputs log/system messages in "canonical Chinese"; language belongs
-   to the presentation layer, and the two players in a session may use different
+   to the presentation layer, and the captains in a session may use different
    languages, so translation must happen on each client. The table below maps
    message templates one by one; any string that doesn't match falls back to
-   per-noun substitution.
+   substitution per noun.
    ============================================================ */
       const SERVER_TEXT_RULES = [
         [
@@ -4922,8 +4922,8 @@
         ],
         /* System messages */
         [
-          /^对方重新开始了游戏，双方进度已重置$/,
-          () => `Your partner restarted the game. Both voyages have been reset`,
+          /^其他玩家重新开始了游戏，本局进度已重置$/,
+          () => `Another captain restarted the game. The voyage has been reset`,
         ],
         [
           /^需等待其他玩家完成本局后才能重新起航$/,
@@ -4932,7 +4932,7 @@
         [
           /^❌ 对方拒绝了你的互市提案（出 (.+) ⇄ 换 (.+)）$/,
           (m) =>
-            `❌ Your partner declined your barter offer (give ${lstNames(m[1])} ⇄ get ${lstNames(m[2])})`,
+            `❌ The other captain declined your barter offer (give ${lstNames(m[1])} ⇄ get ${lstNames(m[2])})`,
         ],
         [/^该邀请已失效$/, () => `That invitation has expired`],
         [
@@ -4944,8 +4944,8 @@
           () => `Cannot start a session: one of you is already in a game`,
         ],
         [
-          /^你还没有游戏伙伴，无法发送消息$/,
-          () => `You don't have a partner yet, so messages can't be sent`,
+          /^你还没有加入航程，无法发送消息$/,
+          () => `You're not in a voyage yet, so messages can't be sent`,
         ],
         [
           /^其他玩家都已离线，无法发送消息$/,
@@ -5132,7 +5132,7 @@
         set(
           "lg-note",
           tr(
-            `💡 <strong>本作为 PortMasters 2</strong>，引入了税务、工资、双人同步互市等更复杂的机制，<strong>上手门槛较高</strong>。如果是初次接触本系列，建议先体验上一代 <a href="${pm1Url()}" target="_blank" rel="noopener">${pm1Label()}</a> 熟悉基础玩法。`,
+            `💡 <strong>本作为 PortMasters 2</strong>，引入了税务、工资、全员同步互市等更复杂的机制，<strong>上手门槛较高</strong>。如果是初次接触本系列，建议先体验上一代 <a href="${pm1Url()}" target="_blank" rel="noopener">${pm1Label()}</a> 熟悉基础玩法。`,
             `💡 <strong>This is PortMasters 2</strong>, which adds taxes, wages and synchronized bartering with fellow captains, so the learning curve is <strong>steeper than the original</strong>. New to the series? Start with <a href="${pm1Url()}" target="_blank" rel="noopener">${pm1Label()}</a> to learn the basics.`,
           ),
         );
@@ -5388,7 +5388,7 @@
       let ws = null;
       let serverState = null;
       let currentUser = null;
-      let pendingRoom = null; // {host, difficulty, maxPlayers, players:[{name,online,isHost}]} while waiting in a not-yet-started room
+      let pendingRoom = null; // {host, difficulty, maxPlayers, players:[{name,online,isHost}]} while waiting in a room that has not started yet
       let openRooms = []; // [{host, difficulty, count, maxPlayers}] open voyages visible in the lobby
       let pendingInviteFrom = null;
       let lastInviteTo = null;
@@ -5399,7 +5399,7 @@
    Notifications / Login & Registration
    ============================================================ */
       /* Append a toast into the stacking container so several can coexist; it lingers for `ttl`
-   then fades out. Used for invites/errors (short) and per-action log bubbles (~10s).
+   then fades out. Used for invites and errors (short) and log bubbles for each action (~10s).
    onClick, when given, makes the toast clickable (e.g. a chat message opens the chat
    window) and dismisses it immediately on click instead of waiting for the fade timeout. */
       function toastStackEl() {
@@ -5628,7 +5628,7 @@
         ws.send(JSON.stringify({ action: "get_online_users" }));
       }
 
-      /* Runs once at startup: if we are holding a token, try to re-identify silently before
+      /* Runs once at startup: if we are holding a token, try to identify the player again silently before
    showing the login form, so a refresh drops the player straight back into their room. */
       function tryResumeSession() {
         const token = storedSessionToken();
@@ -5705,8 +5705,8 @@
             ws.send(JSON.stringify({ action: "join_game" }));
             showNotification(
               tr(
-                `已加入游戏，伙伴: ${msg.partner}`,
-                `Joined the game, partner: ${msg.partner}`,
+                `已加入航程，同行: ${msg.partner}`,
+                `Joined the voyage with ${msg.partner}`,
               ),
             );
             maybeShowOnboarding();
@@ -5874,7 +5874,7 @@
             const status = inviteStatus[user] || "idle";
             let buttonHtml = "";
             if (status === "idle") {
-              buttonHtml = `<button class="btn btn-success" data-user-idx="${idx}" title="${tr("邀请该玩家加入双人航程（每分钟限一次，60秒内有效）", "Invite this player to a shared voyage (once per minute, valid for 60s)")}">${tr("📨 邀请同航", "📨 Invite to Voyage")}</button>`;
+              buttonHtml = `<button class="btn btn-success" data-user-idx="${idx}" title="${tr("邀请该玩家共启一段航程（每分钟限一次，60秒内有效）", "Invite this player to a voyage (once per minute, valid for 60s)")}">${tr("📨 邀请同航", "📨 Invite to Voyage")}</button>`;
             } else if (status === "pending") {
               buttonHtml = `<button class="btn btn-grey" disabled>${tr("⏳ 等待回应...", "⏳ Awaiting reply...")}</button>`;
             }
@@ -5925,7 +5925,7 @@
     <h2>${tr("📨 发出航程邀请", "📨 Send a Voyage Invitation")}</h2>
     <p style="text-align:center;font-size:14px;line-height:1.8">${tr(
       `你正在邀请 <strong>${escapeHtml(to)}</strong> 共启一段航程。请先为本局选择难度，对方需要看到说明并同意后，航程才会开始。`,
-      `You are inviting <strong>${escapeHtml(to)}</strong> to set sail together. Choose the difficulty for this session first. The voyage begins only after your partner has read what it means and agrees to it.`,
+      `You are inviting <strong>${escapeHtml(to)}</strong> to set sail together. Choose the difficulty for this session first. The voyage begins only after the invited captain has read what it means and agrees to it.`,
     )}</p>
     <div class="diff-options">${Object.keys(DIFFICULTY_INFO).map(optionCard).join("")}</div>
     <div class="diff-summary">${difficultyInfo(composerDifficulty).summary()}</div>
@@ -6044,7 +6044,7 @@
       }
 
       /* Composer state for hosting a room. Mirrors composerTo/composerDifficulty above: starts on
-   Easy and the smallest non-trivial room, so a host only widens scope on purpose. */
+   Easy and the smallest room that still offers a real choice, so a host only widens scope on purpose. */
       let hostComposerDifficulty = "easy";
       let hostComposerMaxPlayers = 4;
 
@@ -6118,7 +6118,7 @@
         renderRoomLobby();
       }
 
-      /* Toggles between the normal browse view (online players + open voyages) and the waiting-room
+      /* Toggles between the normal browse view (online players + open voyages) and the waiting room
    view for the room the player is currently hosting or has joined, while it hasn't started yet. */
       function renderRoomLobby() {
         const browse = document.getElementById("room-browse-view");
@@ -6232,11 +6232,11 @@
 
       /* ============================================================
    Render entry point
-   Re-render on demand: only rebuild the DOM for a panel when its underlying data
+   Render on demand: only rebuild the DOM for a panel when its underlying data
    has actually changed. Wholesale innerHTML rebuilds reset scroll position and
-   break in-progress clicks (a click never fires if mousedown and mouseup land on
+   break clicks in progress (a click never fires if mousedown and mouseup land on
    different DOM nodes), which was the root cause of the earlier "buttons don't
-   respond / page jumps back to top" bugs, so blanket re-renders are forbidden.
+   respond / page jumps back to top" bugs, so blanket renders are forbidden.
    ============================================================ */
       let _lastMyJson = "";
       let _lastRosterJson = "";
@@ -6294,7 +6294,7 @@
         if (_viewerOpen && rosterChanged) renderCaptainViewer();
       }
 
-      /* ---------- Shared: fleet status card (you and your partner use the same component, for easy comparison) ---------- */
+      /* ---------- Shared: fleet status card (every captain uses the same component, for easy comparison) ---------- */
       function buffChipsHTML(g) {
         const flags = g.modifierFlags || {};
         const chips = Object.keys(flags)
@@ -6462,7 +6462,7 @@
       <div class="avatar" style="--hue:${captainHue(currentUser)}">${captainGlyph(currentUser)}</div>
       <div class="who">
         <div class="nm">${escapeHtml(currentUser || tr("我", "Me"))}</div>
-        <div class="role">${tr("我的商队", "My fleet")}${tr(" · ", ", ")}${g.slot ? tr("玩家", "Player ") + g.slot : ""}</div>
+        <div class="role">${tr("我的船队", "My fleet")}${tr(" · ", ", ")}${g.slot ? tr("玩家", "Player ") + g.slot : ""}</div>
       </div>
       <span class="dot on" title="${tr("在线", "Online")}"></span>
     </div>
@@ -6490,11 +6490,11 @@
         paintHTML(p, html);
       }
 
-      /* ---------- Roster: every other player in the room, each a collapsed widget ---------- */
+      /* ---------- Roster: every other captain in the room, each a collapsed widget ---------- */
       /* Collapsed widgets only ever show gold/renown/bankruptcy at a glance; clicking one opens
    the captain detail viewer (see below) rather than expanding in place. Stacking several
    full fleet breakdowns inside this ~300px sidebar is exactly what made the old "tap to
-   expand inline" design unusable once a room had more than one other player: the column
+   expand inline" design unusable once a room had more than one other captain: the column
    isn't wide enough to show one player's data comfortably, let alone several stacked on
    top of each other, so the viewer gets its own properly sized window instead. */
       function rosterWidgetHTML(p) {
@@ -6598,8 +6598,8 @@
     </div>`;
       }
 
-      /* Always-visible reminder of the agreed difficulty. Hovering it brings up the same
-   plain-language summary both captains saw when they agreed to the voyage. */
+      /* Always visible reminder of the agreed difficulty. Hovering it brings up the same
+   plain language summary every captain saw when they agreed to the voyage. */
       function difficultyChipHTML(g) {
         const info = difficultyInfo(g && g.difficulty);
         return `<span class="chip tip diff-${info.key}" data-tip="${escapeHtml(info.summary())}">${tr("难度：", "Difficulty: ")}${info.badge()}</span>`;
@@ -6691,7 +6691,7 @@
             inner = `<div class="center-block"><div class="hero-title">${tr("⚓ 准备中...", "⚓ Preparing...")}</div></div>`;
         }
 
-        /* The barter form preserves what the user has typed across re-renders (user freedom and control) */
+        /* The barter form preserves what the user has typed across renders (user freedom and control) */
         const formState = captureTradeForm();
         const scrollPos = p.scrollTop;
         const phaseChanged = phase !== _lastPhaseKey;
@@ -6703,7 +6703,7 @@
           )
         ) {
           /* Only a real phase transition earns the entrance animation. Replaying it on ordinary
-       data updates is what made the board flash on every partner action. */
+       data updates is what made the board flash on every captain's action. */
           if (phaseChanged && p.firstElementChild)
             p.firstElementChild.classList.add("phase-enter");
           restoreTradeForm(formState);
@@ -6711,8 +6711,8 @@
         }
       }
 
-      /* ---------- Per-phase views ---------- */
-      /* The main "Set Sail" confirm button for both players: after confirming it switches to a waiting state, making it clear the click registered */
+      /* ---------- Views for each phase ---------- */
+      /* The main "Set Sail" confirm button for every captain: after confirming it switches to a waiting state, making it clear the click registered */
       function setSailButtonHTML() {
         const ready = !!serverState.youReady;
         return `
@@ -6724,8 +6724,8 @@
 
       function welcomeHTML() {
         const g = serverState.yourGame;
-        /* Phase 0 is both the first-voyage welcome page and the sync gate between
-     rounds: from round 2 onward it no longer shows the home-page-style welcome,
+        /* Phase 0 is both the welcome page for the first voyage and the sync gate between
+     rounds: from round 2 onward it no longer shows the welcome styled like the home page,
      but instead a "Set Sail - Settlement Review" transition page */
         if (g.currentRound > 1) return roundStartHTML(g);
         const dismissed = readStored("pm2_banner_dismissed") === "1";
@@ -6744,7 +6744,7 @@
         <span class="pm-icon">📣</span>
         <span>
           ${tr(
-            `<strong>欢迎来到 PortMasters 2！</strong>本作引入增值税、所得税、工匠工资、双人同步互市等深度机制，<strong>上手门槛高于一代</strong>。
+            `<strong>欢迎来到 PortMasters 2！</strong>本作引入增值税、所得税、工匠工资、全员同步互市等深度机制，<strong>上手门槛高于一代</strong>。
           建议先按 <span class="kbd">F1</span> 阅读手册；若感到吃力，可先体验
           <a href="${pm1Url()}" target="_blank" rel="noopener">${pm1Label()}</a>`,
             `<strong>Welcome to PortMasters 2!</strong> This sequel adds VAT, income tax, artisan wages and synchronized bartering with fellow captains, making for <strong>a steeper curve than the original</strong>.
@@ -6820,7 +6820,7 @@
 
       function boonDraftHTML() {
         const g = serverState.yourGame;
-        /* The Navigator's Compass: the server draws 4 cards independently at random for each player, so the two players see different sets */
+        /* The Navigator's Compass: the server draws 4 cards independently at random for each player, so each captain sees a different set */
         const pool =
           g.boonChoices && g.boonChoices.length ? g.boonChoices : BOONS;
         const locked = !!serverState.youReady;
@@ -6925,7 +6925,7 @@
   `;
       }
 
-      /* The Broker's Whisper panel's collapsed/expanded state is preserved across re-renders */
+      /* The Broker's Whisper panel's collapsed/expanded state is preserved across renders */
       let _whisperOpen = true;
 
       function brokerWhisperHTML(g) {
@@ -7000,7 +7000,7 @@
   `;
       }
 
-      /* Barter form state is preserved across re-renders */
+      /* Barter form state is preserved across renders */
       function captureTradeForm() {
         const ids = [
           "sell-type",
@@ -7246,7 +7246,7 @@
         const costOf = (key) => workerWageRate(key, g);
 
         return `
-    ${phaseBriefHTML("worker_mgmt", hireDiscount ? `<span class="chip green">${tr("🎓 学徒传承：本回合雇佣半价", "🎓 Apprentice Legacy: hiring half price this round")}</span>` : "")}
+    ${phaseBriefHTML("worker_mgmt", hireDiscount ? `<span class="chip green">${tr("🎓 学徒传承：工匠工资减半", "🎓 Apprentice Legacy: artisan wages halved this round")}</span>` : "")}
     <div class="center-block">
 
       <div class="section-box">
@@ -7630,7 +7630,7 @@
       /* ============================================================
    Captain detail viewer
    The single place that shows another room member's full fleet data, used both for
-   browsing a fellow captain's stats mid-game (from a roster widget) and for spectating
+   browsing a fellow captain's stats during the game (from a roster widget) and for spectating
    someone still playing while you're bankrupt. It's a separate floating window rather
    than the sidebar, with captain names always listed on the left and the selected
    captain's data on the right, sized to read without the heavy scrolling a 300px
@@ -7685,7 +7685,7 @@
           return;
         }
         const players = (serverState && serverState.players) || [];
-        const name = escapeHtml(viewerTarget || tr("伙伴", "Partner"));
+        const name = escapeHtml(viewerTarget || tr("同行", "Fellow Captain"));
         const targetOnline = players.some(
           (p) => p.name === viewerTarget && p.online,
         );
@@ -7745,7 +7745,7 @@
           document.getElementById("sp-head-live"),
           `
           <div class="sp-title">
-            ${tr(`👀 ${name} 的商队`, `👀 ${name}'s Fleet`)}
+            ${tr(`👀 ${name} 的船队`, `👀 ${name}'s Fleet`)}
             <div class="sp-sub">${tr(
               `第 ${og.currentRound} / ${og.maxRounds} 程 · ${phaseName(og.phase)}阶段 · 只读视角，随其操作实时更新`,
               `Round ${og.currentRound} / ${og.maxRounds}, ${phaseName(og.phase)} phase, read only, updates live`,
@@ -7835,7 +7835,7 @@
     <div class="center-block" style="text-align:center">
       <div style="font-size:80px">💥</div>
       <div class="hero-title" style="-webkit-text-fill-color:initial;background:none;color:#e11d48">${tr("💥 船队破产", "💥 Fleet Bankrupt")}</div>
-      <p style="color:var(--ink-soft);margin:8px 0">${tr("现金无法覆盖工资或维护费，商队被迫清算。", "Your gold could not cover wages or upkeep, so the fleet has been liquidated.")}</p>
+      <p style="color:var(--ink-soft);margin:8px 0">${tr("现金无法覆盖工资或维护费，船队被迫清算。", "Your gold could not cover wages or upkeep, so the fleet has been liquidated.")}</p>
       <div class="section-box" style="max-width:420px;margin:14px auto">
         <div class="stat-row" style="font-size:14px"><span>${tr("最终现金", "Final gold")}</span><strong>${g.money} ${tr("金币", "gold")}</strong></div>
         <div class="stat-row" style="font-size:14px"><span>${tr("最终声望", "Final renown")}</span><strong>${g.score}</strong></div>
@@ -8046,7 +8046,7 @@
                   .join("")
               : `<div class="log-entry muted">${tr("暂无记录。你的采购、交易、生产等操作会记录在这里。", "Nothing yet. Your purchases, trades and production will be recorded here.")}</div>`),
         );
-        /* Only ride the log to the bottom when a new line actually arrived, so a partner's
+        /* Only ride the log to the bottom when a new line actually arrived, so another captain's
    unrelated action cannot yank the panel away from wherever the reader scrolled it. */
         if (painted) l.scrollTop = l.scrollHeight;
       }
@@ -8066,7 +8066,7 @@
       }
 
       /* ============================================================
-   Game manual (paginated, in-depth documentation) & onboarding tour
+   Game manual (paginated, detailed documentation) & onboarding tour
    ============================================================ */
       const MANUAL_TABS_I18N = {
         zh: [
@@ -8097,13 +8097,13 @@
       const manualContentZh = () => ({
         start: `
     <h4>🎯 游戏目标</h4>
-    <p>你与伙伴各自经营一支海上商队，在整段航程（<strong>轻松 8 回合、标准 12 回合、高难 16 回合</strong>）内通过「低买 → 生产 → 高卖」积累<strong>声望（信誉值）</strong>。声望来自每笔订单的净利润，游戏结束时按声望评级。开局资金 100 金币，并自带少量原料。</p>
+    <p>你与其他船长各自经营一支海上船队，在整段航程（<strong>轻松 8 回合、标准 12 回合、高难 16 回合</strong>）内通过「低买 → 生产 → 高卖」积累<strong>声望（信誉值）</strong>。声望来自每笔订单的净利润，游戏结束时按声望评级。开局资金 100 金币，并自带少量原料。</p>
     <p class="muted">每一局有轻松、标准、高难三档难度，构成由易到难的阶梯，默认是轻松。难度在邀请时商定：发出邀请的一方选择，另一方在确认窗口看过说明并同意后开局。轻松只包含基础货物，更适合新手起步；想了解各档难度的差别，可查看「难度与拓展」一节。</p>
     <h4>🧭 第一程怎么玩（推荐路线）</h4>
     <ol>
       <li><strong>福缘</strong>：第一程建议选「紧急钱庄」（+40金币）或「商贾魅力」（采购85折），缓解开局现金压力。</li>
       <li><strong>采购</strong>：优先买便宜的麻布、丝绸，它们是生产原料。注意给工资和 15 金币维护费留出现金。</li>
-      <li><strong>互市</strong>：开局可与伙伴互通有无，比如用富余茶叶换对方丝绸。</li>
+      <li><strong>互市</strong>：开局可与其他船长互通有无，比如用富余茶叶换来丝绸。</li>
       <li><strong>工匠</strong>：先雇 1 名织女（8金币/回合）做麻衣或布衣，控制工资规模。</li>
       <li><strong>贸易</strong>：优先交付「✅ 库存齐全」且报酬高于运费的订单。</li>
       <li><strong>结算 / 船坞</strong>：付维护费；现金充裕再考虑升船。</li>
@@ -8125,7 +8125,7 @@
     <table>
       <tr><th>阶段</th><th>你要做什么</th><th>推进条件</th></tr>
       <tr><td>⚓ 启航</td><td>确认开始本回合</td><td>全员点击「扬帆起航」</td></tr>
-      <tr><td>🧭 福缘</td><td>从随机抽出的 4 张福缘卡中选 1 张（每人组合不同），仅本回合生效</td><td>全员各自锁定福缘</td></tr>
+      <tr><td>🧭 福缘</td><td>从随机抽出的 4 张福缘卡中选 1 张（每位船长的组合不同），仅本回合生效</td><td>每位船长各自锁定福缘</td></tr>
       <tr><td>🛒 采购</td><td>从 5 张进货卡中购买原料/成品（每张限购一次）</td><td>全员点击「完成采购」</td></tr>
       <tr><td>🤝 互市</td><td>与同行自由交易货物与金币</td><td>全员点击「准备就绪」</td></tr>
       <tr><td>👥 工匠</td><td>雇佣/解雇工匠，分配生产任务（立即耗料）</td><td>全员点击「完成工匠管理」</td></tr>
@@ -8133,7 +8133,7 @@
       <tr><td>🔧 结算</td><td>产出入库、自动付工资，然后手动支付维护费</td><td>全员支付维护费</td></tr>
       <tr><td>🚢 船坞</td><td>可选：升级商船；然后结束本航程</td><td>全员点击「结束航程」</td></tr>
     </table>
-    <p>底部操作栏的「🔄 全员就绪 n/总数」实时显示同步进度；你确认后若其他人未确认，会显示等待提示。已破产的玩家视为自动就绪，不会阻塞其他人。</p>
+    <p>底部操作栏的「🔄 全员就绪 n / N」实时显示同步进度；你确认后若仍有船长未确认，会显示等待提示。已破产的玩家视为自动就绪，不会阻塞其他船长。</p>
   `,
         economy: `
     <h4>💸 四大支出，务必牢记</h4>
@@ -8148,7 +8148,7 @@
     <ul>
       <li><strong>原料订单</strong>：报酬 = 需求量×5 + 10~25 浮动，门槛低利润薄。</li>
       <li><strong>成品订单</strong>：按成品市价结算（麻衣 30~42 / 布衣 50~65 / 绫罗绸缎 70~90 / 香囊 95~120），扣增值税后仍是主要利润来源。</li>
-      <li><strong>互市</strong>：和伙伴谈个好价钱，互补短板。</li>
+      <li><strong>互市</strong>：和其他船长谈个好价钱，互补短板。</li>
     </ul>
     <h4>📈 采购小窍门</h4>
     <p>每种原料都有特产港（麻布：泉州/宁波；丝绸：杭州/扬州；茶叶：广州/泉州），特产港进货单价低 1 金币上下；进货卡上的港口与价格都已列明，对比后再买。</p>
@@ -8178,34 +8178,34 @@
     </ul>
   `,
         trade: `
-    <h4>🤝 互市阶段（本作双人核心玩法）</h4>
+    <h4>🤝 互市阶段（本作核心玩法）</h4>
     <ul>
       <li>发布订单：「我出售 A×n，换取 B×m」，其中 A、B 可以是任意原料、成品或金币。</li>
-      <li>对方可<strong>接受</strong>（双方资源即时互换）或<strong>拒绝</strong>（订单作废）。任一方资源不足时交易不会成立。</li>
-      <li>双方都点击「✅ 准备就绪」后进入工匠管理；未成交订单自动作废。</li>
-      <li>右侧伙伴面板实时展示对方的存款、声望、库存、工匠与增益，<strong>看准对方缺什么再开价</strong>。</li>
+      <li>其他船长可<strong>接受</strong>（双方资源即时互换）或<strong>拒绝</strong>（订单作废）。任一方资源不足时交易不会成立。</li>
+      <li>所有船长都点击「✅ 准备就绪」后进入工匠管理；未成交订单自动作废。</li>
+      <li>右侧「同行船队」面板实时展示其他船长的存款、声望、库存、工匠与增益，<strong>看准他们缺什么再开价</strong>。</li>
     </ul>
     <h4>🌐 联机机制</h4>
     <ul>
-      <li><strong>邀请与难度</strong>：大厅中向在线玩家发出邀请，每分钟限 1 次，60 秒未回应自动超时。发出邀请时会先为本局选择难度（轻松或高难，默认轻松），对方在确认窗口看过说明并同意后，双方才以同一难度开局。</li>
-      <li><strong>同步</strong>：双方始终同回合同阶段；每个阶段需双方确认才推进。</li>
-      <li><strong>断线重连</strong>：会话保留在服务器，重新登录即恢复进度；双方都离线时会话回收。</li>
-      <li><strong>聊天</strong>：点击右上角 💬 与伙伴实时沟通（对方离线时无法发送）。</li>
-      <li><strong>重新开始</strong>：双方都结束本局（完赛或破产）后，任一方可重置开新局。</li>
+      <li><strong>邀请与难度</strong>：大厅中向在线玩家发出邀请，每分钟限 1 次，60 秒未回应自动超时。发出邀请时会先为本局选择难度（轻松、标准或高难，默认轻松），受邀船长在确认窗口看过说明并同意后，航程才以该难度开局。</li>
+      <li><strong>同步</strong>：所有船长始终同回合同阶段；每个阶段需全员确认才推进。</li>
+      <li><strong>断线重连</strong>：会话保留在服务器，重新登录即恢复进度；所有玩家都离线时会话回收。</li>
+      <li><strong>聊天</strong>：点击右上角 💬 与其他船长实时沟通（其他人都离线时无法发送）。</li>
+      <li><strong>重新开始</strong>：所有玩家都结束本局（完赛或破产）后，任一船长可重置开新局。</li>
     </ul>
   `,
         boons: `
-    <h4>🍀 福缘图鉴（每回合「航海家的罗盘」从下表随机抽 4 张供你选 1 张；双方抽到的组合各不相同，仅当回合生效）</h4>
+    <h4>🍀 福缘图鉴（每回合「航海家的罗盘」从下表随机抽 4 张供你选 1 张；每位船长抽到的组合各不相同，仅当回合生效）</h4>
     <table>
       <tr><th>福缘</th><th>效果</th><th>适合时机</th></tr>
-      <tr><td>🌬️ 丝路顺风</td><td>丝绸及成品运费减半</td><td>本回合要交付大量成品订单</td></tr>
+      <tr><td>🌬️ 丝路顺风</td><td>丝绸与丝织品运费减半</td><td>本回合要交付大量丝织品订单</td></tr>
       <tr><td>🌊 顺风顺水</td><td>基础运费减 4 金币</td><td>要交付多笔小额订单</td></tr>
       <tr><td>✨ 商贾魅力</td><td>采购 85 折</td><td>本回合计划大量进货</td></tr>
-      <tr><td>🔨 匠人灵感</td><td>所有工人多产 1 件</td><td>工匠团队规模较大时收益最高</td></tr>
+      <tr><td>🔨 匠人灵感</td><td>所有工匠多产 1 件</td><td>工匠团队规模较大时收益最高</td></tr>
       <tr><td>💰 紧急钱庄</td><td>立即获得 40 金币</td><td>现金紧张、濒临破产时的救命稻草</td></tr>
       <tr><td>📜 免税令</td><td>所得税率降至 5%</td><td>预计本回合利润很高</td></tr>
       <tr><td>🧶 麻布专营</td><td>麻布采购单价 −2 金币</td><td>主打麻衣/布衣生产线</td></tr>
-      <tr><td>🎓 学徒传承</td><td>雇佣工资减半</td><td>本回合计划扩编工匠团队</td></tr>
+      <tr><td>🎓 学徒传承</td><td>工匠工资减半</td><td>本回合计划扩编工匠团队</td></tr>
       <tr><td>🔮 千里眼<br><span class="muted">市舶新政 · 第6程起</span></td><td>本回合免费获得 1 条牙行密语线索</td><td>想提前锁定贸易阶段订单</td></tr>
       <tr><td>🏮 陶铜联号<br><span class="muted">市舶新政 · 第6程起</span></td><td>本回合「青瓷器」与「紫铜镜」订单报酬 +15%</td><td>库存中已有大量青瓷器/紫铜镜待交付</td></tr>
       <tr><td>🧾 拓商减负<br><span class="muted">市舶新政 · 第6程起</span></td><td>本回合交付成品订单的增值税减半</td><td>本回合计划大量交付成品</td></tr>
@@ -8216,18 +8216,18 @@
   `,
         expansion: `
     <h4>⚖️ 难度模式</h4>
-    <p>每一局会在三档难度之一下进行，构成由易到难的阶梯，默认始终是<strong>轻松</strong>。<strong>轻松模式</strong>共 8 个回合，让整段航程都停留在基础货物之内，只包含麻布、丝绸、茶叶三种原料、四种入门成品、前三类工匠，以及与之相关的福缘、战船改装、港口和季风。棋盘始终不会过度拥挤，你有充足的余裕慢慢熟悉每个回合的节奏。<strong>标准模式</strong>共 12 个回合，是中间一档：同样开放完整贸易，丝路特许在第 4、8 程分批解锁，但不会出现暗通海盗的牙行。<strong>高难模式</strong>共 16 个回合，开放完整的海上贸易并加入可疑牙行机制，丝路特许在第 6、10 程分批解锁，需要打理的事务多得多，对舱位与金币的竞争也激烈许多。下文「丝路特许」的分批解锁在标准与高难模式中都会发生，轻松模式则不会。海盗机制对所有难度都已加强：海盗一旦得手会掠走当前财富的一定比例（越往后、难度越高比例越大），雇佣护航的费用也随财富浮动；在高难模式中，购买牙行密语还可能遇到可疑牙行暗通海盗、抬高本程袭扰概率，让结算阶段是否雇佣护航成为真正的取舍。</p>
-    <p>难度在航程开始前就已商定。发出邀请的一方先选择本局难度，对方会在确认窗口看到一段说明，了解它会改变什么之后再同意，所以两位船长始终在同一难度下经营同一段航程。</p>
+    <p>每一局会在三档难度之一下进行，构成由易到难的阶梯，默认始终是<strong>轻松</strong>。<strong>轻松模式</strong>共 8 个回合，让整段航程都停留在基础货物之内，只包含麻布、丝绸、茶叶三种原料、四种入门成品、前三类工匠，以及与之相关的福缘、船舶模块、港口和季风。棋盘始终不会过度拥挤，你有充足的余裕慢慢熟悉每个回合的节奏。<strong>标准模式</strong>共 12 个回合，是中间一档：同样开放完整贸易，丝路特许在第 4、8 程分批解锁，但不会出现暗通海盗的牙行。<strong>高难模式</strong>共 16 个回合，开放完整的海上贸易并加入可疑牙行机制，丝路特许在第 6、10 程分批解锁，需要打理的事务多得多，对舱位与金币的竞争也激烈许多。下文「丝路特许」的分批解锁在标准与高难模式中都会发生，轻松模式则不会。海盗机制对所有难度都已加强：海盗一旦得手会掠走当前财富的一定比例（越往后、难度越高比例越大），雇佣护航的费用也随财富浮动；在高难模式中，购买牙行密语还可能遇到可疑牙行暗通海盗、抬高本程袭扰概率，让结算阶段是否雇佣护航成为真正的取舍。</p>
+    <p>难度在航程开始前就已商定。发出邀请的一方先选择本局难度，受邀船长会在确认窗口看到一段说明，了解它会改变什么之后再同意，所以所有船长始终在同一难度下经营同一段航程。</p>
     <div class="pm-banner" style="margin:8px 0 4px">
       <span class="pm-icon">⚖️</span>
       <span>下面这份分批解锁清单以<strong>高难模式</strong>（第 6、10 程）为例。<strong>标准模式</strong>解锁的内容相同，只是更早到来（第 4、8 程）；<strong>轻松模式</strong>则全程停留在基础内容，这些扩展不会出现。</span>
     </div>
     <h4>🗺️ 丝路特许：分批解锁（高难模式）</h4>
-    <p>第 1~5 程的玩法与最初版本完全一致，包含 3 种原料、4 种成品、3 类工匠、5 座港口。从<strong>第 6 程</strong>起，「市舶新政」颁布；从<strong>第 10 程</strong>起，「万国通商」开启。两批新内容会分别加入原料、成品、港口、工匠、福缘、战船改装与季风的可选池，航路越往后，棋盘也就越宽。随着新内容解锁，采购阶段与贸易阶段可挑选的卡牌也会相应增多：基础为 5 张，第 6 程起增至 8 张，第 10 程起增至 11 张，让新货物有充足的出现机会。</p>
+    <p>第 1~5 程的玩法与最初版本完全一致，包含 3 种原料、4 种成品、3 类工匠、5 座港口。从<strong>第 6 程</strong>起，「市舶新政」颁布；从<strong>第 10 程</strong>起，「万国通商」开启。两批新内容会分别加入原料、成品、港口、工匠、福缘、船舶模块与季风的可选池，航路越往后，棋盘也就越宽。随着新内容解锁，采购阶段与贸易阶段可挑选的卡牌也会相应增多：基础为 5 张，第 6 程起增至 8 张，第 10 程起增至 11 张，让新货物有充足的出现机会。</p>
     <table>
       <tr><th>批次</th><th>解锁时机</th><th>新增内容概览</th></tr>
-      <tr><td>🗺️ 市舶新政</td><td>第 6 程起</td><td>瓷土、铜矿、紫铜镜、青瓷器；福州港、高丽港；铜匠、陶匠；3 福缘 + 3 战船改装 + 2 季风</td></tr>
-      <tr><td>🌏 万国通商</td><td>第 10 程起</td><td>香料、珍珠、蕃香脂、珠链；三佛齐港、大食港；香料师、珠宝匠；3 福缘 + 3 战船改装 + 2 季风</td></tr>
+      <tr><td>🗺️ 市舶新政</td><td>第 6 程起</td><td>瓷土、铜矿、紫铜镜、青瓷器；福州港、高丽港；铜匠、陶匠；3 福缘 + 3 船舶模块 + 2 季风</td></tr>
+      <tr><td>🌏 万国通商</td><td>第 10 程起</td><td>香料、珍珠、蕃香脂、珠链；三佛齐港、大食港；香料师、珠宝匠；3 福缘 + 3 船舶模块 + 2 季风</td></tr>
     </table>
 
     <h4>📦 新增原料</h4>
@@ -8266,7 +8266,7 @@
       <tr><td>大食港</td><td>万国通商</td><td>遥远的西方市场，香料与珍珠制品的高价买家</td></tr>
     </table>
 
-    <h4>🌬️ 新增季风（贸易风）</h4>
+    <h4>🌬️ 新增季风</h4>
     <p>除原有的「春潮顺流」「盛夏季风」「秋汛乱流」「冬海封锁」外，新增 4 种季风状态。第 3 程起，每个"季节"（每 2 回合一变）将从<strong>当时已解锁的季风池中随机抽取</strong>，不再是固定的四季循环。不过第 1~2 程仍固定为「春潮顺流」，与最初版本完全一致。</p>
     <table>
       <tr><th>季风</th><th>解锁批次</th><th>效果概要</th></tr>
@@ -8276,9 +8276,9 @@
       <tr><td>🌙 大食珠月</td><td>万国通商</td><td>大食港、三佛齐港订单报酬大幅提高；珍珠采购价降低；海盗风险最高</td></tr>
     </table>
 
-    <h4>🔧 新增战船改装</h4>
+    <h4>🔧 新增船舶模块</h4>
     <table>
-      <tr><th>改装</th><th>解锁批次</th><th>效果</th></tr>
+      <tr><th>模块</th><th>解锁批次</th><th>效果</th></tr>
       <tr><td>🎫 市舶司令牌</td><td>市舶新政</td><td>新航线货品（瓷土、铜矿及其成品）订单收入 +10%</td></tr>
       <tr><td>🔥 陶土窖</td><td>市舶新政</td><td>瓷土与铜矿采购单价各降低 2 金币</td></tr>
       <tr><td>📡 远洋通译</td><td>市舶新政</td><td>牙行密语每次额外显示 1 条线索（不增加花费）</td></tr>
@@ -8310,11 +8310,11 @@
         faq: `
     <h4>❓ 常见问题</h4>
     <ul>
-      <li><strong>点了按钮没反应，或者一直在等待？</strong> 大概率是在等其他人确认。看底部「全员就绪 n/总数」，并用 💬 聊天催一下队友。</li>
+      <li><strong>点了按钮没反应，或者一直在等待？</strong> 大概率是在等其他船长确认。看底部「🔄 全员就绪 n / N」，并用 💬 聊天催一下。</li>
       <li><strong>材料明明够却无法分配生产？</strong> 可能所有工匠都已经有任务在身，每名工匠每回合只能接一个任务。</li>
       <li><strong>为什么突然破产了？</strong> 因为结算阶段的现金不够支付工资或维护费。扩编工匠前，先看看左侧「⚠️ 本回合应付款项」。</li>
-      <li><strong>破产后还能玩吗？</strong> 本局确实是出局了，不过可以点「👀 观战伙伴」实时围观对方航行，也不会拖慢对方进度；等伙伴结束后点「重新起航」就能一起开新局。</li>
-      <li><strong>对方掉线怎么办？</strong> 会话会保留在服务器上，对方重新登录就能恢复；期间暂时无法聊天和互市成交。</li>
+      <li><strong>破产后还能玩吗？</strong> 本局确实是出局了，不过可以打开「👀 观战窗口」实时围观其他船长的航行，也不会拖慢他们；等其他船长结束后点「🔄 重新起航」就能一起开新局。</li>
+      <li><strong>其他船长掉线怎么办？</strong> 会话会保留在服务器上，掉线的船长重新登录就能恢复；其离线期间无法与其聊天或互市成交，与其他船长仍可正常往来。</li>
       <li><strong>声望（信誉值）是什么？</strong> 它是每笔订单「报酬减去运费」后的累计金额，是最终评级的唯一依据，不会因为花钱而减少。</li>
     </ul>
     <h4>⌨️ 快捷键</h4>
@@ -8332,13 +8332,13 @@
       const manualContentEn = () => ({
         start: `
     <h4>🎯 Objective</h4>
-    <p>You and your partner each run a maritime trading fleet. Over the voyage (<strong>8 rounds on Easy, 12 on Standard, 16 on Hard</strong>), build <strong>renown</strong> through the buy low → produce → sell high loop. Renown is the net profit of every delivered order; your final rating depends on it. You start with 100 gold and a small stock of materials.</p>
+    <p>You and the other captains each run a maritime trading fleet. Over the voyage (<strong>8 rounds on Easy, 12 on Standard, 16 on Hard</strong>), build <strong>renown</strong> through the buy low → produce → sell high loop. Renown is the net profit of every delivered order; your final rating depends on it. You start with 100 gold and a small stock of materials.</p>
     <p class="muted">Every session has Easy, Standard and Hard difficulties forming a ladder, and the default is Easy. The level is settled at invite time: the inviting captain picks it and the other confirms it in a short window. Easy mode keeps to the founding set of goods and is the gentler place to start; see the "Difficulty &amp; Expansion" section for exactly what changes between them.</p>
     <h4>🧭 Your First Voyage (recommended route)</h4>
     <ol>
       <li><strong>Fortune</strong>: in round 1, Emergency Loan (+40 gold) or Merchant's Charm (15% off purchases) eases the early cash crunch.</li>
       <li><strong>Procure</strong>: buy cheap Hemp Cloth and Silk, since they're your crafting inputs. Leave cash for wages and the 15 gold upkeep.</li>
-      <li><strong>Barter</strong>: trade surpluses with your partner early, for example spare Tea for their Silk.</li>
+      <li><strong>Barter</strong>: trade surpluses with the other captains early, for example spare Tea for their Silk.</li>
       <li><strong>Artisans</strong>: hire 1 Weaver (8 gold/round) for Hemp Garb or Cloth Tunics; keep the payroll small.</li>
       <li><strong>Trade</strong>: deliver orders marked ✅ in stock whose reward beats the shipping cost.</li>
       <li><strong>Upkeep / Shipyard</strong>: pay upkeep; only upgrade the ship once cash is comfortable.</li>
@@ -8347,7 +8347,7 @@
     <ul>
       <li><strong>Cash flow first</strong>: failing to pay wages and upkeep means instant bankruptcy, which is far worse than earning a little less.</li>
       <li><strong>Products beat raw goods</strong>: a Sachet has a base value of 80, while flipping raw materials nets single digits.</li>
-      <li><strong>Stay in sync</strong>: every phase needs both captains to confirm, so use chat (💬) to keep the pace.</li>
+      <li><strong>Stay in sync</strong>: every phase needs every captain to confirm, so use chat (💬) to keep the pace.</li>
     </ul>
     <div class="pm-banner" style="margin-top:10px">
       <span class="pm-icon">🧭</span>
@@ -8359,16 +8359,16 @@
     <h4>🔄 The 8 Phases of Every Voyage</h4>
     <table>
       <tr><th>Phase</th><th>What you do</th><th>Advances when</th></tr>
-      <tr><td>⚓ Set Sail</td><td>Confirm the start of the round</td><td>Both click "Set Sail"</td></tr>
-      <tr><td>🧭 Fortune</td><td>Pick 1 of 4 randomly drawn fortune cards (each captain gets a different draw); lasts this round only</td><td>Both lock a fortune</td></tr>
-      <tr><td>🛒 Procure</td><td>Buy materials/goods from 5 supply cards (each card once)</td><td>Both click "Done Procuring"</td></tr>
-      <tr><td>🤝 Barter</td><td>Trade goods and gold freely with your partner</td><td>Both click "Ready"</td></tr>
-      <tr><td>👥 Artisans</td><td>Hire/dismiss artisans, assign production (consumes materials immediately)</td><td>Both click "Done Managing"</td></tr>
-      <tr><td>📦 Trade</td><td>Deliver up to 5 port orders from stock for rewards</td><td>Both click "Done Trading"</td></tr>
-      <tr><td>🔧 Upkeep</td><td>Production arrives, wages paid automatically, then pay upkeep manually</td><td>Both pay upkeep</td></tr>
-      <tr><td>🚢 Shipyard</td><td>Optional: upgrade your ship; then end the voyage</td><td>Both click "End Voyage"</td></tr>
+      <tr><td>⚓ Set Sail</td><td>Confirm the start of the round</td><td>Everyone clicks "Set Sail"</td></tr>
+      <tr><td>🧭 Fortune</td><td>Pick 1 of 4 randomly drawn fortune cards (each captain gets a different draw); lasts this round only</td><td>Everyone locks a fortune</td></tr>
+      <tr><td>🛒 Procure</td><td>Buy materials/goods from 5 supply cards (each card once)</td><td>Everyone clicks "Done Procuring"</td></tr>
+      <tr><td>🤝 Barter</td><td>Trade goods and gold freely with the other captains</td><td>Everyone clicks "Ready"</td></tr>
+      <tr><td>👥 Artisans</td><td>Hire/dismiss artisans, assign production (consumes materials immediately)</td><td>Everyone clicks "Done Managing"</td></tr>
+      <tr><td>📦 Trade</td><td>Deliver up to 5 port orders from stock for rewards</td><td>Everyone clicks "Done Trading"</td></tr>
+      <tr><td>🔧 Upkeep</td><td>Production arrives, wages paid automatically, then pay upkeep manually</td><td>Everyone pays upkeep</td></tr>
+      <tr><td>🚢 Shipyard</td><td>Optional: upgrade your ship; then end the voyage</td><td>Everyone clicks "End Voyage"</td></tr>
     </table>
-    <p>The "🔄 Ready n/total" chip in the bottom bar shows sync progress; once you confirm, a waiting hint appears until everyone else does too. Bankrupt players count as ready automatically and never block the rest of the room.</p>
+    <p>The "🔄 Ready n / N" chip in the bottom bar shows sync progress; once you confirm, a waiting hint appears until everyone else does too. Bankrupt players count as ready automatically and never block the others.</p>
   `,
         economy: `
     <h4>💸 The Four Expenses to Watch</h4>
@@ -8383,7 +8383,7 @@
     <ul>
       <li><strong>Material orders</strong>: reward = demand ×5 + 10 to 25 variance; low effort, thin margins.</li>
       <li><strong>Product orders</strong>: settled at market price (Hemp Garb 30 to 42 / Cloth Tunic 50 to 65 / Fine Brocade 70 to 90 / Sachet 95 to 120), and remain your main profit source even after VAT.</li>
-      <li><strong>Barter</strong>: strike good deals with your partner to cover each other's gaps.</li>
+      <li><strong>Barter</strong>: strike good deals with the other captains to cover each other's gaps.</li>
     </ul>
     <h4>📈 Buying Tip</h4>
     <p>Every material has home ports (Hemp Cloth: Quanzhou/Ningbo; Silk: Hangzhou/Yangzhou; Tea: Guangzhou/Quanzhou) where unit prices run about 1 gold lower. Ports and prices are printed on each supply card, so compare before you buy.</p>
@@ -8413,56 +8413,56 @@
     </ul>
   `,
         trade: `
-    <h4>🤝 The Barter Phase (this game's cooperative heart)</h4>
+    <h4>🤝 The Barter Phase (the cooperative heart of the game)</h4>
     <ul>
       <li>Post an offer: "I give A×n for B×m", where A and B can be any material, product, or gold.</li>
-      <li>Your partner can <strong>accept</strong> (instant swap) or <strong>decline</strong> (offer voided). Trades fail safely if either side lacks the resources.</li>
-      <li>Once both captains click "✅ Ready", the artisan phase begins; unaccepted offers expire.</li>
-      <li>The right panel shows your partner's gold, renown, stock, artisans and buffs in real time, so <strong>see what they need before naming your price</strong>.</li>
+      <li>Any other captain can <strong>accept</strong> (instant swap) or <strong>decline</strong> (offer voided). Trades fail safely if either side lacks the resources.</li>
+      <li>Once every captain clicks "✅ Ready", the artisan phase begins; unaccepted offers expire.</li>
+      <li>The Fellow Captains panel on the right shows every other captain's gold, renown, stock, artisans and buffs in real time, so <strong>see what they need before naming your price</strong>.</li>
     </ul>
     <h4>🌐 Online Mechanics</h4>
     <ul>
-      <li><strong>Invitations &amp; difficulty</strong>: invite any online player from the lobby; one invite per minute, 60 second expiry. When you send the invite you first choose the session difficulty (Easy, Standard or Hard, Easy by default), and the other captain reads a short explanation and agrees to it before you both start at the same level.</li>
-      <li><strong>Sync</strong>: both captains are always on the same round and phase; every phase needs both to confirm.</li>
-      <li><strong>Reconnection</strong>: sessions live on the server, so log back in to resume. The session is recycled only when both players are offline.</li>
-      <li><strong>Chat</strong>: hit 💬 in the header to talk (disabled while your partner is offline).</li>
-      <li><strong>Restart</strong>: once both games have ended (finished or bankrupt), either captain can reset for a new run.</li>
+      <li><strong>Invitations &amp; difficulty</strong>: invite any online player from the lobby; one invite per minute, 60 second expiry. When you send the invite you first choose the session difficulty (Easy, Standard or Hard, Easy by default), and the invited captain reads a short explanation and agrees to it before the session starts at that level.</li>
+      <li><strong>Sync</strong>: every captain is always on the same round and phase; every phase needs everyone to confirm.</li>
+      <li><strong>Reconnection</strong>: sessions live on the server, so log back in to resume. The session is recycled only when every player in it is offline.</li>
+      <li><strong>Chat</strong>: hit 💬 in the header to talk (disabled while everyone else is offline).</li>
+      <li><strong>Restart</strong>: once every game in the room has ended (finished or bankrupt), any captain can reset for a new run.</li>
     </ul>
   `,
         boons: `
     <h4>🍀 Fortune Codex (the Navigator's Compass draws 4 at random each round, with each captain getting a different set; effects last one round)</h4>
     <table>
       <tr><th>Fortune</th><th>Effect</th><th>Best moment</th></tr>
-      <tr><td>🌬️ Silk Road Tailwind</td><td>Silk & product shipping halved</td><td>Delivering many product orders this round</td></tr>
+      <tr><td>🌬️ Silk Road Tailwind</td><td>Silk and silk woven goods shipping halved</td><td>Delivering many silk woven goods orders this round</td></tr>
       <tr><td>🌊 Favorable Tides</td><td>Base shipping −4 gold</td><td>Many small deliveries planned</td></tr>
       <tr><td>✨ Merchant's Charm</td><td>15% off purchases</td><td>A big shopping round</td></tr>
-      <tr><td>🔨 Artisan's Inspiration</td><td>Every worker makes +1 item</td><td>Pays off most with a large crew</td></tr>
+      <tr><td>🔨 Artisan's Inspiration</td><td>Every artisan makes +1 item</td><td>Pays off most with a large crew</td></tr>
       <tr><td>💰 Emergency Loan</td><td>Gain 40 gold instantly</td><td>A lifeline when bankruptcy looms</td></tr>
       <tr><td>📜 Tax Exemption</td><td>Income tax drops to 5%</td><td>Expecting big profits this round</td></tr>
       <tr><td>🧶 Hemp Monopoly</td><td>Hemp Cloth −2 gold per unit</td><td>Running a garb/tunic production line</td></tr>
-      <tr><td>🎓 Apprentice Legacy</td><td>Hiring wages halved</td><td>Expanding the team this round</td></tr>
+      <tr><td>🎓 Apprentice Legacy</td><td>Artisan wages halved</td><td>Expanding the team this round</td></tr>
       <tr><td>🔮 Farsight<br><span class="muted">New Maritime Edict, Round 6+</span></td><td>Gain 1 free Broker's Whisper clue this round</td><td>Want to lock in a Trade phase order early</td></tr>
       <tr><td>🏮 Porcelain & Bronze Consortium<br><span class="muted">New Maritime Edict, Round 6+</span></td><td>Celadon Porcelain and Bronze Mirror orders pay +15% this round</td><td>Stockpiled Celadon Porcelain/Bronze Mirror ready to deliver</td></tr>
       <tr><td>🧾 Frontier Tariff Relief<br><span class="muted">New Maritime Edict, Round 6+</span></td><td>VAT on finished goods deliveries is halved this round</td><td>Planning to deliver lots of products this round</td></tr>
       <tr><td>💎 Treasures from Afar<br><span class="muted">Ten Thousand Kingdoms Trade, Round 10+</span></td><td>Foreign Perfume Oil and Pearl Necklace orders pay +15% this round</td><td>Stockpiled Foreign Perfume Oil/Pearl Necklace ready to deliver</td></tr>
-      <tr><td>🛡️ Deep Sea Escort Pact<br><span class="muted">Ten Thousand Kingdoms Trade, Round 10+</span></td><td>Escort hiring costs half price and pirate risk is halved this round</td><td>When the trade wind's pirate risk is high</td></tr>
+      <tr><td>🛡️ Deep Sea Escort Pact<br><span class="muted">Ten Thousand Kingdoms Trade, Round 10+</span></td><td>Escort hiring costs half price and pirate risk is halved this round</td><td>When the monsoon's pirate risk is high</td></tr>
       <tr><td>🛍️ Merchants Converge<br><span class="muted">Ten Thousand Kingdoms Trade, Round 10+</span></td><td>1 extra order appears in the Trade phase this round</td><td>Want more delivery opportunities</td></tr>
     </table>
   `,
         expansion: `
     <h4>⚖️ Difficulty Modes</h4>
-    <p>Every session is played at one of three difficulties that form a ladder, and it always starts on <strong>Easy</strong> by default. <strong>Easy mode</strong> is the shorter 8 round voyage and keeps the whole game on the founding set of goods, with only the three raw materials Hemp Cloth, Silk and Tea, the four starter products, the first three artisan guilds, and the fortunes, ship modules, ports and trade winds tied to them. The board never grows crowded, so you have plenty of room to learn the rhythm of each round at your own pace. <strong>Standard mode</strong> is the 12 round middle rung: it also opens the full trade, with the Silk Road Charter unlocking at Rounds 4 and 8, but with no corrupt brokers. <strong>Hard mode</strong> is the longer 16 round voyage that opens the full maritime trade with the charter unlocking at Rounds 6 and 10 and the corrupt broker hazard switched on, so there is a great deal more to manage and the competition for cargo space and coin grows much fiercer. The phased unlocks below happen on Standard and Hard but never on Easy. Raids bite harder as you climb the ladder too: a successful raid takes a share of your current gold (a larger share later in the voyage and on higher difficulties) and the escort fee scales with your wealth as well; and on Hard a Broker's Whisper can come from a corrupt broker who tips off pirates and raises that voyage's raid chance, turning the escort call at Upkeep into a genuine tradeoff.</p>
-    <p>The difficulty is settled before a voyage begins. The inviting captain chooses the level for the session, and the other captain sees a short explanation of what it changes in the confirmation window and agrees to it, so both captains always run the same voyage at the same difficulty.</p>
+    <p>Every session is played at one of three difficulties that form a ladder, and it always starts on <strong>Easy</strong> by default. <strong>Easy mode</strong> is the shorter 8 round voyage and keeps the whole game on the founding set of goods, with only the three raw materials Hemp Cloth, Silk and Tea, the four starter products, the first three artisan guilds, and the fortunes, ship modules, ports and monsoons tied to them. The board never grows crowded, so you have plenty of room to learn the rhythm of each round at your own pace. <strong>Standard mode</strong> is the 12 round middle rung: it also opens the full trade, with the Silk Road Charter unlocking at Rounds 4 and 8, but with no corrupt brokers. <strong>Hard mode</strong> is the longer 16 round voyage that opens the full maritime trade with the charter unlocking at Rounds 6 and 10 and the corrupt broker hazard switched on, so there is a great deal more to manage and the competition for cargo space and coin grows much fiercer. The phased unlocks below happen on Standard and Hard but never on Easy. Raids bite harder as you climb the ladder too: a successful raid takes a share of your current gold (a larger share later in the voyage and on higher difficulties) and the escort fee scales with your wealth as well; and on Hard a Broker's Whisper can come from a corrupt broker who tips off pirates and raises that voyage's raid chance, turning the escort call at Upkeep into a genuine tradeoff.</p>
+    <p>The difficulty is settled before a voyage begins. The inviting captain chooses the level for the session, and the invited captain sees a short explanation of what it changes in the confirmation window and agrees to it, so every captain always runs the same voyage at the same difficulty.</p>
     <div class="pm-banner" style="margin:8px 0 4px">
       <span class="pm-icon">⚖️</span>
       <span>The phased unlock tables below use <strong>Hard mode</strong> (Rounds 6 and 10) as the example. <strong>Standard mode</strong> unlocks the same content earlier (Rounds 4 and 8); <strong>Easy mode</strong> stays on the founding set named above for the entire game and these expansions never arrive.</span>
     </div>
     <h4>🗺️ Silk Road Charter: Phased Unlocks (Hard mode)</h4>
-    <p>Rounds 1 to 5 play exactly like the original release, with 3 raw materials, 4 products, 3 artisan types and 5 ports. From <strong>Round 6</strong>, the "New Maritime Edict" takes effect; from <strong>Round 10</strong>, "Ten Thousand Kingdoms Trade" opens. Each wave adds new resources, products, ports, artisans, fortunes, ship modules and trade winds to the pools you draw from, so the later the voyage, the wider the board. As the waves arrive, the hands you pick from in the buying and trade phases grow too, going from 5 cards to 8 once the first wave opens at Round 6 and to 11 once the second opens at Round 10, so the new goods always have room to appear.</p>
+    <p>Rounds 1 to 5 play exactly like the original release, with 3 raw materials, 4 products, 3 artisan types and 5 ports. From <strong>Round 6</strong>, the "New Maritime Edict" takes effect; from <strong>Round 10</strong>, "Ten Thousand Kingdoms Trade" opens. Each wave adds new resources, products, ports, artisans, fortunes, ship modules and monsoons to the pools you draw from, so the later the voyage, the wider the board. As the waves arrive, the hands you pick from in the buying and trade phases grow too, going from 5 cards to 8 once the first wave opens at Round 6 and to 11 once the second opens at Round 10, so the new goods always have room to appear.</p>
     <table>
       <tr><th>Wave</th><th>Unlocks at</th><th>What's added</th></tr>
-      <tr><td>🗺️ New Maritime Edict</td><td>Round 6</td><td>Porcelain Clay, Copper Ore, Bronze Mirror, Celadon Porcelain; Fuzhou, Goryeo; Coppersmith, Potter; 3 Fortunes + 3 ship modules + 2 trade winds</td></tr>
-      <tr><td>🌏 Ten Thousand Kingdoms Trade</td><td>Round 10</td><td>Spices, Pearls, Foreign Perfume Oil, Pearl Necklace; Srivijaya, Dashi; Perfumer, Jeweler; 3 Fortunes + 3 ship modules + 2 trade winds</td></tr>
+      <tr><td>🗺️ New Maritime Edict</td><td>Round 6</td><td>Porcelain Clay, Copper Ore, Bronze Mirror, Celadon Porcelain; Fuzhou, Goryeo; Coppersmith, Potter; 3 Fortunes + 3 ship modules + 2 monsoons</td></tr>
+      <tr><td>🌏 Ten Thousand Kingdoms Trade</td><td>Round 10</td><td>Spices, Pearls, Foreign Perfume Oil, Pearl Necklace; Srivijaya, Dashi; Perfumer, Jeweler; 3 Fortunes + 3 ship modules + 2 monsoons</td></tr>
     </table>
 
     <h4>📦 New Resources</h4>
@@ -8501,10 +8501,10 @@
       <tr><td>Dashi</td><td>Ten Thousand Kingdoms Trade</td><td>A distant western market and a premium buyer of Spice and Pearl goods</td></tr>
     </table>
 
-    <h4>🌬️ New Trade Winds</h4>
-    <p>Beyond the original Spring Current, Summer Monsoon, Autumn Gales and Winter Blockade, 4 new trade wind states join the pool. From Round 3 on, each "season" (every 2 rounds) is <strong>drawn at random from the currently unlocked pool</strong> instead of a fixed 4 season cycle, though Rounds 1 to 2 are still always Spring Current, exactly as before.</p>
+    <h4>🌬️ New Monsoons</h4>
+    <p>Beyond the original Spring Current, Summer Monsoon, Autumn Gales and Winter Blockade, 4 new monsoon states join the pool. From Round 3 on, each "season" (every 2 rounds) is <strong>drawn at random from the currently unlocked pool</strong> instead of a fixed 4 season cycle, though Rounds 1 to 2 are still always Spring Current, exactly as before.</p>
     <table>
-      <tr><th>Trade Wind</th><th>Unlocked by</th><th>Effect summary</th></tr>
+      <tr><th>Monsoon</th><th>Unlocked by</th><th>Effect summary</th></tr>
       <tr><td>🌫️ Min River Kiln Smoke</td><td>New Maritime Edict</td><td>Fuzhou and Quanzhou orders pay more; Porcelain Clay is cheaper; pirate risk is moderate</td></tr>
       <tr><td>🌅 Goryeo Dawn Route</td><td>New Maritime Edict</td><td>Goryeo and Guangzhou orders pay more; Copper Ore is cheaper; pirate risk is elevated</td></tr>
       <tr><td>🌴 Srivijaya Spice Breeze</td><td>Ten Thousand Kingdoms Trade</td><td>Srivijaya and Dashi orders pay more; Spices are cheaper; pirate risk is elevated</td></tr>
@@ -8545,11 +8545,11 @@
         faq: `
     <h4>❓ Frequently Asked Questions</h4>
     <ul>
-      <li><strong>Clicked a button and nothing happened, or stuck waiting?</strong> You're most likely waiting on someone else. Check "Ready n/total" in the bottom bar, and nudge them via 💬.</li>
+      <li><strong>Clicked a button and nothing happened, or stuck waiting?</strong> You're most likely waiting on the other captains. Check the "🔄 Ready n / N" chip in the bottom bar, and nudge them via 💬.</li>
       <li><strong>Have the materials but can't assign production?</strong> All artisans may already have tasks; each takes only one per round.</li>
       <li><strong>Why did I suddenly go bankrupt?</strong> You couldn't cover wages or upkeep at settlement. Before expanding the team, check "⚠️ Due This Round" on the left.</li>
-      <li><strong>Can I still play after bankruptcy?</strong> Your run is over, but you can open the "👀 Spectator Window" to watch your partner live, and you never block them; once they finish, click "Set Sail Again" for a fresh run together.</li>
-      <li><strong>Partner disconnected?</strong> The session stays on the server, so they just log back in. Chat and trades pause while they're away.</li>
+      <li><strong>Can I still play after bankruptcy?</strong> Your run is over, but you can open the "👀 Spectator Window" to watch the other voyages live, and you never block them; once they finish, click "Set Sail Again" for a fresh run together.</li>
+      <li><strong>Another captain disconnected?</strong> The session stays on the server, so they just log back in. Chat and trades with them pause while they're away.</li>
       <li><strong>What exactly is renown?</strong> It's the running total of each order's reward minus its shipping cost. It's the sole basis of your final rating and is never reduced by spending.</li>
     </ul>
     <h4>⌨️ Shortcuts</h4>
@@ -8557,10 +8557,10 @@
       <li><span class="kbd">F1</span> opens this manual, <span class="kbd">Esc</span> closes dialogs / the spectator window / chat</li>
     </ul>
     <h4>😣 Finding PortMasters 2 too hard?</h4>
-    <p>The simplest fix is to play on <strong>Easy</strong>. Easy mode keeps to the founding set of goods so the market never gets crowded, which lets you settle into the buy, produce and trade rhythm without pressure. It is already the default, so you only need to confirm it when you invite, and the "Difficulty &amp; Expansion" section spells out exactly what differs between the two levels.</p>
+    <p>The simplest fix is to play on <strong>Easy</strong>. Easy mode keeps to the founding set of goods so the market never gets crowded, which lets you settle into the buy, produce and trade rhythm without pressure. It is already the default, so you only need to confirm it when you invite, and the "Difficulty &amp; Expansion" section spells out exactly what differs between the levels.</p>
     <p>If you would still like the gentlest possible introduction, warm up with
     <a href="${PM1_URLS.en}" target="_blank" rel="noopener"><strong>PortMasters 1 →</strong></a>
-    first, with no online sync, no complex taxes, and a gentler intro to the buy → produce → trade loop.</p>
+    first. It has no online sync and no complex taxes, and it gives a gentler intro to the buy → produce → trade loop.</p>
   `,
       });
 
@@ -8603,7 +8603,7 @@
         document.getElementById("manual-body").innerHTML = manualContent(tab);
       }
 
-      /* Backward-compat for old entry points (F1, etc.) */
+      /* Backward compatibility for old entry points (F1, etc.) */
       /* ---------- Onboarding tour shown the first time a session is entered ---------- */
       function maybeShowOnboarding() {
         if (readStored("pm2_onboarded") === "1") return;
@@ -8624,10 +8624,10 @@
         "每回合必须支付<strong>工匠工资</strong>与 <strong>15 金币维护费</strong>，付不起立即破产。左侧面板会实时核算「本回合应付款项」，时刻盯紧它。",
         'Every round you must pay <strong>artisan wages</strong> plus <strong>15 gold upkeep</strong>. Miss it and you go bankrupt instantly. The left panel tallies "Due This Round" live; keep an eye on it.',
       )}</p>
-      <h4>${tr("2️⃣ 与其他船长同船同行", "2️⃣ You sail in lockstep with your fellow captains")}</h4>
+      <h4>${tr("2️⃣ 与其他船长同步航行", "2️⃣ You sail in lockstep with your fellow captains")}</h4>
       <p>${tr(
-        "每个阶段都需<strong>全员确认</strong>才推进（看底部「全员就绪 n/总数」）。右侧面板可随时查看每位同行的存款、声望、货物、工匠与增益；互市阶段可自由交易，💬 聊天随时沟通。",
-        "Every phase advances only when <strong>everyone confirms</strong> (see 'Ready n/total' at the bottom). The right panel shows each fellow captain's gold, renown, cargo, artisans and buffs; trade freely during Barter and talk any time via 💬.",
+        "每个阶段都需<strong>全员确认</strong>才推进（看底部「🔄 全员就绪 n / N」）。右侧面板可随时查看每位同行的存款、声望、货物、工匠与增益；互市阶段可自由交易，💬 聊天随时沟通。",
+        "Every phase advances only when <strong>everyone confirms</strong> (see the '🔄 Ready n / N' chip at the bottom). The right panel shows each fellow captain's gold, renown, cargo, artisans and buffs; trade freely during Barter and talk any time via 💬.",
       )}</p>
       <h4>${tr("3️⃣ 生产成品才赚大钱", "3️⃣ Real money is in finished goods")}</h4>
       <p>${tr(
@@ -8725,8 +8725,8 @@
         }
       });
 
-      /* ---------- Tooltips: one shared, viewport-aware bubble (see the .tip-bubble CSS note) ----------
-   Delegated from `document`, so re-rendered phase panels never need re-binding and every
+      /* ---------- Tooltips: one shared bubble that stays within the viewport (see the .tip-bubble CSS note) ----------
+   Delegated from `document`, so phase panels rendered again never need binding again and every
    current/future [data-tip] element is covered with zero markup churn. The bubble is a
    direct child of <body> (which has no transform/filter), so position:fixed is measured
    against the viewport and no ancestor overflow or stacking context can clip it. */
@@ -8818,7 +8818,7 @@
       applyLanguage();
       updateSky();
 
-      /* Then, before the player touches anything, try to re-identify with a stored token so a
+      /* Then, before the player touches anything, try to identify the player again with a stored token so a
    page refresh returns them to their room instead of to the login form. */
       tryResumeSession();
     </script>

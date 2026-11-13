@@ -1,16 +1,17 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-PortMasters multiplayer online server v4 (account edition)
-- Account system: register / log in (username + password, persisted per user in users.json)
-- Online lobby: logging in puts you online, with the online player list broadcast live; disconnecting takes you offline
-- Invite system: each player can send at most one invite per minute, which auto-expires after 60 seconds with no response;
-  the other player can accept (both enter a shared session) or decline (the sender gets a decline notice)
-- Shared session: 8 rounds in easy mode or 16 in hard mode, 8 phases per round, with both players
-  always on the same round and phase, advancing in sync via a "Continue (n/2)" mechanism
-- The barter phase requires both players to click "Ready" before moving on to artisan management
-- Chat system: both players in a session can message each other while online; sending is disabled while offline
-- The web page and WebSocket share the same port 8080 (so a single ngrok tunnel can expose both, with wss support)
+PortMasters 2 multiplayer server.
+
+- Accounts: register and log in with a username and password, stored in users.json.
+- Online lobby: logging in puts you online, the online list updates live, and disconnecting takes you offline.
+- Invitations: one invitation per minute, expiring after 60 seconds. The invited captain can accept or decline.
+- Open rooms: a host can open a room for two to five captains, who join or leave until the voyage starts.
+- Shared session: every captain stays on the same round and phase. Each phase advances once every
+  captain has confirmed. Difficulties run 8, 12 or 16 rounds, with two expansion tiers unlocked at
+  set rounds on Standard and Hard.
+- Chat, barter, fortunes, ship modules, Broker's Whisper, Emperor Mandates and the full economy.
+- The web page and WebSocket share one port, so a single tunnel can expose both with wss support.
 """
 
 import asyncio
@@ -39,19 +40,22 @@ PRODUCTS_TIER0 = ["麻衣", "布衣", "绫罗绸缎", "香囊"]
 PRODUCTS_TIER1 = ["紫铜镜", "青瓷器"]
 PRODUCTS_TIER2 = ["蕃香脂", "珠链"]
 PRODUCTS = PRODUCTS_TIER0 + PRODUCTS_TIER1 + PRODUCTS_TIER2
+SILK_FAMILY = ["丝绸", "绫罗绸缎", "香囊", "布衣"]
+SILK_PRODUCTS = ["绫罗绸缎", "香囊", "布衣", "蕃香脂", "珠链"]
+NEW_ROUTE_ITEMS = ["瓷土", "铜矿", "紫铜镜", "青瓷器"]
 
 PORTS_TIER0 = ["泉州港", "广州港", "宁波港", "扬州港", "杭州港"]
 PORTS_TIER1 = ["福州港", "高丽港"]
 PORTS_TIER2 = ["三佛齐港", "大食港"]
 
 # -------------------- Difficulty --------------------
-# A difficulty is the whole per-session pacing profile, and this table is its single source
+# A difficulty is the whole pacing profile for a session, and this table is its single source
 # of truth: voyage length (rounds), the round each content tier joins the pools (tier_unlock),
-# the corrupt-broker hazard (broker_corruption), the pirate-toll curve (pirate_loss), and the
+# the corrupt broker hazard (broker_corruption), the pirate toll curve (pirate_loss), and the
 # Emperor Mandate schedule (mandates). There is no longer a separate "max tier" cap, because
 # a tier_unlock map IS the cap: easy lists no tiers so it never leaves Tier 0, while standard
 # and hard schedule Tier 1 then Tier 2. pirate_loss is one tier name for a flat toll, or a
-# (first-half, second-half) pair that steps up at the midpoint; mandates map a round to a size
+# (first half, second half) pair that steps up at the midpoint; mandates map a round to a size
 # index into EMPEROR_MANDATE_TEMPLATES. Difficulty is a ladder, not a toggle: adding or
 # retuning a rung is a single entry here, with no other server code to touch.
 DIFFICULTIES = {
@@ -81,7 +85,7 @@ DEFAULT_DIFFICULTY = "easy"
 
 
 def normalize_difficulty(value):
-    """Coerce any client-supplied value to a known difficulty, defaulting to easy."""
+    """Coerce any value supplied by the client to a known difficulty, defaulting to easy."""
     return value if value in DIFFICULTIES else DEFAULT_DIFFICULTY
 
 
@@ -152,7 +156,7 @@ PIRATE_LOSS_TIERS = {
 
 def pirate_loss_pct(difficulty, round_no, max_rounds):
     """Raid severity (fraction of current gold) for this difficulty and round. The difficulty's
-    pirate_loss curve is one tier name for a flat toll, or a (first-half, second-half) pair that
+    pirate_loss curve is one tier name for a flat toll, or a (first half, second half) pair that
     steps up once the voyage passes its midpoint."""
     curve = difficulty_cfg(difficulty)["pirate_loss"]
     tier = curve[0] if (len(curve) == 1 or round_no <= max_rounds // 2) else curve[1]
@@ -162,20 +166,20 @@ def pirate_loss_pct(difficulty, round_no, max_rounds):
 # The escort fee scales with the captain's gold so it stays a real decision instead of
 # pocket change late game: a share of current wealth, never below a small floor (which keeps
 # it meaningful early when the share would round to almost nothing). Paired with the
-# wealth-based pirate toll, this makes upkeep a genuine gamble: pay a non-trivial fee for
+# wealth based pirate toll, this makes upkeep a genuine gamble: pay a non trivial fee for
 # certainty, or skip it and risk a percentage loss that a corrupt broker can amplify.
 ESCORT_COST_MIN = 10
 ESCORT_COST_PCT = 0.10
 
 # A corrupt broker may secretly tip off pirates when you pay for a whisper, raising this
-# round's raid chance. It is part of hard mode's higher-stakes information game and stays
+# round's raid chance. It is part of the higher stakes information game in hard mode and stays
 # off in easy mode (see DIFFICULTIES "broker_corruption"). CHANCE is the odds any single
 # purchase is corrupt; RISK is the raid probability it adds, and tips stack across the round.
 BROKER_CORRUPTION_CHANCE = 0.30
 BROKER_CORRUPTION_RISK = 0.20
 
 
-# Emperor Mandate: a special high-value levy that appears on the rounds each difficulty lists
+# Emperor Mandate: a special levy with a high value that appears on the rounds each difficulty lists
 # in its "mandates" schedule (see DIFFICULTIES). The scheduled value is a size index into the
 # templates below, so demand escalates over the voyage without ever inferring size from the raw
 # round number, and every rung's cadence lives in one place with its other pacing dials.
@@ -220,13 +224,13 @@ CHARTER_EVENTS = {
         "id": "tier1",
         "icon": "🗺️",
         "name": "市舶新政",
-        "desc": "福建市舶司新政颁布！瓷土、铜矿、青瓷器、紫铜镜加入行情；福州港、高丽港正式开埠；陶匠与铜匠加入劳务市场；新的福缘与战船改装随之而来。",
+        "desc": "福建市舶司新政颁布！瓷土、铜矿、青瓷器、紫铜镜加入行情；福州港、高丽港正式开埠；陶匠与铜匠加入劳务市场；新的福缘与船舶模块随之而来。",
     },
     2: {
         "id": "tier2",
         "icon": "🌏",
         "name": "万国通商",
-        "desc": "万国通商盛况空前！香料、珍珠、蕃香脂、珠链加入行情；三佛齐港、大食港正式开埠；香料师与珠宝匠加入劳务市场；更多福缘与战船改装随之而来。",
+        "desc": "万国通商盛况空前！香料、珍珠、蕃香脂、珠链加入行情；三佛齐港、大食港正式开埠；香料师与珠宝匠加入劳务市场；更多福缘与船舶模块随之而来。",
     },
 }
 
@@ -392,7 +396,7 @@ WAGES = {
     "jeweler": 24,
 }
 
-# Worker-type storage: each worker type maps to a worker-list attribute name on PlayerGame
+# Storage by worker type: each worker type maps to a worker list attribute name on PlayerGame
 WORKER_TYPES_BACKEND = [
     {"id": "weaver", "attr": "weavers"},
     {"id": "master", "attr": "masterWeavers"},
@@ -412,7 +416,7 @@ BOONS_TIER0 = [
         "id": "silk_wind",
         "name": "丝路顺风",
         "icon": "🌬️",
-        "desc": "本回合丝绸及成品运费减半。",
+        "desc": "本回合丝绸与丝织品运费减半。",
         "modifiers": {"transport_silk_discount": 0.5},
     },
     {
@@ -433,7 +437,7 @@ BOONS_TIER0 = [
         "id": "artisan_inspiration",
         "name": "匠人灵感",
         "icon": "🔨",
-        "desc": "本回合所有工人多生产1件。",
+        "desc": "本回合所有工匠多生产1件。",
         "modifiers": {"worker_bonus_production": 1},
     },
     {
@@ -461,7 +465,7 @@ BOONS_TIER0 = [
         "id": "master_apprentice",
         "name": "学徒传承",
         "icon": "🎓",
-        "desc": "本回合雇佣工资减半。",
+        "desc": "本回合工匠工资减半。",
         "modifiers": {"hire_discount": 0.5},
     },
 ]
@@ -537,13 +541,13 @@ MODULES_TIER0 = [
         "id": "artisans_workshop",
         "name": "工匠工坊",
         "icon": "🛠️",
-        "desc": "工人产量+1。工资+20%。",
+        "desc": "工匠产量+1。工资+20%。",
     },
     {
         "id": "tax_evasion",
         "name": "避税账本",
         "icon": "📒",
-        "desc": "所得税按增值税后利润计。15%概率在订单完成时罚款20金币(稽查)。",
+        "desc": "增值税与所得税减半。15%概率在订单完成时罚款20金币（稽查）。",
     },
     {
         "id": "silk_monopoly",
@@ -706,7 +710,7 @@ class PlayerGame:
         self.draftChoices = []  # this round's module batch; persists across cancel
         self.draftOpen = False  # is the draft panel currently shown?
         self.draftRolled = False  # has the batch been rolled this round?
-        self.draftRerolled = False  # has the once-per-round "Change Batch" been used?
+        self.draftRerolled = False  # has the once per round "Change Batch" been used?
         self.lastRoundSummary = None
         self.lastLogs = []
         self.logSeq = 0  # monotonic count of all log lines this game; lets the client toast only new ones
@@ -806,7 +810,7 @@ class PlayerGame:
         return any(m["id"] == mid for m in self.equippedModules)
 
     def get_resource_unit_discount(self, rtype):
-        """Flat per-unit gold discount on one resource/product type from the active boon
+        """Flat gold discount per unit on one resource or product type from the active boon
         and equipped modules. Shared by get_card_final_cost() (the real charge) and
         resource_cards_for_client() (the displayed price), so the two can never drift apart.
         """
@@ -831,8 +835,8 @@ class PlayerGame:
 
     def resource_cards_for_client(self):
         """Resource cards as the client should see them: each line and the card total carry
-        the real, post-discount price (boons + modules already applied) right alongside the
-        sticker price, instead of the client re-deriving discounts from raw modifier flags.
+        the real price after discounts (boons and modules already applied) right alongside the
+        sticker price, instead of the client working out discounts again from raw modifier flags.
         """
         cards = []
         for card in self.resourceCards:
@@ -1065,10 +1069,7 @@ class PlayerGame:
         return True
 
     def order_has_silk(self, order):
-        return any(
-            r["type"] in ["丝绸", "绫罗绸缎", "香囊", "布衣"]
-            for r in order["resources"]
-        )
+        return any(r["type"] in SILK_FAMILY for r in order["resources"])
 
     def order_transport_cost(self, order):
         """What delivering this order actually charges in shipping, ship level, boons and
@@ -1098,7 +1099,6 @@ class PlayerGame:
             if self.inventory.get(r["type"], 0) < r["required"]:
                 self.log(f"❌ 库存不足：{r['type']}×{r['required']}")
                 return False
-        has_silk = self.order_has_silk(order)
         transport = self.order_transport_cost(order)
         for r in order["resources"]:
             self.inventory[r["type"]] -= r["required"]
@@ -1115,13 +1115,17 @@ class PlayerGame:
         self.money -= transport
         self.roundCosts += transport
         self.totalCosts += transport
-        if self.has_module("silk_monopoly") and has_silk:
+        if (
+            self.has_module("silk_monopoly")
+            and order.get("isProductOrder")
+            and order["resources"][0]["type"] in SILK_PRODUCTS
+        ):
             reward = int(reward * 1.2)
         bonus = self.modifierFlags.get("product_order_bonus")
         if bonus and order["resources"][0]["type"] in bonus["products"]:
             reward = int(reward * (1 + bonus["pct"]))
-        if self.has_module("bureau_token") and order["resources"][0]["type"] in (
-            PRODUCTS_TIER1 + PRODUCTS_TIER2
+        if self.has_module("bureau_token") and any(
+            r["type"] in NEW_ROUTE_ITEMS for r in order["resources"]
         ):
             reward = int(reward * 1.1)
         if self.has_module("salvage_crane") and random.random() < 0.3:
@@ -1163,7 +1167,7 @@ class PlayerGame:
         return True
 
     def reroll_module_draft(self):
-        """The once-per-round 'Change Batch': swap the current options for a fresh roll."""
+        """The once per round 'Change Batch': swap the current options for a fresh roll."""
         if self.shipLevel == 0:
             self.log("❌ 旗舰尚无模块槽位，请先升级船坞")
             return False
@@ -1365,7 +1369,7 @@ class PlayerGame:
         return True
 
     def pirate_threat(self):
-        """The raw raid chance before mitigation: the weather plus any corrupt-broker tips."""
+        """The raw raid chance before mitigation: the weather plus any corrupt broker tips."""
         return (self.monsoon_state or {}).get("pirateRisk", 0) + self.broker_pirate_risk
 
     def effective_pirate_risk(self):
@@ -1396,12 +1400,9 @@ class PlayerGame:
             self.log(f"🏴‍☠️ 海盗袭扰，损失{loss}金币（财富的{round(pct * 100)}%）")
 
     def end_round(self):
-        pre_tax = (
-            self.roundRevenue
-            - self.roundCosts
-            - self.maintenanceCosts
-            - self.workerWages
-        )
+        # roundCosts already includes this round's wages and maintenance, so the taxable
+        # base is revenue minus that one total. Subtracting the parts again double counted them.
+        pre_tax = self.roundRevenue - self.roundCosts
         tax = self.calc_income_tax(pre_tax)
         paid_tax = 0
         if tax > 0 and self.money >= tax:
@@ -1570,7 +1571,7 @@ class UserStore:
         rec = self.users.get(username)
         if not isinstance(rec, dict) or "salt" not in rec or "hash" not in rec:
             return False, "用户名或密码错误"
-        # Constant-time compare so a wrong password can't be narrowed down by response timing.
+        # Constant time compare so a wrong password can't be narrowed down by response timing.
         if not hmac.compare_digest(self._hash(password, rec["salt"]), rec["hash"]):
             return False, "用户名或密码错误"
         return True, "登录成功"
@@ -1578,10 +1579,10 @@ class UserStore:
 
 # -------------------- Shared game session --------------------
 # Barter is the one place clients hand us item lists that we then apply to inventories, so it
-# must be validated, not trusted. A well-formed entry is a known tradeable good (or gold) with a
-# positive integer quantity. Anything else is dropped, which closes the negative-quantity exploit
+# must be validated, not trusted. A well formed entry is a known tradeable good (or gold) with a
+# positive integer quantity. Anything else is dropped, which closes the negative quantity exploit
 # (a crafted order would otherwise add goods/gold to the proposer and subtract from the accepter)
-# and guarantees stored orders never crash settlement or the reject-text formatting.
+# and guarantees stored orders never crash settlement or the formatting of rejection text.
 TRADEABLE_TYPES = set(RESOURCES) | set(PRODUCTS) | {"金币"}
 
 
@@ -1617,8 +1618,8 @@ def sanitize_trade_items(items):
 
 
 class GameSession:
-    """A game room of 2-5 players: every member stays in sync on the same round and phase.
-    A session starts as an unstarted lobby (players may freely join/leave, see
+    """A game room of 2 to 5 players: every member stays in sync on the same round and phase.
+    A session starts as an unstarted lobby (players may freely join and leave, see
     create_room/join_room/leave_room below) and becomes a live game once start() runs.
     """
 
@@ -1639,7 +1640,7 @@ class GameSession:
         self.trade_id_counter = 0
         self.trade_ready = (
             []
-        )  # per-slot: whether each player has clicked ready during the barter phase
+        )  # per slot: whether each player has clicked ready during the barter phase
         self.ready = set()  # slots that have clicked "continue" in the current phase
         self.end_votes = (
             set()
@@ -1649,7 +1650,7 @@ class GameSession:
         self.monsoon_cycle_cache = {}
 
     def start(self):
-        """Builds per-player game state from the current roster and moves the room from lobby to live play."""
+        """Builds game state for each player from the current roster and moves the room from lobby to live play."""
         self.games = [PlayerGame(self.difficulty) for _ in self.players]
         for i, g in enumerate(self.games):
             g.slot = i + 1
@@ -1663,10 +1664,10 @@ class GameSession:
 
     # ---------- Ending the session early (distinct from finishing it) ----------
     def end_vote_complete(self):
-        # Unlike gate_complete(), bankrupt/finished players do NOT auto-count here: ending the
+        # Unlike gate_complete(), players who are bankrupt or finished do NOT count here: ending the
         # whole session is a real decision every player still has a stake in (a bankrupt
         # player may still want to wait and restart with the room rather than disband it),
-        # so it requires an explicit vote from every single player, with no auto-yes shortcut.
+        # so it requires an explicit vote from every single player, with no automatic yes shortcut.
         return len(self.end_votes) == len(self.players)
 
     # ---------- Identity ----------
@@ -1681,7 +1682,7 @@ class GameSession:
         return self.games[0].phase
 
     def _set_phase(self, phase):
-        # Players in an end state (bankrupt/finished) stay on their own end-game page and no longer follow the session's phase progression
+        # Players in an end state (bankrupt or finished) stay on their own end game page and no longer follow the session's phase progression
         for g in self.games:
             if not g.gameOver:
                 g.phase = phase
@@ -1704,7 +1705,7 @@ class GameSession:
             g.set_monsoon_state(self.monsoon_state)
 
     def gate_complete(self):
-        # Bankrupt/finished players count as auto-ready so they never block the rest of the room
+        # Players who are bankrupt or finished count as ready automatically so they never block the rest of the room
         return all((i in self.ready) or g.gameOver for i, g in enumerate(self.games))
 
     def trade_gate_complete(self):
@@ -1848,9 +1849,7 @@ class GameSession:
         sell = sanitize_trade_items(sell_items)
         buy = sanitize_trade_items(buy_items)
         if not sell and not buy:
-            return (
-                None  # nothing well-formed to trade; ignore the malformed/empty request
-            )
+            return None  # nothing well formed to trade; ignore the malformed or empty request
         self.trade_id_counter += 1
         order = {
             "id": f"trade_{self.trade_id_counter}",
@@ -1997,7 +1996,7 @@ async def broadcast_online_users():
 
 
 # -------------------- Resumable session tokens --------------------
-# Issued on every successful login so the next fresh connection can re-identify itself silently
+# Issued on every successful login so the next fresh connection can identify itself again silently
 # instead of making the player retype their password. In memory only, with the same lifetime as
 # ONLINE and SESSIONS: restarting the process ends every voyage anyway, so there is nothing to
 # resume into afterwards.
@@ -2215,7 +2214,7 @@ async def handle_respond_invite(responder, sender, accept):
 
 
 # -------------------- Room (recruit) system --------------------
-# Alongside the 1:1 invite above, a player may host an open room for 2-5 players: anyone
+# Alongside the 1:1 invite above, a player may host an open room for 2 to 5 players: anyone
 # online and not already in a session can join or leave freely while the room is still
 # waiting, and the host starts the voyage once at least two players are in.
 def room_roster_payload(room):
@@ -2256,7 +2255,7 @@ async def broadcast_room_roster(room):
 
 
 async def leave_pending_room(username):
-    """Removes username from their not-yet-started room, promoting the next member to host
+    """Removes username from their room that has not started yet, promoting the next member to host
     or dissolving the room if it's now empty. Shared by the explicit leave_room action and by
     disconnecting while still waiting in a room's lobby, since neither case has a live game
     to preserve."""
@@ -2361,7 +2360,7 @@ async def handle_send_chat(sender, message):
     if sess is None:
         await send_to_user(
             sender,
-            {"type": "system_message", "message": "你还没有游戏伙伴，无法发送消息"},
+            {"type": "system_message", "message": "你还没有加入航程，无法发送消息"},
         )
         return
     others = [u for u in sess.players if u != sender]
@@ -2390,7 +2389,7 @@ async def end_game_session(sess):
         await send_to_user(u, {"type": "session_ended"})
 
 
-# -------------------- In-game actions --------------------
+# -------------------- Actions during the game --------------------
 async def handle_game_action(username, data):
     action = data.get("action")
     sess = SESSIONS.get(username)
@@ -2401,7 +2400,7 @@ async def handle_game_action(username, data):
     phase = game.phase
     changed = False
 
-    # Players in an end state (bankrupt/finished) may only perform read-only spectator actions,
+    # Players in an end state (bankrupt or finished) may only perform read only spectator actions,
     # restart, or vote to end the session entirely (they still have a real say in that decision)
     if game.gameOver and action not in ("join_game", "restart", "end_session"):
         return
@@ -2552,7 +2551,7 @@ async def handle_game_action(username, data):
             game.reroll_module_draft()
             changed = True
     elif action == "restart":
-        # Only allow resetting the whole room once every other player has also finished (settled or bankrupt), keeping the room in sync
+        # Only allow resetting the whole room once every other captain has also finished (settled or bankrupt), keeping the room in sync
         if all(g.gameOver for i, g in enumerate(sess.games) if i != slot):
             sess.restart()
             for u in sess.players:
@@ -2561,7 +2560,7 @@ async def handle_game_action(username, data):
                         u,
                         {
                             "type": "system_message",
-                            "message": "对方重新开始了游戏，双方进度已重置",
+                            "message": "其他玩家重新开始了游戏，本局进度已重置",
                         },
                     )
             changed = True
@@ -2595,7 +2594,7 @@ async def handler(websocket):
             except Exception:
                 continue
             # One malformed or unexpected message must never tear down the connection, which
-            # would also strand the partner in a shared session. Isolate per-message handling:
+            # would also strand the other captains in a shared session. Isolate the handling of each message:
             # log and keep serving on any error, but let a real disconnect propagate.
             try:
                 action = data.get("action")
@@ -2646,7 +2645,7 @@ async def handler(websocket):
                             )
                         else:
                             # A valid token is proof of identity, so this is the same account
-                            # re-identifying itself. Deliberately NOT refused when the name still
+                            # identifying itself again. Deliberately NOT refused when the name still
                             # looks online: a refreshing browser opens the new socket before the
                             # old one's close is processed, so the stale entry is usually still
                             # in ONLINE right now, and refusing there logged players out by the
@@ -2733,7 +2732,7 @@ async def handler(websocket):
                     inv["to"], {"type": "invite_cancelled", "from": username}
                 )
             await broadcast_online_users()
-            # A not-yet-started room has no live game to preserve, so disconnecting from one
+            # A room that has not started yet has no live game to preserve, so disconnecting from one
             # is treated exactly like an explicit leave (frees the slot, may promote a host).
             sess = SESSIONS.get(username)
             if sess is not None and not sess.started:
@@ -2763,7 +2762,7 @@ async def handler(websocket):
 # -------------------- HTTP static file serving (shares the WebSocket port) --------------------
 # Serving static files on the same port as the WebSocket server lets a single ngrok tunnel
 # (e.g. ngrok http 8080) expose both the web page and the WebSocket, with automatic
-# https/wss adaptation, avoiding browser mixed-content restrictions.
+# https/wss adaptation, avoiding browser mixed content restrictions.
 WEB_ROOT = os.path.dirname(os.path.abspath(__file__))
 
 
