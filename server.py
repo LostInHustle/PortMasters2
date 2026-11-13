@@ -19,7 +19,6 @@ import json
 import math
 import random
 import http
-import mimetypes
 import websockets
 from websockets.datastructures import Headers
 from websockets.http11 import Response
@@ -144,7 +143,7 @@ def phase_option_count(round_no, tier_unlock):
 
 
 # Pirate raids now bite a fraction of the captain's current gold rather than a flat toll,
-# so they stay dangerous as the economy grows. The weather still sets pirateRisk (the
+# so they stay dangerous as the economy grows. The monsoon still sets pirateRisk (the
 # chance a raid lands); these tiers set how hard it bites when it does. Severity scales
 # with the stakes, mapped to a tier by pirate_loss_pct below.
 PIRATE_LOSS_TIERS = {
@@ -529,13 +528,13 @@ MODULES_TIER0 = [
         "id": "smugglers_hold",
         "name": "走私暗舱",
         "icon": "🏴‍☠️",
-        "desc": "采购成本−15%。所得税+20%。",
+        "desc": "采购成本降低15%。所得税提高20%。",
     },
     {
         "id": "bulk_hauler",
         "name": "散货索具",
         "icon": "🏗️",
-        "desc": "每件货物运费−1。船坞升级费用+15金币。",
+        "desc": "每件货物运费减少1金币。船坞升级费用增加15金币。",
     },
     {
         "id": "artisans_workshop",
@@ -571,7 +570,7 @@ MODULES_TIER0 = [
         "id": "overdrive_engine",
         "name": "超载引擎",
         "icon": "⚡",
-        "desc": "运费−5金币。维护费+10金币。",
+        "desc": "运费减少5金币。维护费增加10金币。",
     },
 ]
 
@@ -673,13 +672,7 @@ class PlayerGame:
         self.score = 0
         self.currentRound = 1
         self.maxRounds = difficulty_rounds(self.difficulty)
-        self.totalRevenue = 0
-        self.totalCosts = 0
-        self.materialCosts = 0
         self.workerWages = 0
-        self.maintenanceCosts = 0
-        self.vatPaid = 0
-        self.incomeTaxPaid = 0
         self.roundRevenue = 0
         self.roundCosts = 0
         for w in WORKER_TYPES_BACKEND:
@@ -694,8 +687,6 @@ class PlayerGame:
         self.customerCards = []
         self.purchasedCards = set()
         self.completedOrders = set()
-        self.purchaseCount = 0
-        self.orderCount = 0
         self.gameOver = False
         self.bankrupt = False
         self.modifierFlags = {}
@@ -778,12 +769,16 @@ class PlayerGame:
             cost = max(0, cost - 3 * treasure_qty)
         return max(0, cost)
 
+    def product_material_cost(self, product):
+        recipe = RECIPES[product]
+        return sum(
+            sum(COMMODITIES[m]["basePrice"]) / 2 * a
+            for m, a in recipe["materials"].items()
+        )
+
     def calc_vat(self, product, selling_price):
         recipe = RECIPES[product]
-        mat_cost = 0
-        for m, a in recipe["materials"].items():
-            avg = sum(COMMODITIES[m]["basePrice"]) / 2
-            mat_cost += avg * a
+        mat_cost = self.product_material_cost(product)
         worker_cost = WAGES[recipe["worker_type"]]
         taxable = selling_price - mat_cost - worker_cost
         if taxable > 0:
@@ -859,8 +854,8 @@ class PlayerGame:
     def effective_wage(self, wtype):
         """What one worker of this type actually costs at the next Upkeep.
 
-        Single source of truth for wages: pay_wages() charges exactly this, get_hire_cost()
-        gates hiring on it, and estimated_wages() previews it, so the number the player is
+        Single source of truth for wages: pay_wages() charges exactly this, the hire action
+        gates on it, and estimated_wages() previews it, so the number the player is
         shown can never drift from the number they are charged. The Apprentice Legacy boon
         (hire_discount) is a modifier on this round's wage bill, which is what its description
         promises and what the artisan table displays.
@@ -879,9 +874,6 @@ class PlayerGame:
             self.effective_wage(w_def["id"]) * len(getattr(self, w_def["attr"]))
             for w_def in WORKER_TYPES_BACKEND
         )
-
-    def get_hire_cost(self, wtype):
-        return self.effective_wage(wtype)
 
     def set_monsoon_state(self, state):
         self.monsoon_state = state.copy()
@@ -1016,12 +1008,8 @@ class PlayerGame:
         qty = rand(1, 2)
         port = choice(self.unlocked_ports())
         recipe = RECIPES[product]
-        mat_cost = 0
-        details = []
-        for m, a in recipe["materials"].items():
-            avg = sum(COMMODITIES[m]["basePrice"]) / 2
-            mat_cost += avg * a
-            details.append(f"{m}×{a}")
+        mat_cost = self.product_material_cost(product)
+        details = [f"{m}×{a}" for m, a in recipe["materials"].items()]
         markup = 1.4 + random.random() * 0.4
         unit_price = int(mat_cost * markup)
         unit_price = max(
@@ -1035,7 +1023,6 @@ class PlayerGame:
                     "type": product,
                     "quantity": qty,
                     "price": unit_price,
-                    "materialCost": mat_cost,
                     "materialDetails": " + ".join(details),
                 }
             ],
@@ -1060,11 +1047,9 @@ class PlayerGame:
             return False
         self.money -= cost
         self.roundCosts += cost
-        self.totalCosts += cost
         for r in card["resources"]:
             self.inventory[r["type"]] += r["quantity"]
         self.purchasedCards.add(card["id"])
-        self.purchaseCount += 1
         self.log(f"🛒 采购完成，花费{cost}金币")
         return True
 
@@ -1111,10 +1096,8 @@ class PlayerGame:
             )
             total_vat = unit_vat * order["resources"][0]["required"]
             reward -= total_vat
-            self.vatPaid += total_vat
         self.money -= transport
         self.roundCosts += transport
-        self.totalCosts += transport
         if (
             self.has_module("silk_monopoly")
             and order.get("isProductOrder")
@@ -1136,10 +1119,8 @@ class PlayerGame:
             self.log("🚨 避税账本触发，罚款20金币！")
         self.money += reward
         self.roundRevenue += reward
-        self.totalRevenue += reward
         self.score += max(0, reward - transport)
         self.completedOrders.add(order["id"])
-        self.orderCount += 1
         self.log(f"📦 订单完成，净利润{reward - transport}金币")
         return True
 
@@ -1253,16 +1234,12 @@ class PlayerGame:
         if random.random() < BROKER_CORRUPTION_CHANCE:
             self.broker_pirate_risk += BROKER_CORRUPTION_RISK
             self.log(
-                f"🕵️ 这名牙行形迹可疑，疑似走漏了你的行踪，本程海盗风险上升{round(BROKER_CORRUPTION_RISK * 100)}%！"
+                f"🕵️ 这名牙行形迹可疑，疑似走漏了你的行踪，本回合海盗风险上升{round(BROKER_CORRUPTION_RISK * 100)}%！"
             )
 
     def hire_worker(self, wtype):
         if wtype not in self.unlocked_worker_types():
             self.log("❌ 该工种尚未开放")
-            return False
-        wage = self.get_hire_cost(wtype)
-        if self.money < wage:
-            self.log("❌ 资金不足，无法雇佣")
             return False
         lst = getattr(self, WORKER_ATTR[wtype])
         lst.append(
@@ -1337,9 +1314,7 @@ class PlayerGame:
         self.resolve_pirate_hazard()
         if self.money >= cost:
             self.money -= cost
-            self.maintenanceCosts += cost
             self.roundCosts += cost
-            self.totalCosts += cost
             return True
         else:
             self.money = 0
@@ -1363,13 +1338,12 @@ class PlayerGame:
             return False
         self.money -= cost
         self.roundCosts += cost
-        self.totalCosts += cost
         self.pirate_immunity = True
         self.log(f"🛡️ 雇佣护航，花费{cost}金币")
         return True
 
     def pirate_threat(self):
-        """The raw raid chance before mitigation: the weather plus any corrupt broker tips."""
+        """The raw raid chance before mitigation: the monsoon plus any corrupt broker tips."""
         return (self.monsoon_state or {}).get("pirateRisk", 0) + self.broker_pirate_risk
 
     def effective_pirate_risk(self):
@@ -1389,14 +1363,13 @@ class PlayerGame:
         if self.pirate_threat() <= 0:
             return
         if self.pirate_immunity:
-            self.log("🛡️ 护航舰队震慑海盗，本程无损")
+            self.log("🛡️ 护航舰队震慑海盗，本回合无损")
             return
         if random.random() < self.effective_pirate_risk():
             pct = pirate_loss_pct(self.difficulty, self.currentRound, self.maxRounds)
             loss = int(self.money * pct)
             self.money -= loss
             self.roundCosts += loss
-            self.totalCosts += loss
             self.log(f"🏴‍☠️ 海盗袭扰，损失{loss}金币（财富的{round(pct * 100)}%）")
 
     def end_round(self):
@@ -1408,10 +1381,8 @@ class PlayerGame:
         if tax > 0 and self.money >= tax:
             paid_tax = tax
             self.money -= tax
-            self.incomeTaxPaid += tax
-        elif tax > 0 and self.money < tax:
+        elif tax > 0:
             paid_tax = self.money
-            self.incomeTaxPaid += self.money
             self.money = 0
         # Save this round's settlement summary before resetting round counters, for display on the next round's Set Sail transition page
         self.lastRoundSummary = {
@@ -1434,16 +1405,12 @@ class PlayerGame:
         self.draftRerolled = False
         self.roundRevenue = 0
         self.roundCosts = 0
-        self.maintenanceCosts = 0
-        self.materialCosts = 0
         self.workerWages = 0
         self.currentRound += 1
         if self.currentRound > self.maxRounds:
             self.gameOver = True
             return
         self.phase = 0
-        self.purchaseCount = 0
-        self.orderCount = 0
         self.resourceCards = []
         self.customerCards = []
         self.purchasedCards.clear()
@@ -1470,8 +1437,6 @@ class PlayerGame:
             "phase": self.phase,
             "resourceCards": self.resource_cards_for_client(),
             "customerCards": self.customer_cards_for_client(),
-            "purchaseCount": self.purchaseCount,
-            "orderCount": self.orderCount,
             "purchasedCards": list(self.purchasedCards),
             "completedOrders": list(self.completedOrders),
             "weavers": self.weavers,
@@ -1876,8 +1841,6 @@ class GameSession:
             return False
         seller_game = self.games[order["sellerSlot"]]
         buyer_game = self.games[buyer_slot]
-        if not seller_game or not buyer_game:
-            return False
         # Check the seller's resources
         for item in order["sell"]:
             if item["type"] == "金币":
@@ -2768,10 +2731,11 @@ async def handler(websocket):
 
 
 # -------------------- HTTP static file serving (shares the WebSocket port) --------------------
-# Serving static files on the same port as the WebSocket server lets a single ngrok tunnel
+# Serving the game page on the same port as the WebSocket server lets a single ngrok tunnel
 # (e.g. ngrok http 8080) expose both the web page and the WebSocket, with automatic
 # https/wss adaptation, avoiding browser mixed content restrictions.
 WEB_ROOT = os.path.dirname(os.path.abspath(__file__))
+GAME_PAGE = os.path.join(WEB_ROOT, "PortMasters_online.html")
 
 
 async def process_request(connection, request):
@@ -2780,26 +2744,21 @@ async def process_request(connection, request):
         return None
 
     path = request.path.split("?", 1)[0]
-    if path in ("/", ""):
-        path = "/PortMasters_online.html"
     if path == "/favicon.ico":
         return connection.respond(http.HTTPStatus.NO_CONTENT, "")
-
-    file_path = os.path.normpath(os.path.join(WEB_ROOT, path.lstrip("/")))
-    if not (
-        file_path == WEB_ROOT or file_path.startswith(WEB_ROOT + os.sep)
-    ) or not os.path.isfile(file_path):
+    if path not in ("/", "", "/PortMasters_online.html"):
         return connection.respond(http.HTTPStatus.NOT_FOUND, "Not Found")
 
-    content_type, _ = mimetypes.guess_type(file_path)
-    with open(file_path, "rb") as f:
+    # Only the game page is public. Serving the whole project directory would hand out
+    # users.json, the server source and the virtual environment to anyone who asks.
+    with open(GAME_PAGE, "rb") as f:
         body = f.read()
     return Response(
         http.HTTPStatus.OK,
         "OK",
         Headers(
             {
-                "Content-Type": content_type or "application/octet-stream",
+                "Content-Type": "text/html; charset=utf-8",
                 "Content-Length": str(len(body)),
             }
         ),
