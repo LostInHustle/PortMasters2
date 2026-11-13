@@ -1285,6 +1285,26 @@
         color: rgba(224, 242, 254, 0.8);
         font-size: 11.5px;
       }
+      /* The action bar collapses to a slim strip so it stops crowding the stage.
+   The hint and secondary actions hide, and the toggle itself reopens the bar. */
+      .control-panel.collapsed {
+        padding: 6px 12px;
+        gap: 8px;
+      }
+      .control-panel.collapsed .control-hint,
+      .control-panel.collapsed .control-secondary {
+        display: none;
+      }
+      .control-panel .btn.control-toggle {
+        flex: none;
+        width: 30px;
+        height: 30px;
+        min-height: 30px;
+        padding: 0;
+        border-radius: 50%;
+        font-size: 13px;
+        line-height: 1;
+      }
 
       /* ===== Log ===== */
       .log-panel {
@@ -1977,7 +1997,7 @@
       }
       /* Names on the left (always visible, never scrolled out of view), the selected captain's
    full data on the right. Splitting navigation from content like this is what lets the
-   detail side stay wide enough to render in 1-2 columns without the cramped, deeply
+   detail side stay wide enough to render in one or two columns without the cramped, deeply
    scrolled single column a narrow sidebar forces. */
       .spectate-body {
         padding: 14px 18px;
@@ -2162,31 +2182,6 @@
         }
         .sp-split {
           grid-template-columns: 1fr;
-        }
-      }
-
-      /* ===== Responsive ===== */
-      @media (max-width: 1280px) {
-        #app {
-          grid-template-columns: 260px minmax(0, 1fr) 260px;
-        }
-      }
-      @media (max-width: 1024px) {
-        #app {
-          grid-template-columns: 1fr;
-          grid-template-areas:
-            "header"
-            "main"
-            "me"
-            "partner"
-            "actions"
-            "log";
-        }
-        .side-panel {
-          max-height: 340px;
-        }
-        .phase-panel {
-          max-height: none;
         }
       }
 
@@ -3078,15 +3073,15 @@
 
       /* ===== The deck: rail, stage with its control bar, console ===== */
       #app {
-        max-width: 1780px;
-        padding: 16px;
-        gap: 14px 16px;
-        grid-template-columns: clamp(250px, 19vw, 290px) minmax(0, 1fr) clamp(
-            280px,
-            22vw,
-            325px
+        max-width: 1600px;
+        padding: 14px 20px;
+        gap: 12px;
+        grid-template-columns: clamp(232px, 21vw, 292px) minmax(0, 1fr) clamp(
+            272px,
+            24vw,
+            348px
           );
-        grid-template-rows: auto minmax(0, 1fr) 150px auto;
+        grid-template-rows: auto auto minmax(0, 1fr) auto;
         grid-template-areas:
           "header header header"
           "me main partner"
@@ -3098,7 +3093,10 @@
         min-height: 0;
         padding: 10px 16px;
       }
-      @media (min-width: 1280px) and (min-height: 700px) {
+      /* The deck fits the screen from laptop width upward, the same point where the parallel release
+         stops stacking. Each panel scrolls on its own, and a pad held sideways keeps a wide stage
+         between two slim rails. */
+      @media (min-width: 1024px) {
         #app {
           height: 100vh;
           height: 100dvh;
@@ -3108,29 +3106,19 @@
           max-height: none;
           min-height: 0;
         }
-      }
-      @media (max-width: 1279px) {
-        #app {
-          grid-template-columns: 260px minmax(0, 1fr);
-          grid-template-rows: auto auto auto auto auto;
-          grid-template-areas:
-            "header header"
-            "me main"
-            "me actions"
-            "partner partner"
-            "log log";
-        }
-        .log-panel {
-          height: 150px;
-        }
-        .phase-panel {
-          max-height: none;
+        /* Eight stops share the narrow stage instead of pushing the last one past the edge. */
+        .step {
+          min-width: 0;
         }
       }
-      @media (max-width: 1024px) {
+      /* Smaller screens scroll as a page. The stage and its control bar come first, then the fleet
+         card, the fellow captains and the log, so the next decision is always above the reference
+         panels rather than below them. */
+      @media (max-width: 1023px) {
         #app {
           padding: 12px;
           grid-template-columns: minmax(0, 1fr);
+          grid-template-rows: none;
           grid-template-areas:
             "header"
             "main"
@@ -3139,10 +3127,14 @@
             "partner"
             "log";
         }
-        .control-panel {
-          position: sticky;
-          bottom: 10px;
-          z-index: 40;
+        .side-panel,
+        .phase-panel {
+          max-height: none;
+          min-height: 0;
+          overflow: visible;
+        }
+        .log-panel {
+          height: 260px;
         }
       }
       @media (max-width: 760px) {
@@ -3180,6 +3172,27 @@
       #toast-stack {
         top: 84px;
       }
+      /* Opens the captain"s own fleet in the spectator window. The whole fleet card header does the
+         same on a click. */
+      .crew-head-self {
+        cursor: pointer;
+      }
+      .self-view-btn {
+        display: block;
+        width: 100%;
+        margin: -2px 0 12px;
+        padding: 8px 12px;
+      }
+      /* The fleet card already carries that button. On a portrait screen the card sits below the
+         stage, so the header offers the same shortcut there. */
+      .header-self-view {
+        display: none;
+      }
+      @media (max-width: 1023px) and (min-height: 521px) {
+        .header-self-view {
+          display: inline-block;
+        }
+      }
       .card-grid {
         grid-template-columns: repeat(auto-fill, minmax(min(100%, 215px), 1fr));
       }
@@ -3211,7 +3224,8 @@
         justify-content: flex-start;
       }
       .control-panel {
-        flex-wrap: nowrap;
+        flex-wrap: wrap;
+        container: controlbar / inline-size;
       }
       .control-spacer {
         display: none;
@@ -3235,13 +3249,39 @@
         border-radius: 8px;
         background: rgba(248, 251, 249, 0.96);
       }
-      @media (max-width: 1024px) {
-        .control-panel {
-          flex-wrap: wrap;
-        }
+      /* When the bar is too narrow for the hint to share a line with the buttons, the hint takes the
+         first line and the chip and buttons share the second, instead of the hint shrinking to a bare
+         icon or the main button dropping onto a third line. */
+      @container controlbar (max-width: 800px) {
         .control-hint {
+          order: -1;
+          flex: 1 1 100%;
           white-space: normal;
-          flex-basis: 200px;
+        }
+        .control-spacer {
+          display: block;
+          flex: 1;
+        }
+      }
+      /* The header buttons share each row evenly instead of leaving one stranded on its own line. */
+      @media (max-width: 1023px) and (min-height: 521px) {
+        .header {
+          border-radius: 22px;
+          padding: 12px;
+        }
+        .header-actions {
+          flex: 1 1 100%;
+        }
+        .header-actions > * {
+          flex: 1 1 calc(25% - 8px);
+          min-width: 0;
+          justify-content: center;
+          text-align: center;
+        }
+      }
+      @media (max-width: 560px) and (min-height: 521px) {
+        .header-actions > * {
+          flex-basis: calc(50% - 8px);
         }
       }
       /* ===== Login and register: a short, wide card. The harbor greeting sits on the left, the form
@@ -3328,7 +3368,7 @@
       }
       /* Landscape phones: the header shrinks to one slim row and the control bar becomes a thumb
          column beside the stage, so the cards keep most of the short screen. */
-      @media (max-height: 520px) and (orientation: landscape) and (max-width: 1024px) {
+      @media (max-height: 520px) and (orientation: landscape) and (max-width: 1023px) {
         #app {
           padding: 8px;
           gap: 8px;
@@ -3483,6 +3523,13 @@
           </button>
           <button class="btn btn-ghost" id="btn-chat" onclick="toggleChat()">
             💬 Chat
+          </button>
+          <button
+            class="btn btn-ghost header-self-view"
+            id="btn-self-view"
+            onclick="openCaptainViewer(currentUser)"
+          >
+            👀 Spectator View
           </button>
           <button
             class="btn btn-warning"
@@ -3795,7 +3842,7 @@
             ),
           summary: () =>
             tr(
-              "高难模式是一段更长的航程，共 16 个回合，并开放完整的海上贸易。它的规则从第一回合起就比轻松更严苛：海盗更为凶悍，部分牙行还会暗通海盗。丝路特许随后在第六回合引入瓷土与铜矿，并在第十回合引入香料与珍珠，连同它们的进阶成品、海外港口、专精工匠，以及更加丰富的福缘、船舶模块与季风。需要同时打理的事务多得多，对舱位与金币的竞争也会激烈许多，因此它更看重你长远的谋划与权衡。",
+              "高难模式是一段更长的航程，共 16 个回合，并开放完整的海上贸易。它的规则从第一回合起就比轻松更严苛：海盗更为凶悍，部分可疑牙行还会暗通海盗。丝路特许随后在第六回合引入瓷土与铜矿，并在第十回合引入香料与珍珠，连同它们的进阶成品、海外港口、专精工匠，以及更加丰富的福缘、船舶模块与季风。需要同时打理的事务多得多，对舱位与金币的竞争也会激烈许多，因此它更看重你长远的谋划与权衡。",
               "Hard mode is a longer voyage of 16 rounds that opens the full maritime trade. Its rules are harsher than Easy from the first round: pirates raid harder, and some brokers tip them off. The Silk Road Charter then brings in porcelain clay and copper ore at round six and spices and pearls at round ten, together with their advanced products, the foreign ports, the specialist artisans, and a much richer set of fortunes, ship modules and monsoons. There is a great deal more to manage at once and the competition for cargo space and coin grows far fiercer, so it rewards careful long term planning and judgement.",
             ),
         },
@@ -5037,6 +5084,14 @@
           "btn-chat",
           tr("💬 聊天", "💬 Chat"),
           tr("与其他船长聊天", "Chat with your fellow captains"),
+        );
+        set(
+          "btn-self-view",
+          tr("👀 观战视图", "👀 Spectator View"),
+          tr(
+            "在观战窗口中查看我的船队，就像其他船长看到的那样",
+            "See your own fleet in the spectator window, just as the other captains see it",
+          ),
         );
         set(
           "btn-logout",
@@ -6401,18 +6456,16 @@
         const g = serverState.yourGame;
         if (!g) return;
         const p = document.getElementById("status-panel");
-        const iAmHost = serverState.host === currentUser;
-
         let html = `
-    <div class="crew-head"${iAmHost ? ' id="self-view-head"' : ""}>
+    <div class="crew-head crew-head-self" onclick="openCaptainViewer(currentUser)" title="${tr("在观战窗口中查看我的船队，就像其他船长看到的那样", "See your own fleet in the spectator window, just as the other captains see it")}">
       <div class="avatar" style="--hue:${captainHue(currentUser)}">${captainGlyph(currentUser)}</div>
       <div class="who">
         <div class="nm">${escapeHtml(currentUser || tr("我", "Me"))}</div>
         <div class="role">${tr("我的船队", "My fleet")}${tr(" · ", ", ")}${g.slot ? tr("玩家", "Player ") + g.slot : ""}</div>
       </div>
       <span class="dot on" title="${tr("在线", "Online")}"></span>
-      ${iAmHost ? '<span class="roster-toggle">🔍</span>' : ""}
     </div>
+    <button type="button" class="btn btn-ghost self-view-btn" onclick="openCaptainViewer(currentUser)">${tr("👀 观战视图", "👀 Spectator View")}</button>
     ${mateNoteStatusHTML(g)}
     ${crewSectionsHTML(g)}
   `;
@@ -6435,21 +6488,6 @@
     </div>`;
         }
         paintHTML(p, html);
-
-        /* The host's own captain row doubles as an entry into the same viewer every other
-     captain is opened from, so the host can inspect their account exactly as a spectator
-     sees it. */
-        if (iAmHost) {
-          const head = p.querySelector("#self-view-head");
-          if (head) {
-            head.style.cursor = "pointer";
-            head.title = tr(
-              "在观战窗口中查看我的船队",
-              "View my fleet in the spectator window",
-            );
-            head.onclick = () => openCaptainViewer(currentUser);
-          }
-        }
       }
 
       /* ===== Roster: every other captain in the room, each a collapsed widget ===== */
@@ -7593,7 +7631,7 @@
    Captain detail viewer
    The single place that shows a room member's full fleet data, used for browsing a fellow
    captain's stats during the game (from a roster widget), for spectating someone still
-   playing while you're bankrupt, and now for a host checking their own account. It's a
+   playing while you're bankrupt, and for any captain checking their own account. It's a
    separate floating window rather than the sidebar, with captain names always listed on the
    left and the selected captain's data on the right, sized to read without the heavy
    scrolling a 300px sidebar would force. The detail pane is composed for this width rather
@@ -7605,7 +7643,7 @@
       let _viewerOpen = false;
       let viewerTarget = null; // username of the room member currently being viewed
 
-      /* Every other captain is always available. The host may also open the viewer on their
+      /* Every other captain is always available. Every captain may also open the viewer on their
    own fleet, rendered through the same window and the same read only detail layout, so the
    name list becomes every captain in the room. */
       function viewerGames() {
@@ -7613,11 +7651,7 @@
           {},
           (serverState && serverState.otherGames) || {},
         );
-        if (
-          serverState &&
-          serverState.host === currentUser &&
-          serverState.yourGame
-        ) {
+        if (serverState && serverState.yourGame) {
           games[currentUser] = serverState.yourGame;
         }
         return games;
@@ -7927,9 +7961,29 @@
       }
 
       /* ===== Bottom action bar ===== */
+      function controlsCollapsed() {
+        return readStored("pm2_controls_collapsed") === "1";
+      }
+
+      function toggleControlsCollapsed() {
+        writeStored("pm2_controls_collapsed", controlsCollapsed() ? "0" : "1");
+        renderControls();
+        const toggle = document.querySelector(".control-toggle");
+        if (toggle) toggle.focus({ preventScroll: true });
+      }
+
+      /* The bar is a status strip, not a second copy of the stage: the manual lives in
+   the header, the phase action sits on its phase card, and the game over restart sits
+   on the stage. */
       function renderControls() {
         const g = serverState && serverState.yourGame;
         const c = document.getElementById("control-panel");
+        const collapsed = controlsCollapsed();
+        if (c) c.classList.toggle("collapsed", collapsed);
+        const toggleTitle = collapsed
+          ? tr("展开操作栏", "Expand the action bar")
+          : tr("收起操作栏", "Collapse the action bar");
+        const collapseToggle = `<button class="btn btn-ghost control-toggle" onclick="toggleControlsCollapsed()" aria-expanded="${!collapsed}" aria-controls="control-panel" aria-label="${toggleTitle}" title="${toggleTitle}">${collapsed ? "▴" : "▾"}</button>`;
         if (!g || g.gameOver) {
           const isBankrupt = g && g.bankrupt;
           const anyoneElsePlaying = Object.values(
@@ -7941,9 +7995,7 @@
       <span class="sync-chip">${isBankrupt ? tr("💥 船队破产", "💥 Fleet Bankrupt") : tr("🏁 本局已结束", "🏁 Game Over")}</span>
       ${anyoneElsePlaying ? `<span class="control-hint">${tr("💡 还有同行仍在航行中，可打开观战窗口实时围观", "💡 Others are still sailing. Open the spectator window to watch live")}</span>` : ""}
       <div class="control-spacer"></div>
-      <button class="btn btn-ghost" onclick="showManual()">${tr("📖 手册", "📖 Manual")}</button>
-      ${isBankrupt && anyoneElsePlaying ? `<button class="btn btn-ghost" onclick="openCaptainViewer()">${tr("👀 观战同行", "👀 Spectate")}</button>` : ""}
-      <button class="btn btn-danger" onclick="confirmRestart()">${tr("🔄 重新起航", "🔄 Set Sail Again")}</button>`,
+      ${collapseToggle}`,
           );
           return;
         }
@@ -7951,12 +8003,8 @@
         const readyCount = serverState.phaseReadyCount || 0;
         const totalCount = serverState.phaseTotalCount || 2;
 
-        let primary = "";
         let hint = "";
         if (phase === 0) {
-          primary = serverState.youReady
-            ? `<button class="btn btn-grey btn-lg" disabled>${tr("⌛ 已确认，等待其他船长", "⌛ Confirmed, waiting for others")}</button>`
-            : `<button class="btn btn-success btn-lg" onclick="sendAction('startBoon')">${tr("🧭 扬帆起航，抽取福缘", "🧭 Set Sail & Draw Fortunes")}</button>`;
           hint = serverState.youReady
             ? tr(
                 "等待其他船长确认后进入福缘抽取",
@@ -7972,7 +8020,6 @@
             "Pick and lock one fortune card above",
           );
         } else if (phase === 1) {
-          primary = `<button class="btn btn-lg" onclick="sendAction('ready_for_next_phase')">${tr("✅ 完成采购", "✅ Done Procuring")}</button>`;
           hint = tr(
             "采购完成后确认，全员就绪即进入互市",
             "Confirm when done buying. Barter starts when everyone is ready",
@@ -7983,25 +8030,21 @@
             "Post or answer offers above, then click Ready when trades are settled",
           );
         } else if (phase === "worker_mgmt") {
-          primary = `<button class="btn btn-lg" onclick="sendAction('ready_for_next_phase')">${tr("✅ 完成工匠管理", "✅ Done Managing")}</button>`;
           hint = tr(
             "雇佣并指派任务后确认",
             "Hire and assign tasks, then confirm",
           );
         } else if (phase === 2) {
-          primary = `<button class="btn btn-lg" onclick="sendAction('ready_for_next_phase')">${tr("✅ 完成交易", "✅ Done Trading")}</button>`;
           hint = tr(
             "交付订单后确认，进入结算",
             "Deliver your orders, then confirm to enter Upkeep",
           );
         } else if (phase === 3) {
-          primary = `<button class="btn btn-warning btn-lg" onclick="sendAction('doMaintenance')">${tr("💸 支付维护费", "💸 Pay Upkeep")}</button>`;
           hint = tr(
             "支付后等待其他船长完成结算",
             "After paying, wait for the others to settle",
           );
         } else if (phase === 4) {
-          primary = `<button class="btn btn-success btn-lg" onclick="sendAction('ready_for_next_phase')">${tr("⏭️ 结束本回合", "⏭️ End Round")}</button>`;
           hint = tr(
             "可先升级商船，再结束本回合",
             "Upgrade your ship first if you like, then end the round",
@@ -8014,13 +8057,12 @@
     <span class="sync-chip" title="${tr("全员确认后才进入下一阶段", "The next phase starts once everyone confirms")}">${tr(`🔄 全员就绪 ${readyCount} / ${totalCount}`, `🔄 Ready ${readyCount} / ${totalCount}`)}</span>
     <span class="control-hint">💡 ${hint}</span>
     <div class="control-spacer"></div>
-    <button class="btn btn-ghost" onclick="showManual()" title="${tr("快捷键 F1", "Shortcut: F1")}">${tr("📖 手册", "📖 Manual")}</button>
     ${
       serverState && serverState.host === currentUser
-        ? `<button class="btn btn-ghost" onclick="confirmRestart()" title="${tr("立即开启全新一局，全员进度重置，难度保持不变", "Start a brand new voyage now, resetting everyone's progress at the same difficulty")}">${tr("🔄 重新起航", "🔄 Set Sail Again")}</button>`
+        ? `<button class="btn btn-ghost control-secondary" onclick="confirmRestart()" title="${tr("立即开启全新一局，全员进度重置，难度保持不变", "Start a brand new voyage now, resetting everyone's progress at the same difficulty")}">${tr("🔄 重新起航", "🔄 Set Sail Again")}</button>`
         : ""
     }
-    ${primary}
+    ${collapseToggle}
   `,
         );
       }
@@ -8185,7 +8227,7 @@
       <li>发布订单：「我出售 A×n，换取 B×m」，其中 A、B 可以是任意原料、成品或金币。</li>
       <li>其他船长可<strong>接受</strong>（双方资源即时互换）或<strong>拒绝</strong>（订单作废）。任一方资源不足时交易不会成立。</li>
       <li>所有船长都点击「✅ 准备就绪」后进入工匠管理；未成交订单自动作废。</li>
-      <li>右侧「同行船队」面板实时展示其他船长的存款、声望与状态，点击某一行即可在观战窗口查看其库存、工匠与增益，<strong>看准他们缺什么再开价</strong>。房主点击左侧自己的船队栏，也能用同一个观战窗口查看自己的账户。</li>
+      <li>右侧「同行船队」面板实时展示其他船长的存款、声望与状态，点击某一行即可在观战窗口查看其库存、工匠与增益，<strong>看准他们缺什么再开价</strong>。左侧自己船队栏上的「👀 观战视图」按钮，可以用同一个观战窗口查看自己的账户。</li>
     </ul>
     <h4>🌐 联机机制</h4>
     <ul>
@@ -8315,7 +8357,7 @@
       <li><strong>点了按钮没反应，或者一直在等待？</strong> 大概率是在等其他船长确认。看底部「🔄 全员就绪 n / N」，并用 💬 聊天催一下。</li>
       <li><strong>材料明明够却无法分配生产？</strong> 可能所有工匠都已经有任务在身，每名工匠每回合只能接一个任务。</li>
       <li><strong>为什么突然破产了？</strong> 因为结算阶段的现金不够支付工资或维护费。扩编工匠前，先看看左侧「⚠️ 本回合应付款项」。</li>
-      <li><strong>破产后还能玩吗？</strong> 本局确实是出局了，不过可以打开「👀 观战窗口」实时围观其他船长的航行，也不会拖慢他们；房主可以随时点「🔄 重新起航」开新局，其他船长则需等其他船长的本局都结束后才能重新起航。房主还可以点击左侧自己的船队栏，用同一个观战窗口查看自己的账户。</li>
+      <li><strong>破产后还能玩吗？</strong> 本局确实是出局了，不过可以打开「👀 观战窗口」实时围观其他船长的航行，也不会拖慢他们；房主可以随时点「🔄 重新起航」开新局，其他船长则需等其他船长的本局都结束后才能重新起航。每位船长还可以点击左侧自己船队栏上的「👀 观战视图」按钮，用同一个观战窗口查看自己的账户。</li>
       <li><strong>其他船长掉线怎么办？</strong> 会话会保留在服务器上，掉线的船长重新登录就能恢复；其离线期间无法与其聊天或互市成交，与其他船长仍可正常往来。</li>
       <li><strong>声望（信誉值）是什么？</strong> 它是每笔订单「报酬减去运费」后的累计金额，是最终评级的唯一依据，不会因为花钱而减少。</li>
     </ul>
@@ -8427,7 +8469,7 @@
       <li>Post an offer: "I give A×n for B×m", where A and B can be any material, product, or gold.</li>
       <li>Any other captain can <strong>accept</strong> (instant swap) or <strong>decline</strong> (offer voided). Trades fail safely if either side lacks the resources.</li>
       <li>Once every captain clicks "✅ Ready", the artisan phase begins; unaccepted offers expire.</li>
-      <li>The Fellow Captains panel on the right shows every other captain's gold, renown and status in real time; click a row to open the spectator window with their cargo, artisans and buffs, so <strong>see what they need before naming your price</strong>. The host can also click their own fleet card on the left to see it in the same window.</li>
+      <li>The Fellow Captains panel on the right shows every other captain's gold, renown and status in real time; click a row to open the spectator window with their cargo, artisans and buffs, so <strong>see what they need before naming your price</strong>. The 👀 Spectator View button on your own fleet card on the left shows your own account in the same window.</li>
     </ul>
     <h4>🌐 Online Mechanics</h4>
     <ul>
@@ -8460,7 +8502,7 @@
   `,
         expansion: `
     <h4>⚖️ Difficulty Modes</h4>
-    <p>Every session is played at one of three difficulties that form a ladder, and it always starts on <strong>Easy</strong> by default. <strong>Easy mode</strong> is the shorter 8 round voyage and keeps the whole game on the founding set of goods, with only the three raw materials Hemp Cloth, Silk and Tea, the four starter products, the first three artisan guilds, and the fortunes, ship modules, ports and monsoons tied to them. The board never grows crowded, so you have plenty of room to learn the rhythm of each round at your own pace. <strong>Standard mode</strong> is the 12 round middle rung: it also opens the full trade, with the Silk Road Charter unlocking at Rounds 4 and 8, but with no corrupt brokers. <strong>Hard mode</strong> is the longer 16 round voyage that opens the full maritime trade with the charter unlocking at Rounds 6 and 10 and the corrupt broker hazard switched on, so there is a great deal more to manage and the competition for cargo space and coin grows much fiercer. The phased unlocks below happen on Standard and Hard but never on Easy. Raids bite harder as you climb the ladder too: a successful raid takes a share of your current gold (a larger share later in the voyage and on higher difficulties) and the escort fee scales with your wealth as well; and on Hard a Broker's Whisper can come from a corrupt broker who tips off pirates and raises that round's raid chance, turning the escort call at Upkeep into a genuine tradeoff.</p>
+    <p>Every session is played at one of three difficulties that form a ladder, and it always starts on <strong>Easy</strong> by default. <strong>Easy mode</strong> is the shorter 8 round voyage and keeps the whole game on the founding set of goods, with only the three raw materials Hemp Cloth, Silk and Tea, the four starter products, the first three artisan guilds, and the fortunes, ship modules, ports and monsoons tied to them. The board never grows crowded, so you have plenty of room to learn the rhythm of each round at your own pace. <strong>Standard mode</strong> is the 12 round middle rung: it also opens the full trade, with the Silk Road Charter unlocking at Rounds 4 and 8, but with no shady brokers. <strong>Hard mode</strong> is the longer 16 round voyage that opens the full maritime trade with the charter unlocking at Rounds 6 and 10 and the shady broker hazard switched on, so there is a great deal more to manage and the competition for cargo space and coin grows much fiercer. The phased unlocks below happen on Standard and Hard but never on Easy. Raids bite harder as you climb the ladder too: a successful raid takes a share of your current gold (a larger share later in the voyage and on higher difficulties) and the escort fee scales with your wealth as well; and on Hard a Broker's Whisper can come from a shady broker who tips off pirates and raises that round's raid chance, turning the escort call at Upkeep into a genuine tradeoff.</p>
     <p>The difficulty is settled before a voyage begins. The inviting captain chooses the level for the session, and the invited captain sees a short explanation of what it changes in the confirmation window and agrees to it, so every captain always runs the same voyage at the same difficulty.</p>
     <div class="pm-banner" style="margin:8px 0 4px">
       <span class="pm-icon">⚖️</span>
@@ -8557,7 +8599,7 @@
       <li><strong>Clicked a button and nothing happened, or stuck waiting?</strong> You're most likely waiting on the other captains. Check the "🔄 Ready n / N" chip in the bottom bar, and nudge them via 💬.</li>
       <li><strong>Have the materials but can't assign production?</strong> All artisans may already have tasks; each takes only one per round.</li>
       <li><strong>Why did I suddenly go bankrupt?</strong> You couldn't cover wages or upkeep at settlement. Before expanding the team, check "⚠️ Due This Round" on the left.</li>
-      <li><strong>Can I still play after bankruptcy?</strong> Your run is over, but you can open the "👀 Spectator Window" to watch the other captains live, and you never block them. The host can click "Set Sail Again" at any time for a fresh run; other captains can do so once every other captain's game has ended. The host can also click their own fleet card on the left to view their own account in the same spectator window.</li>
+      <li><strong>Can I still play after bankruptcy?</strong> Your run is over, but you can open the "👀 Spectator Window" to watch the other captains live, and you never block them. The host can click "Set Sail Again" at any time for a fresh run; other captains can do so once every other captain's game has ended. Every captain can also use the 👀 Spectator View button on their own fleet card on the left to view their own account in the same spectator window.</li>
       <li><strong>Another captain disconnected?</strong> The session stays on the server, so they just log back in. Chat and trades with them pause while they're away.</li>
       <li><strong>What exactly is renown?</strong> It's the running total of each order's reward minus its shipping cost. It's the sole basis of your final rating and is never reduced by spending.</li>
     </ul>
@@ -8635,8 +8677,8 @@
       )}</p>
       <h4>${tr("2️⃣ 与其他船长同步航行", "2️⃣ You sail in lockstep with your fellow captains")}</h4>
       <p>${tr(
-        "每个阶段都需<strong>全员确认</strong>才推进（看底部「🔄 全员就绪 n / N」）。右侧面板可随时查看每位同行的存款、声望与状态，点击某一行即可在观战窗口查看其货物、工匠与增益；互市阶段可自由交易，💬 聊天随时沟通。",
-        "Every phase advances only when <strong>everyone confirms</strong> (see the '🔄 Ready n / N' chip at the bottom). The right panel shows each fellow captain's gold, renown and status; click a row for their cargo, artisans and buffs in the spectator window. Trade freely during Barter and talk any time via 💬.",
+        "每个阶段都需<strong>全员确认</strong>才推进（看底部「🔄 全员就绪 n / N」）。右侧面板可随时查看每位同行的存款、声望与状态，点击某一行即可在观战窗口查看其货物、工匠与增益；左侧自己船队栏上的「👀 观战视图」按钮，可用同样的方式查看自己的账户；互市阶段可自由交易，💬 聊天随时沟通。",
+        "Every phase advances only when <strong>everyone confirms</strong> (see the '🔄 Ready n / N' chip at the bottom). The right panel shows each fellow captain's gold, renown and status; click a row for their cargo, artisans and buffs in the spectator window. The 👀 Spectator View button on your own fleet card shows your own account the same way. Trade freely during Barter and talk any time via 💬.",
       )}</p>
       <h4>${tr("3️⃣ 生产成品才赚大钱", "3️⃣ Real money is in finished goods")}</h4>
       <p>${tr(
