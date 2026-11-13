@@ -26,7 +26,7 @@ MODULE_BY_ID = {
 BOON_BY_ID = {b["id"]: b for b in srv.BOONS_TIER0 + srv.BOONS_TIER1 + srv.BOONS_TIER2}
 
 
-def neutral_weather():
+def neutral_monsoon():
     return {
         "id": "test_calm",
         "name": "calm",
@@ -44,7 +44,7 @@ def new_game(difficulty="standard", money=100, round_no=1):
     g = srv.PlayerGame(difficulty)
     g.money = money
     g.currentRound = round_no
-    g.set_monsoon_state(neutral_weather())
+    g.set_monsoon_state(neutral_monsoon())
     return g
 
 
@@ -212,7 +212,7 @@ class BoonEffects(unittest.TestCase):
     def test_deep_sea_escort_pact_halves_fee_and_risk(self):
         g = new_game(money=340)
         apply(g, "deep_sea_escort_pact")
-        state = neutral_weather()
+        state = neutral_monsoon()
         state["pirateRisk"] = 0.4
         g.set_monsoon_state(state)
         self.assertEqual(g.escort_cost(), 17)  # 34 halved
@@ -578,7 +578,7 @@ class Combinations(unittest.TestCase):
         g = new_game()
         apply(g, "deep_sea_escort_pact")
         equip(g, "persian_dome_compass")
-        state = neutral_weather()
+        state = neutral_monsoon()
         state["pirateRisk"] = 0.5
         g.set_monsoon_state(state)
         self.assertAlmostEqual(g.effective_pirate_risk(), 0.175)  # 0.5 * 0.5 * 0.7
@@ -657,7 +657,7 @@ class MonsoonsAndMandates(unittest.TestCase):
 
     def test_pirate_raid_takes_its_tier_share_and_escort_prevents_it(self):
         g = new_game("easy", money=100)
-        state = neutral_weather()
+        state = neutral_monsoon()
         state["pirateRisk"] = 0.5
         g.set_monsoon_state(state)
         with mock.patch("random.random", return_value=0.0):

@@ -50,7 +50,7 @@ PORTS_TIER2 = ["三佛齐港", "大食港"]
 # -------------------- Difficulty --------------------
 # A difficulty is the whole pacing profile for a session, and this table is its single source
 # of truth: voyage length (rounds), the round each content tier joins the pools (tier_unlock),
-# the corrupt broker hazard (broker_corruption), the pirate toll curve (pirate_loss), and the
+# the shady broker hazard (broker_corruption), the pirate toll curve (pirate_loss), and the
 # Emperor Mandate schedule (mandates). There is no longer a separate "max tier" cap, because
 # a tier_unlock map IS the cap: easy lists no tiers so it never leaves Tier 0, while standard
 # and hard schedule Tier 1 then Tier 2. pirate_loss is one tier name for a flat toll, or a
@@ -166,14 +166,15 @@ def pirate_loss_pct(difficulty, round_no, max_rounds):
 # pocket change late game: a share of current wealth, never below a small floor (which keeps
 # it meaningful early when the share would round to almost nothing). Paired with the
 # wealth based pirate toll, this makes upkeep a genuine gamble: pay a non trivial fee for
-# certainty, or skip it and risk a percentage loss that a corrupt broker can amplify.
+# certainty, or skip it and risk a percentage loss that a shady broker can amplify.
 ESCORT_COST_MIN = 10
 ESCORT_COST_PCT = 0.10
 
-# A corrupt broker may secretly tip off pirates when you pay for a whisper, raising this
+# A shady broker may secretly tip off pirates when you pay for a whisper, raising this
 # round's raid chance. It is part of the higher stakes information game in hard mode and stays
 # off in easy mode (see DIFFICULTIES "broker_corruption"). CHANCE is the odds any single
-# purchase is corrupt; RISK is the raid probability it adds, and tips stack across the round.
+# purchase comes from a shady broker; RISK is the raid probability it adds, and tips stack
+# across the round.
 BROKER_CORRUPTION_CHANCE = 0.30
 BROKER_CORRUPTION_RISK = 0.20
 
@@ -1226,7 +1227,7 @@ class PlayerGame:
         return True
 
     def _maybe_corrupt_broker(self):
-        """In modes with the hazard enabled, a paid whisper may come from a corrupt broker who
+        """In modes with the hazard enabled, a paid whisper may come from a shady broker who
         tips off pirates, raising this round's raid chance. Logged so the escort call stays
         an informed choice; tips stack across the round."""
         if not difficulty_broker_corruption(self.difficulty):
@@ -1343,7 +1344,7 @@ class PlayerGame:
         return True
 
     def pirate_threat(self):
-        """The raw raid chance before mitigation: the monsoon plus any corrupt broker tips."""
+        """The raw raid chance before mitigation: the monsoon plus any shady broker tips."""
         return (self.monsoon_state or {}).get("pirateRisk", 0) + self.broker_pirate_risk
 
     def effective_pirate_risk(self):
@@ -1657,7 +1658,7 @@ class GameSession:
         active_round = max(1, min(active_game.currentRound, active_game.maxRounds))
         cycle = (active_round - 1) // 2
         if cycle == 0:
-            # Rounds 1-2: keep the original Spring Current opening, identical to existing behavior
+            # Rounds 1 and 2: keep the original Spring Current opening, identical to existing behavior
             state = MONSOON_TIER0[0]
         else:
             if cycle not in self.monsoon_cycle_cache:
