@@ -16,7 +16,7 @@ What's new since PortMasters 1:
 - 🗣️ The Broker's Whisper: pay for intel, and every clue turns into a guaranteed order later that round.
 - 🔧 Ship modules: draft and install them, from the Smuggler's Hold to the Overdrive Engine, with slots equal to your ship level.
 - 👑 Emperor Mandates: at set milestones of the voyage an imperial commission appears in the Trade phase, a large golden order worth far more than an ordinary one. The last one of the voyage is marked out as the closing commission.
-- 👀 A spectator window, so a bankrupt captain can still watch the other captains finish the voyage. You can also open it on any captain at any time from the roster on the right, which makes it easy to see what a trading partner is short of before you make them an offer.
+- 👀 A spectator window, so a bankrupt captain can still watch the other captains finish the voyage. You can also open it on any captain at any time from the roster on the right, which makes it easy to see what a trading partner is short of before you make them an offer. The host can click their own fleet card on the left to review their own fleet in the same window.
 - 🔔 Notices for everything that happens to your fleet, each one with its own close button, plus a clear all control when several arrive at once.
 - 🌍 The whole interface is available in English (the default) and Simplified Chinese. Switch any time with the 🌐 button.
 - 🎨 A new look called Tidelight. A round is one day at sea, so the sky moves from first light at Set Sail to dusk at the Shipyard, with a night harbor behind the login page, a bright harbor morning in the lobby and lantern dusk in the waiting room. Every panel wears a color of its own, and your first mate leaves short notes about what you owe this round and who is in port.
@@ -62,7 +62,7 @@ Both are optional. Leave them unset and everything behaves exactly as it always 
 
 ### 🧪 Running the tests
 
-The rule engine ships with 59 tests covering Fortunes, ship modules, the Broker's Whisper, monsoons, Emperor Mandates, barter and the displayed figures. Run them with:
+The rule engine ships with 62 tests covering Fortunes, ship modules, the Broker's Whisper, monsoons, Emperor Mandates, barter and the displayed figures. Run them with:
 
 ```bash
 python -m unittest discover -s tests
@@ -227,9 +227,9 @@ Finished goods:
 - **Invitations and rooms**: invitations go out one per minute from the lobby and expire after 60 seconds; alternatively you can open a room for two to five captains that others join freely. Either way the difficulty is chosen up front, and an invited captain confirms it in the invitation window before the voyage starts.
 - **Staying in sync**: every captain shares the round and the phase. The "Ready n / N" chip shows how many have confirmed. A bankrupt player counts as ready and never holds the others up.
 - **Barter**: an offer is open to the room by default and anyone but its author can take it. Address it to one captain instead and only that captain sees it, so a deal you have already talked through in chat cannot be sniped by a third party.
-- **Bankruptcy and spectating**: a bankrupt captain stays on the settlement page and can open the live 👀 spectator window to watch any other captain play on. The same window opens on any captain at any time by clicking them in the roster on the right, so you can size up a trading partner before making an offer. It updates live and never interrupts what you were reading.
+- **Bankruptcy and spectating**: a bankrupt captain stays on the settlement page and can open the live 👀 spectator window to watch any other captain play on. The same window opens on any captain at any time by clicking them in the roster on the right, so you can size up a trading partner before making an offer. The host can also click their own fleet card on the left to see their fleet laid out the same way. It updates live and never interrupts what you were reading.
 - **Reconnection**: sessions live on the server, and a successful login leaves a token in the browser, so refreshing the page or coming back later puts you straight back where you were without retyping a password. A voyage is only recycled once every captain has been offline for a grace period.
-- **Restart**: once every game has ended, any captain can reset the table for a new run.
+- **Restart**: the host can reset the table at any time, replacing the current game with a brand new session for everyone at the same difficulty. Other captains can reset once every game has ended.
 
 ---
 

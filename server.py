@@ -1808,6 +1808,13 @@ class GameSession:
         # A restart keeps the difficulty and roster the room originally agreed on.
         self.start()
 
+    def can_restart(self, slot):
+        """The host may reset the room at any time. Everyone else must wait until every other
+        captain has finished (settled or bankrupt), keeping the room in sync."""
+        return self.host == self.players[slot] or all(
+            g.gameOver for i, g in enumerate(self.games) if i != slot
+        )
+
     # ---------- Waiting hints ----------
     def waiting_message(self, slot):
         game = self.games[slot]
@@ -2551,8 +2558,9 @@ async def handle_game_action(username, data):
             game.reroll_module_draft()
             changed = True
     elif action == "restart":
-        # Only allow resetting the whole room once every other captain has also finished (settled or bankrupt), keeping the room in sync
-        if all(g.gameOver for i, g in enumerate(sess.games) if i != slot):
+        # The host may reset the whole room at any time. Everyone else must wait until every
+        # other captain has finished (settled or bankrupt), keeping the room in sync.
+        if sess.can_restart(slot):
             sess.restart()
             for u in sess.players:
                 if u != username:

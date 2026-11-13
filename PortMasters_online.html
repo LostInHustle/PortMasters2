@@ -6456,15 +6456,17 @@
         const g = serverState.yourGame;
         if (!g) return;
         const p = document.getElementById("status-panel");
+        const iAmHost = serverState.host === currentUser;
 
         let html = `
-    <div class="crew-head">
+    <div class="crew-head"${iAmHost ? ' id="self-view-head"' : ""}>
       <div class="avatar" style="--hue:${captainHue(currentUser)}">${captainGlyph(currentUser)}</div>
       <div class="who">
         <div class="nm">${escapeHtml(currentUser || tr("我", "Me"))}</div>
         <div class="role">${tr("我的船队", "My fleet")}${tr(" · ", ", ")}${g.slot ? tr("玩家", "Player ") + g.slot : ""}</div>
       </div>
       <span class="dot on" title="${tr("在线", "Online")}"></span>
+      ${iAmHost ? '<span class="roster-toggle">🔍</span>' : ""}
     </div>
     ${mateNoteStatusHTML(g)}
     ${crewSectionsHTML(g)}
@@ -6488,6 +6490,21 @@
     </div>`;
         }
         paintHTML(p, html);
+
+        /* The host's own captain row doubles as an entry into the same viewer every other
+     captain is opened from, so the host can inspect their account exactly as a spectator
+     sees it. */
+        if (iAmHost) {
+          const head = p.querySelector("#self-view-head");
+          if (head) {
+            head.style.cursor = "pointer";
+            head.title = tr(
+              "在观战窗口中查看我的船队",
+              "View my fleet in the spectator window",
+            );
+            head.onclick = () => openCaptainViewer(currentUser);
+          }
+        }
       }
 
       /* ---------- Roster: every other captain in the room, each a collapsed widget ---------- */
@@ -7629,25 +7646,42 @@
 
       /* ============================================================
    Captain detail viewer
-   The single place that shows another room member's full fleet data, used both for
-   browsing a fellow captain's stats during the game (from a roster widget) and for spectating
-   someone still playing while you're bankrupt. It's a separate floating window rather
-   than the sidebar, with captain names always listed on the left and the selected
-   captain's data on the right, sized to read without the heavy scrolling a 300px
-   sidebar would force. The detail pane is composed for this width rather than reusing
-   the side panel's section widgets: gold, renown and ship lead as tiles, the voyage
-   reads as a progress track, and the rest follow as quiet panes. It is built from the
+   The single place that shows a room member's full fleet data, used for browsing a fellow
+   captain's stats during the game (from a roster widget), for spectating someone still
+   playing while you're bankrupt, and now for a host checking their own account. It's a
+   separate floating window rather than the sidebar, with captain names always listed on the
+   left and the selected captain's data on the right, sized to read without the heavy
+   scrolling a 300px sidebar would force. The detail pane is composed for this width rather
+   than reusing the side panel's section widgets: gold, renown and ship lead as tiles, the
+   voyage reads as a progress track, and the rest follow as quiet panes. It is built from the
    same atoms the self panel uses (buffChipsHTML, invListHTML, workerTeamHTML,
    modulesHTML), so the two can never disagree about a fleet's contents.
    ============================================================ */
       let _viewerOpen = false;
-      let viewerTarget = null; // username of the other room member currently being viewed
+      let viewerTarget = null; // username of the room member currently being viewed
 
-      function openCaptainViewer(target) {
-        const others = Object.keys(
+      /* Every other captain is always available. The host may also open the viewer on their
+   own fleet, rendered through the same window and the same read only detail layout, so the
+   name list becomes every captain in the room. */
+      function viewerGames() {
+        const games = Object.assign(
+          {},
           (serverState && serverState.otherGames) || {},
         );
-        const next = target && others.includes(target) ? target : others[0];
+        if (
+          serverState &&
+          serverState.host === currentUser &&
+          serverState.yourGame
+        ) {
+          games[currentUser] = serverState.yourGame;
+        }
+        return games;
+      }
+
+      function openCaptainViewer(target) {
+        const games = viewerGames();
+        const targets = Object.keys(games);
+        const next = target && targets.includes(target) ? target : targets[0];
         if (!next) return;
         const switched = _viewerOpen && next !== viewerTarget;
         viewerTarget = next;
@@ -7677,9 +7711,9 @@
    not touch the captain being watched now leaves this window completely alone. */
       function renderCaptainViewer() {
         if (!_viewerOpen) return;
-        const others = (serverState && serverState.otherGames) || {};
-        if (!others[viewerTarget]) viewerTarget = Object.keys(others)[0];
-        const og = others[viewerTarget];
+        const games = viewerGames();
+        if (!games[viewerTarget]) viewerTarget = Object.keys(games)[0];
+        const og = games[viewerTarget];
         if (!og) {
           closeCaptainViewer();
           return;
@@ -7694,13 +7728,13 @@
           (og.currentRound / (og.maxRounds || 1)) * 100,
         );
 
-        const nameListHTML = Object.keys(others)
+        const nameListHTML = Object.keys(games)
           .map((n) => {
             const p = players.find((pl) => pl.name === n);
             return `
       <div class="sp-name-item${n === viewerTarget ? " active" : ""}" data-viewer-name="${escapeHtml(n)}">
         <span class="dot ${p && p.online ? "on" : "off"}"></span>
-        <span class="nm">${escapeHtml(n)}${p && p.isHost ? " 👑" : ""}</span>
+        <span class="nm">${escapeHtml(n)}${p && p.isHost ? " 👑" : ""}${n === currentUser ? tr("（我）", " (You)") : ""}</span>
       </div>`;
           })
           .join("");
@@ -7818,8 +7852,8 @@
         paintHTML(
           document.getElementById("sp-foot"),
           tr(
-            "💡 此窗口可随时关闭再打开；等待全员结束本局后即可一同重新起航。",
-            "💡 Open or close this window any time. Once everyone else finishes their game, you can set sail together again.",
+            "💡 此窗口可随时关闭再打开；房主可随时重新起航，其他船长需等全员结束本局。",
+            "💡 Open or close this window any time. The host can set sail again at any moment; other captains can do so once every game has ended.",
           ),
         );
       }
@@ -7830,6 +7864,7 @@
         const stillPlaying = Object.entries(others)
           .filter(([, og]) => !og.gameOver)
           .map(([n]) => n);
+        const iAmHost = serverState.host === currentUser;
 
         return `
     <div class="center-block" style="text-align:center">
@@ -7841,13 +7876,20 @@
         <div class="stat-row" style="font-size:14px"><span>${tr("最终声望", "Final renown")}</span><strong>${g.score}</strong></div>
       </div>
       ${pm1HintHTML(tr("破产并不可怕，多半是工资与维护费规划失衡。", "Bankruptcy isn't the end. It usually comes down to wage and upkeep planning."))}
-      <p style="color:var(--ink-soft);margin:8px 0">${tr(
-        "本局已结束，需等待其他玩家全部完成或结束比赛后才能重新起航。",
-        "Your game is over. Once everyone else finishes their voyage, you can all set sail again.",
-      )}</p>
+      <p style="color:var(--ink-soft);margin:8px 0">${
+        iAmHost
+          ? tr(
+              "本局已结束。你是房主，可随时重新起航，开启全新一局。",
+              "Your game is over. As the host, you can set sail again at any time for a brand new voyage.",
+            )
+          : tr(
+              "本局已结束，需等待其他玩家全部完成或结束比赛后才能重新起航。",
+              "Your game is over. Once everyone else finishes their voyage, you can all set sail again.",
+            )
+      }</p>
       <div style="display:flex;justify-content:center;gap:10px;flex-wrap:wrap">
         ${stillPlaying.length ? `<button class="btn btn-lg btn-ghost" onclick="openCaptainViewer()" title="${tr("在独立窗口中实时观看同行的航程", "Watch a fellow captain's voyage live in its own window")}">${tr("👀 打开观战窗口", "👀 Open Spectator Window")}</button>` : ""}
-        <button class="btn btn-lg" onclick="confirmRestart()" title="${tr("需等待其他船长也结束本局，所有人的进度将一同重置", "Requires every other captain to finish too; everyone resets together")}">${tr("🔄 重新起航", "🔄 Set Sail Again")}</button>
+        <button class="btn btn-lg" onclick="confirmRestart()" title="${iAmHost ? tr("立即为全员开启全新一局，难度保持不变", "Starts a brand new voyage for everyone right away at the same difficulty") : tr("需等待其他船长也结束本局，所有人的进度将一同重置", "Requires every other captain to finish too; everyone resets together")}">${tr("🔄 重新起航", "🔄 Set Sail Again")}</button>
       </div>
     </div>
   `;
@@ -7857,6 +7899,7 @@
         const g = serverState.yourGame;
         const rating = ratingFor(g.score, g.difficulty);
         const firstTierMin = ratingTiers(g.difficulty)[1].min;
+        const iAmHost = serverState.host === currentUser;
         return `
     <div class="center-block" style="text-align:center">
       <div style="font-size:70px">🎆</div>
@@ -7868,21 +7911,23 @@
         <div class="section-hint" style="margin-top:8px">${tr("评级门槛：", "Rating thresholds: ")}${ratingThresholdHint(g.difficulty)}</div>
       </div>
       ${g.score < firstTierMin ? pm1HintHTML(tr("首航成绩不理想很正常！", "A rough first voyage is completely normal!")) : ""}
-      <button class="btn btn-xl" onclick="confirmRestart()" title="${tr("需等待其他船长也结束本局，所有人的进度将一同重置", "Requires every other captain to finish too; everyone resets together")}">${tr("🔄 再启新航程", "🔄 Begin a New Voyage")}</button>
+      <button class="btn btn-xl" onclick="confirmRestart()" title="${iAmHost ? tr("立即为全员开启全新一局，难度保持不变", "Starts a brand new voyage for everyone right away at the same difficulty") : tr("需等待其他船长也结束本局，所有人的进度将一同重置", "Requires every other captain to finish too; everyone resets together")}">${tr("🔄 再启新航程", "🔄 Begin a New Voyage")}</button>
     </div>
   `;
       }
 
       function confirmRestart() {
-        if (
-          !confirm(
-            tr(
-              "重新起航将把全员的进度都重置为第1程，确定继续吗？\n（需其他玩家也已结束本局才会生效）",
-              "Setting sail again resets everyone to Round 1. Continue?\n(Takes effect only once every other player's game is also over.)",
-            ),
-          )
-        )
-          return;
+        const message =
+          serverState && serverState.host === currentUser
+            ? tr(
+                "重新起航会立即为全员开启全新一局，所有进度重置为第1程，难度保持不变。确定继续吗？",
+                "Setting sail again immediately starts a brand new voyage for everyone, resetting all progress to Round 1 at the same difficulty. Continue?",
+              )
+            : tr(
+                "重新起航将把全员的进度都重置为第1程，确定继续吗？\n（需其他玩家也已结束本局才会生效）",
+                "Setting sail again resets everyone to Round 1. Continue?\n(Takes effect only once every other player's game is also over.)",
+              );
+        if (!confirm(message)) return;
         sendAction("restart");
       }
 
@@ -8025,6 +8070,11 @@
     <span class="control-hint">💡 ${hint}</span>
     <div class="control-spacer"></div>
     <button class="btn btn-ghost" onclick="showManual()" title="${tr("快捷键 F1", "Shortcut: F1")}">${tr("📖 手册", "📖 Manual")}</button>
+    ${
+      serverState && serverState.host === currentUser
+        ? `<button class="btn btn-ghost" onclick="confirmRestart()" title="${tr("立即开启全新一局，全员进度重置，难度保持不变", "Start a brand new voyage now, resetting everyone's progress at the same difficulty")}">${tr("🔄 重新起航", "🔄 Set Sail Again")}</button>`
+        : ""
+    }
     ${primary}
   `,
         );
@@ -8183,7 +8233,7 @@
       <li>发布订单：「我出售 A×n，换取 B×m」，其中 A、B 可以是任意原料、成品或金币。</li>
       <li>其他船长可<strong>接受</strong>（双方资源即时互换）或<strong>拒绝</strong>（订单作废）。任一方资源不足时交易不会成立。</li>
       <li>所有船长都点击「✅ 准备就绪」后进入工匠管理；未成交订单自动作废。</li>
-      <li>右侧「同行船队」面板实时展示其他船长的存款、声望、库存、工匠与增益，<strong>看准他们缺什么再开价</strong>。</li>
+      <li>右侧「同行船队」面板实时展示其他船长的存款、声望、库存、工匠与增益，<strong>看准他们缺什么再开价</strong>。房主点击左侧自己的船队栏，也能用同一个观战窗口查看自己的账户。</li>
     </ul>
     <h4>🌐 联机机制</h4>
     <ul>
@@ -8191,7 +8241,7 @@
       <li><strong>同步</strong>：所有船长始终同回合同阶段；每个阶段需全员确认才推进。</li>
       <li><strong>断线重连</strong>：会话保留在服务器，重新登录即恢复进度；所有玩家都离线时会话回收。</li>
       <li><strong>聊天</strong>：点击右上角 💬 与其他船长实时沟通（其他人都离线时无法发送）。</li>
-      <li><strong>重新开始</strong>：所有玩家都结束本局（完赛或破产）后，任一船长可重置开新局。</li>
+      <li><strong>重新开始</strong>：房主可以随时重置开新局，全员进度重置为第1程，难度保持不变；其他船长需等全员结束本局后才能重新起航。</li>
     </ul>
   `,
         boons: `
@@ -8313,7 +8363,7 @@
       <li><strong>点了按钮没反应，或者一直在等待？</strong> 大概率是在等其他船长确认。看底部「🔄 全员就绪 n / N」，并用 💬 聊天催一下。</li>
       <li><strong>材料明明够却无法分配生产？</strong> 可能所有工匠都已经有任务在身，每名工匠每回合只能接一个任务。</li>
       <li><strong>为什么突然破产了？</strong> 因为结算阶段的现金不够支付工资或维护费。扩编工匠前，先看看左侧「⚠️ 本回合应付款项」。</li>
-      <li><strong>破产后还能玩吗？</strong> 本局确实是出局了，不过可以打开「👀 观战窗口」实时围观其他船长的航行，也不会拖慢他们；等其他船长结束后点「🔄 重新起航」就能一起开新局。</li>
+      <li><strong>破产后还能玩吗？</strong> 本局确实是出局了，不过可以打开「👀 观战窗口」实时围观其他船长的航行，也不会拖慢他们；房主可以随时点「🔄 重新起航」开新局，其他船长则需等全员结束本局。房主还可以点击左侧自己的船队栏，用同一个观战窗口查看自己的账户。</li>
       <li><strong>其他船长掉线怎么办？</strong> 会话会保留在服务器上，掉线的船长重新登录就能恢复；其离线期间无法与其聊天或互市成交，与其他船长仍可正常往来。</li>
       <li><strong>声望（信誉值）是什么？</strong> 它是每笔订单「报酬减去运费」后的累计金额，是最终评级的唯一依据，不会因为花钱而减少。</li>
     </ul>
@@ -8418,7 +8468,7 @@
       <li>Post an offer: "I give A×n for B×m", where A and B can be any material, product, or gold.</li>
       <li>Any other captain can <strong>accept</strong> (instant swap) or <strong>decline</strong> (offer voided). Trades fail safely if either side lacks the resources.</li>
       <li>Once every captain clicks "✅ Ready", the artisan phase begins; unaccepted offers expire.</li>
-      <li>The Fellow Captains panel on the right shows every other captain's gold, renown, stock, artisans and buffs in real time, so <strong>see what they need before naming your price</strong>.</li>
+      <li>The Fellow Captains panel on the right shows every other captain's gold, renown, stock, artisans and buffs in real time, so <strong>see what they need before naming your price</strong>. The host can also click their own fleet card on the left to see it in the same window.</li>
     </ul>
     <h4>🌐 Online Mechanics</h4>
     <ul>
@@ -8426,7 +8476,7 @@
       <li><strong>Sync</strong>: every captain is always on the same round and phase; every phase needs everyone to confirm.</li>
       <li><strong>Reconnection</strong>: sessions live on the server, so log back in to resume. The session is recycled only when every player in it is offline.</li>
       <li><strong>Chat</strong>: hit 💬 in the header to talk (disabled while everyone else is offline).</li>
-      <li><strong>Restart</strong>: once every game in the room has ended (finished or bankrupt), any captain can reset for a new run.</li>
+      <li><strong>Restart</strong>: the host can reset at any time, sending everyone back to Round 1 at the same difficulty; other captains can restart once every game in the room has ended (finished or bankrupt).</li>
     </ul>
   `,
         boons: `
@@ -8548,7 +8598,7 @@
       <li><strong>Clicked a button and nothing happened, or stuck waiting?</strong> You're most likely waiting on the other captains. Check the "🔄 Ready n / N" chip in the bottom bar, and nudge them via 💬.</li>
       <li><strong>Have the materials but can't assign production?</strong> All artisans may already have tasks; each takes only one per round.</li>
       <li><strong>Why did I suddenly go bankrupt?</strong> You couldn't cover wages or upkeep at settlement. Before expanding the team, check "⚠️ Due This Round" on the left.</li>
-      <li><strong>Can I still play after bankruptcy?</strong> Your run is over, but you can open the "👀 Spectator Window" to watch the other voyages live, and you never block them; once they finish, click "Set Sail Again" for a fresh run together.</li>
+      <li><strong>Can I still play after bankruptcy?</strong> Your run is over, but you can open the "👀 Spectator Window" to watch the other voyages live, and you never block them. The host can click "Set Sail Again" at any time for a fresh run; other captains can do so once every game has ended. The host can also click their own fleet card on the left to view their own account in the same spectator window.</li>
       <li><strong>Another captain disconnected?</strong> The session stays on the server, so they just log back in. Chat and trades with them pause while they're away.</li>
       <li><strong>What exactly is renown?</strong> It's the running total of each order's reward minus its shipping cost. It's the sole basis of your final rating and is never reduced by spending.</li>
     </ul>
